@@ -20,7 +20,7 @@ from core.signal_formatter import SignalFormatter
 
 # Configuration
 SIGNAL_INTERVAL = 300  # 5 minutes in seconds
-DEDUP_WINDOW_HOURS = 2  # Don't resend same signal within this window (reduced from 4)
+DEDUP_WINDOW_HOURS = 0.75  # Don't resend same signal within 45 mins (User request: 30m-1h)
 MAX_RETRIES = 3
 RETRY_DELAY = 30  # seconds
 
