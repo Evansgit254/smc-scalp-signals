@@ -32,15 +32,20 @@ class RiskManager:
     }
 
     @staticmethod
-    def calculate_lot_size(symbol: str, entry: float, sl: float, db_path="database/signals.db") -> dict:
+    def calculate_lot_size(symbol: str, entry: float, sl: float, 
+                           balance: float = None, 
+                           risk_pct_override: float = None,
+                           db_path="database/signals.db") -> dict:
         """
-        Calculates the recommended lot size with V7.0 Dynamic Scaling.
-        Adjusts risk based on recent performance streaks.
+        Calculates the recommended lot size with dynamic scaling.
+        Supports account balance and risk overrides for multi-client delivery.
         """
         import sqlite3
         import os
         
-        base_risk_pct = RISK_PER_TRADE_PERCENT
+        # Use provided balance or fallback to global config
+        current_balance = balance if balance is not None else ACCOUNT_BALANCE
+        base_risk_pct = risk_pct_override if risk_pct_override is not None else RISK_PER_TRADE_PERCENT
         multiplier = 1.0
         
         # V7.0 Performance-Based Scaling
@@ -77,7 +82,7 @@ class RiskManager:
         else:
             risk_pct = base_risk_pct
         
-        risk_amount = ACCOUNT_BALANCE * (risk_pct / 100) * multiplier
+        risk_amount = current_balance * (risk_pct / 100) * multiplier
         
         # Calculate SL distance in "pips" (V9.0 Forensic Fix)
         sl_distance = abs(entry - sl)
@@ -107,35 +112,33 @@ class RiskManager:
         final_lots = max(round(recommended_lots, 2), MIN_LOT_SIZE)
         
         actual_risk = (final_lots / 0.01) * pip_val * pips
-        actual_risk_pct = (actual_risk / ACCOUNT_BALANCE) * 100
+        actual_risk_pct = (actual_risk / current_balance) * 100
         
         
         # V9.0: Hard cap at 2% maximum risk per trade (Forensic Safety)
         MAX_RISK_PERCENT = 2.0
         if actual_risk_pct > MAX_RISK_PERCENT:
             # Recalculate lot size to meet cap: lots = (target_risk / (pip_val * pips)) * 0.01
-            max_risk_amount = ACCOUNT_BALANCE * (MAX_RISK_PERCENT / 100)
+            max_risk_amount = current_balance * (MAX_RISK_PERCENT / 100)
             final_lots = (max_risk_amount / (pip_val * pips)) * 0.01
             final_lots = max(round(final_lots, 2), MIN_LOT_SIZE)
             # Recalculate actual risk with capped lots
             actual_risk = (final_lots / 0.01) * pip_val * pips
-            actual_risk_pct = (actual_risk / ACCOUNT_BALANCE) * 100
+            actual_risk_pct = (actual_risk / current_balance) * 100
         
-        # V10.0 Hard-Skip Safety (Skip if account cannot handle risk even at min lot)
-        SKIP_THRESHOLD = 5.0
-        skip_trade = False
-        risk_warning = ""
-        if actual_risk_pct > SKIP_THRESHOLD:
-            skip_trade = True
-            risk_warning = f"🛑 SKIPPED: Risk {actual_risk_pct:.1f}% exceeds safety limit ({SKIP_THRESHOLD}%)"
+        # V11.0 Guidance-Based Risk (Instead of Hard-Skip)
+        GUIDE_THRESHOLD = 5.0
+        # Calculate balance needed to keep risk at exactly 5% with minimum 0.01 lot
+        min_balance_req = (pip_val * pips) / (GUIDE_THRESHOLD / 100)
+        is_high_risk = actual_risk_pct > GUIDE_THRESHOLD
 
         return {
             'lots': final_lots,
             'risk_cash': round(actual_risk, 2),
             'risk_percent': round(actual_risk_pct, 1),
             'pips': round(pips, 1),
-            'warning': risk_warning,
-            'skip_trade': skip_trade
+            'min_balance_req': round(min_balance_req, 2),
+            'is_high_risk': is_high_risk
         }
 
     @staticmethod

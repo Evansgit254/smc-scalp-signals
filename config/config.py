@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Trading Settings
-SYMBOLS = ["EURUSD=X", "GBPUSD=X", "NZDUSD=X", "USDJPY=X", "AUDUSD=X", "GBPJPY=X", "XAUUSD=X", "CL=F", "BTC-USD"] # Alpha Core Plus (V16.0)
+SYMBOLS = ["EURUSD=X", "GBPUSD=X", "NZDUSD=X", "USDJPY=X", "AUDUSD=X", "GBPJPY=X", "GC=F", "CL=F", "BTC-USD"] # Alpha Core Plus (V16.0)
 DXY_SYMBOL = "DX-Y.NYB"
 TNX_SYMBOL = "^TNX"
 NARRATIVE_TF = "1h"
@@ -58,6 +58,9 @@ ASIAN_RANGE_MIN_PIPS = 15 # Minimum range for sweep validity (Reserved for filte
 # NEWS FILTER
 NEWS_WASH_ZONE = 30 # Minutes before/after high-impact news
 NEWS_IMPACT_LEVELS = ["High", "Medium"] # Impact levels to track
+
+# MULTI-CLIENT SETTINGS (V11.0)
+MULTI_CLIENT_MODE = os.getenv("MULTI_CLIENT_MODE", "true").lower() == "true"
 
 # SCORING (V15.0 Golden Threshold)
 MIN_CONFIDENCE_SCORE = 8.0

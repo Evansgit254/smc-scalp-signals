@@ -19,10 +19,12 @@ async def generate_signals():
     print(f"Symbols: {len(SYMBOLS)} pairs")
     print("=" * 60)
     
-    from config.config import DXY_SYMBOL, TNX_SYMBOL
+    from config.config import DXY_SYMBOL, TNX_SYMBOL, MULTI_CLIENT_MODE
     from data.news_fetcher import NewsFetcher
+    from core.client_manager import ClientManager
     
     fetcher = DataFetcher()
+    client_manager = ClientManager()
     intraday_strategy = IntradayQuantStrategy()
     swing_strategy = SwingQuantStrategy()
     
@@ -84,12 +86,24 @@ async def generate_signals():
             continue
     
     # Display all signals
-    print(f"\n📊 Total Signals Generated: {len(all_signals)}")
+    print(f"\n📊 Total Base Signals Generated: {len(all_signals)}")
     print("=" * 60)
     
-    for signal_type, signal in all_signals:
-        formatted = SignalFormatter.format_signal(signal)
-        print(formatted)
+    # V11.0: Multi-Client Delivery Logic
+    if MULTI_CLIENT_MODE:
+        clients = client_manager.get_all_active_clients()
+        print(f"👥 Broadcasting to {len(clients)} active clients...")
+        
+        for client in clients:
+            print(f"\n📱 Delivery for Client: {client['telegram_chat_id']} (Bal: ${client['account_balance']})")
+            for signal_type, signal in all_signals:
+                formatted = SignalFormatter.format_personalized_signal(signal, client)
+                print(formatted)
+    else:
+        # Standard single-user mode
+        for signal_type, signal in all_signals:
+            formatted = SignalFormatter.format_signal(signal)
+            print(formatted)
     
     return all_signals
 

@@ -108,19 +108,14 @@ class SignalService:
                 print(f"⏭️  Skipped duplicate: {signal_data.get('symbol')} {signal_data.get('direction')}")
                 continue
             
-            # Format and send
+            # Format and broadcast (V11.0 Personalized Multi-Client)
             try:
-                formatted = SignalFormatter.format_signal(signal_data)
-                success = await self.telegram.send_signal(formatted)
+                # Deduplication logic remains at the base level
+                await self.telegram.broadcast_personalized_signal(signal_data)
+                self._mark_sent(signal_data)
+                sent_count += 1
                 
-                if success:
-                    self._mark_sent(signal_data)
-                    sent_count += 1
-                    print(f"✅ Sent {signal_type}: {signal_data.get('symbol')} {signal_data.get('direction')}")
-                else:
-                    print(f"⚠️  Failed to send: {signal_data.get('symbol')}")
-                
-                # Rate limiting
+                # Small delay to avoid API flood
                 await asyncio.sleep(1)
                 
             except Exception as e:

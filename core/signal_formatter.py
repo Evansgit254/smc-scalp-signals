@@ -109,6 +109,46 @@ Quality Score:    {quality_score:.1f} {"🏆" if is_high_prob else "✅"}
         return output
     
     @staticmethod
+    def format_personalized_signal(signal: dict, client: dict) -> str:
+        """
+        Formats a signal specifically for a single client with their balance.
+        """
+        from core.filters.risk_manager import RiskManager
+        
+        # Calculate personalized risk for this client
+        p_risk = RiskManager.calculate_lot_size(
+            signal['symbol'], 
+            signal['entry_price'], 
+            signal['sl'],
+            balance=client['account_balance'],
+            risk_pct_override=client['risk_percent']
+        )
+        
+        # Update signal with personalized risk for the basic formatter
+        personal_signal = signal.copy()
+        personal_signal['risk_details'] = p_risk
+        
+        # Add client-specific banner to the output
+        base_output = SignalFormatter.format_signal(personal_signal)
+        
+        client_banner = f"""
+🎯 TARGETED FOR YOUR ACCOUNT:
+💰 Balance: ${client['account_balance']:.2f}
+📉 Risk:    {p_risk.get('risk_percent', 0.0):.1f}%
+💡 Min Balance for this SL: ${p_risk.get('min_balance_req', 0.0):.2f}
+"""
+        if p_risk.get('is_high_risk'):
+            client_banner += "⚠️ WARNING: High risk for your balance!\n"
+        # Insert personalize banner after the reasoning section
+        parts = base_output.split("📝 SIGNAL REASONING:")
+        if len(parts) > 1:
+            header = parts[0]
+            rest = parts[1]
+            return f"{header}{client_banner}\n📝 SIGNAL REASONING:{rest}"
+            
+        return base_output
+
+    @staticmethod
     def format_signal_json(signal: dict) -> dict:
         """
         Formats signal as structured JSON for API/Webhook integration.

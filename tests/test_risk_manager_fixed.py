@@ -9,7 +9,7 @@ from core.filters.risk_manager import RiskManager
 def test_btc_position_sizing_fixed():
     """Test that BTC-USD now calculates reasonable position sizes"""
     # BTC at $70,000, SL at $69,000 (1000 pip SL)
-    result = RiskManager.calculate_lot_size("BTC-USD", 70000.0, 69000.0)
+    result = RiskManager.calculate_lot_size("BTC-USD", 70000.0, 69000.0, balance=50.0)
     
     print(f"\n✅ BTC-USD Position Sizing:")
     print(f"   Entry: $70,000")
@@ -25,7 +25,7 @@ def test_btc_position_sizing_fixed():
 def test_oil_position_sizing_fixed():
     """Test that CL=F now calculates reasonable position sizes"""
     # CL at $65, SL at $64 (100 pip SL)
-    result = RiskManager.calculate_lot_size("CL=F", 65.0, 64.0)
+    result = RiskManager.calculate_lot_size("CL=F", 65.0, 64.0, balance=50.0)
     
     print(f"\n✅ CL=F (Oil) Position Sizing:")
     print(f"   Entry: $65.00")
@@ -40,7 +40,7 @@ def test_oil_position_sizing_fixed():
 def test_gold_position_sizing():
     """Test GC=F position sizing (should already be reasonable)"""
     # GC at $2000, SL at $1990 (100 pip SL)
-    result = RiskManager.calculate_lot_size("GC=F", 2000.0, 1990.0)
+    result = RiskManager.calculate_lot_size("GC=F", 2000.0, 1990.0, balance=50.0)
     
     print(f"\n✅ GC=F (Gold) Position Sizing:")
     print(f"   Entry: $2000.00")
@@ -58,7 +58,7 @@ def test_gold_position_sizing():
 def test_max_risk_cap_enforcement():
     """Test that 2% risk cap is enforced for wide stop losses"""
     # GBPJPY with intentionally wide SL (1200 pips)
-    result = RiskManager.calculate_lot_size("GBPJPY=X", 212.0, 200.0)
+    result = RiskManager.calculate_lot_size("GBPJPY=X", 212.0, 200.0, balance=50.0)
     
     print(f"\n✅ GBPJPY Wide SL (Risk Cap Test):")
     print(f"   Entry: 212.00")
@@ -76,7 +76,7 @@ def test_max_risk_cap_enforcement():
 def test_forex_unchanged():
     """Test that standard forex pairs still work correctly"""
     # EURUSD with 20 pip SL
-    result = RiskManager.calculate_lot_size("EURUSD=X", 1.1000, 1.0980)
+    result = RiskManager.calculate_lot_size("EURUSD=X", 1.1000, 1.0980, balance=50.0)
     
     print(f"\n✅ EURUSD Standard (Should be unchanged):")
     print(f"   Entry: 1.1000")

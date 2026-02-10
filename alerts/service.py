@@ -131,16 +131,44 @@ TP2 (20% Exit):   {tp2:.5f} ({'+' if direction == 'BUY' else '-'}{tp2_pips:.1f} 
             print(f"❌ Error sending Telegram message: {e}")
             return False
     
-    async def send_text(self, text: str) -> bool:
+    async def send_text(self, text: str, chat_id: str = None) -> bool:
         """
         Sends plain text message to Telegram.
         """
-        if not self.bot or not self.chat_id:
+        target_id = chat_id if chat_id else self.chat_id
+        if not self.bot or not target_id:
             return False
         
         try:
-            await self.bot.send_message(chat_id=self.chat_id, text=text)
+            await self.bot.send_message(chat_id=target_id, text=text)
             return True
         except Exception as e:
             print(f"❌ Error sending Telegram message: {e}")
             return False
+
+    async def broadcast_personalized_signal(self, signal_data: dict):
+        """
+        Broadcasts personalized signals to all active clients.
+        """
+        from core.client_manager import ClientManager
+        from config.config import MULTI_CLIENT_MODE
+        
+        if not MULTI_CLIENT_MODE:
+            # Fallback to single user
+            message = self.format_signal(signal_data)
+            await self.send_signal(message)
+            return
+            
+        manager = ClientManager()
+        clients = manager.get_all_active_clients()
+        
+        success_count = 0
+        for client in clients:
+            try:
+                formatted = SignalFormatter.format_personalized_signal(signal_data, client)
+                if await self.send_text(formatted, chat_id=client['telegram_chat_id']):
+                    success_count += 1
+            except Exception as e:
+                print(f"⚠️ Failed to send signal to {client['telegram_chat_id']}: {e}")
+        
+        print(f"📢 Broadcast complete. {success_count}/{len(clients)} clients reached.")

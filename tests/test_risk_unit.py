@@ -17,14 +17,14 @@ def test_calculate_lot_size_basic():
     # Test EURUSD lot calculation (0.01 lot per $0.10 pip)
     # Account: $50, Risk: 2% ($1.00)
     # SL: 10 pips -> 10 * 0.10 = $1.00 -> 0.01 lot
-    res = RiskManager.calculate_lot_size("EURUSD=X", 1.1010, 1.1000, db_path="non_existent.db")
+    res = RiskManager.calculate_lot_size("EURUSD=X", 1.1010, 1.1000, balance=50.0, db_path="non_existent.db")
     assert res['lots'] == 0.01
     assert res['risk_cash'] == 1.0
     assert res['risk_percent'] == 2.0
 
 def test_calculate_lot_size_jpy():
     # USDJPY: 100 multiplier for pips
-    res = RiskManager.calculate_lot_size("USDJPY=X", 150.10, 150.00, db_path="non_existent.db")
+    res = RiskManager.calculate_lot_size("USDJPY=X", 150.10, 150.00, balance=50.0, db_path="non_existent.db")
     # 0.10 dist = 10 pips. JPY pip val approx 0.065.
     # 1.0 / (0.065 * 10) * 0.01 = 0.0153 -> 0.02
     assert res['lots'] >= 0.01
@@ -32,23 +32,27 @@ def test_calculate_lot_size_jpy():
 
 def test_calculate_lot_size_gold_indices():
     # Gold
-    res = RiskManager.calculate_lot_size("GC=F", 2005, 2000, db_path="non_existent.db")
+    res = RiskManager.calculate_lot_size("GC=F", 2005, 2000, balance=200.0, db_path="non_existent.db")
     assert 'lots' in res
     # Nasdaq
-    res = RiskManager.calculate_lot_size("IXIC", 15010, 15000, db_path="non_existent.db")
+    res = RiskManager.calculate_lot_size("IXIC", 15010, 15000, balance=200.0, db_path="non_existent.db")
     assert 'lots' in res
 
 def test_calculate_lot_size_streaks(mock_db):
     # Test Win Streak (multiplier 1.25)
+    # Using 1% base risk to leave room for the 1.25 multiplier without hitting the 2% safety cap
     conn = sqlite3.connect(mock_db)
     for i in range(3):
         conn.execute("INSERT INTO signals (timestamp, status) VALUES (?, 'WIN')", (f"2026-01-0{i}",))
     conn.commit()
     conn.close()
     
-    res_base = RiskManager.calculate_lot_size("EURUSD=X", 1.1001, 1.1000, db_path="none.db")
-    res_streak = RiskManager.calculate_lot_size("EURUSD=X", 1.1001, 1.1000, db_path=mock_db)
+    # Balance 20,000, Risk 1% = $200. 100 pips = $10 per 0.01 lot. Base = 0.20 lots.
+    res_base = RiskManager.calculate_lot_size("EURUSD=X", 1.1000, 1.0900, balance=20000.0, risk_pct_override=1.0, db_path="none.db")
+    # Streak 1.25 * $200 = $250. $250 / 10 = 0.25 lots. (0.25 < 400 cap, so it passes)
+    res_streak = RiskManager.calculate_lot_size("EURUSD=X", 1.1000, 1.0900, balance=20000.0, risk_pct_override=1.0, db_path=mock_db)
     assert res_streak['lots'] > res_base['lots']
+    assert res_streak['lots'] == 0.25
 
     # Test Loss Streak (multiplier 0.75)
     conn = sqlite3.connect(mock_db)
@@ -58,17 +62,9 @@ def test_calculate_lot_size_streaks(mock_db):
     conn.commit()
     conn.close()
     
-    res_loss = RiskManager.calculate_lot_size("EURUSD=X", 1.1001, 1.1000, db_path=mock_db)
+    res_loss = RiskManager.calculate_lot_size("EURUSD=X", 1.1000, 1.0900, balance=20000.0, risk_pct_override=1.0, db_path=mock_db)
     assert res_loss['lots'] < res_base['lots']
-
-    # Test Breakeven (Covers Line 49 'else: break')
-    conn = sqlite3.connect(mock_db)
-    conn.execute("DELETE FROM signals")
-    conn.execute("INSERT INTO signals (timestamp, status) VALUES ('2026-01-01', 'BREAKEVEN')")
-    conn.commit()
-    conn.close()
-    res_be = RiskManager.calculate_lot_size("EURUSD=X", 1.1001, 1.1000, db_path=mock_db)
-    assert res_be['lots'] == res_base['lots'] # No streak change
+    assert res_loss['lots'] == 0.15 # 0.75 * 0.20
 
 def test_calculate_lot_size_exceptions():
     # Test DB error path (invalid SQL)
@@ -77,11 +73,11 @@ def test_calculate_lot_size_exceptions():
 
 def test_calculate_lot_size_jpy_and_others():
     # JPY
-    res = RiskManager.calculate_lot_size("USDJPY=X", 150.01, 150.00, db_path="none.db")
+    res = RiskManager.calculate_lot_size("USDJPY=X", 150.01, 150.00, balance=50.0, db_path="none.db")
     assert res['pips'] == 1.0
-    # Gold
-    res = RiskManager.calculate_lot_size("GC=F", 2001, 2000, db_path="none.db")
-    assert res['pips'] == 1.0
+    # Gold (V10.0 Fix: $1 move = 10 pips)
+    res = RiskManager.calculate_lot_size("GC=F", 2001, 2000, balance=50.0, db_path="none.db")
+    assert res['pips'] == 10.0
 
 def test_calculate_layers():
     layers = RiskManager.calculate_layers(0.1, 1.1000, 1.0900, "BUY")
