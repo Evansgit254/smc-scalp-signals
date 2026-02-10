@@ -50,6 +50,10 @@ class QuantCoreStrategy(BaseStrategy):
             sl = latest['close'] - (atr * ATR_MULTIPLIER) if direction == "BUY" else latest['close'] + (atr * ATR_MULTIPLIER)
             risk_details = RiskManager.calculate_lot_size(symbol, latest['close'], sl)
             
+            # V10.0 Hard-Skip Safety (Block if risk is dangerous for $50 account)
+            if risk_details.get('skip_trade'):
+                return None
+            
             return {
                 'strategy_id': self.get_id(),
                 'strategy_name': self.get_name(),

@@ -64,7 +64,7 @@ MIN_CONFIDENCE_SCORE = 8.0
 GOLD_CONFIDENCE_THRESHOLD = 5.5  # V15.5 Extreme Volume (Alpha Core)
 
 # RISK MANAGEMENT V4.0 (Scalable Account Sizing)
-ACCOUNT_BALANCE = float(os.getenv("ACCOUNT_BALANCE", "50.0"))  # Configurable via env
+ACCOUNT_BALANCE = float(os.getenv("ACCOUNT_BALANCE", "200.0"))  # Configurable via env (V10.1: Increased for Gold trading)
 RISK_PER_TRADE_PERCENT = float(os.getenv("RISK_PER_TRADE_PERCENT", "2.0"))  # Standard 2% risk
 MAX_CONCURRENT_TRADES = int(os.getenv("MAX_CONCURRENT_TRADES", "4"))  # Increased from 2
 MAX_CURRENCY_EXPOSURE = int(os.getenv("MAX_CURRENCY_EXPOSURE", "2"))  # Increased from 1
