@@ -7,16 +7,27 @@ import numpy as np
 class RiskManager:
     # Approximate pip values for 0.01 lot (1,000 units)
     # Most majors are $0.10 per pip for 0.01 lot
+    # Fixed pip values per 0.01 lot (V9.0 Forensic Fix)
     PIP_VALUE_001 = {
+        # Forex - Standard
         "EURUSD": 0.10,
         "GBPUSD": 0.10,
         "AUDUSD": 0.10,
-        "USDCAD": 0.075, # Approx
+        "USDCAD": 0.075,
         "NZDUSD": 0.10,
-        "USDJPY": 0.065, # Approx at ~150 rate
-        "GC": 0.10,      # Gold is ~$1 per $0.1 move for 1 lot, so 0.10 for 0.01 depending on contract
-        "GSPC": 0.05,    # S&P 500 mini/micro varies, using conservative estimate
-        "IXIC": 0.05     # Nasdaq
+        "USDJPY": 0.065,
+        "GBPJPY": 0.065,
+        
+        # Commodities - Per Contract
+        "GC": 0.10,       # Gold: $10 per 0.1 oz on 0.01 lot
+        "CL": 0.001,      # Oil: $0.10 per $0.1 barrel on 0.01 lot (FIXED)
+        
+        # Crypto - Per Contract
+        "BTC-USD": 0.0001,  # BTC: $0.01 per $1 move on 0.01 lot (FIXED)
+        
+        # Indices
+        "GSPC": 0.05,
+        "IXIC": 0.05
     }
 
     @staticmethod
@@ -67,16 +78,20 @@ class RiskManager:
         
         risk_amount = ACCOUNT_BALANCE * (risk_pct / 100) * multiplier
         
-        # Calculate SL distance in "pips"
+        # Calculate SL distance in "pips" (V9.0 Forensic Fix)
         sl_distance = abs(entry - sl)
         
         # Normalization for different asset types
         if "JPY" in symbol:
-            pips = sl_distance * 100
+            pips = sl_distance * 100  # 100 pips per 1.00 move
+        elif "BTC" in symbol:
+            pips = sl_distance  # $1 SL = 1 pip for BTC (FIXED)
+        elif "CL" in symbol:
+            pips = sl_distance * 10  # $1 SL = 10 pips for Oil (FIXED)
         elif "GC" in symbol or "GSPC" in symbol or "IXIC" in symbol:
-            pips = sl_distance 
+            pips = sl_distance * 10  # $1 SL = 10 pips for indices
         else:
-            pips = sl_distance * 10000
+            pips = sl_distance * 10000  # 10000 pips per 1.0000 move (FX)
 
         # Find pip value for this symbol
         key = symbol.replace("=X", "").replace("^", "")
@@ -88,18 +103,31 @@ class RiskManager:
         recommended_lots = (risk_amount / (pip_val * pips)) * 0.01
         
         # Round to 2 decimal places and ensure minimum
-        final_lots = max(MIN_LOT_SIZE, round(recommended_lots, 2))
+        final_lots = max(round(recommended_lots, 2), MIN_LOT_SIZE)
         
-        # Check if this risk exceeds 10% of account (absolute safety)
         actual_risk = (final_lots / 0.01) * pip_val * pips
+        actual_risk_pct = (actual_risk / ACCOUNT_BALANCE) * 100
+        
+        
+        # V9.0: Hard cap at 2% maximum risk per trade (Forensic Safety)
+        MAX_RISK_PERCENT = 2.0
+        if actual_risk_pct > MAX_RISK_PERCENT:
+            # Recalculate lot size to meet cap: lots = (target_risk / (pip_val * pips)) * 0.01
+            max_risk_amount = ACCOUNT_BALANCE * (MAX_RISK_PERCENT / 100)
+            final_lots = (max_risk_amount / (pip_val * pips)) * 0.01
+            final_lots = max(round(final_lots, 2), MIN_LOT_SIZE)
+            # Recalculate actual risk with capped lots
+            actual_risk = (final_lots / 0.01) * pip_val * pips
+            actual_risk_pct = (actual_risk / ACCOUNT_BALANCE) * 100
+        
         risk_warning = ""
-        if actual_risk > (ACCOUNT_BALANCE * 0.10):
+        if actual_risk > (ACCOUNT_BALANCE * 0.10): # Check if this risk exceeds 10% of account (absolute safety)
             risk_warning = "⚠️ *HIGH RISK:* This SL is very wide for a $50 account."
 
         return {
             'lots': final_lots,
             'risk_cash': round(actual_risk, 2),
-            'risk_percent': round((actual_risk / ACCOUNT_BALANCE) * 100, 1),
+            'risk_percent': round(actual_risk_pct, 1),  # ✅ FIXED: Return the capped risk percent
             'pips': round(pips, 1),
             'warning': risk_warning
         }

@@ -9,7 +9,7 @@ from unittest.mock import patch, MagicMock
 def mock_db(tmp_path):
     db_path = tmp_path / "test_signals.db"
     conn = sqlite3.connect(db_path)
-    conn.execute("CREATE TABLE signals (timestamp TEXT, status TEXT)")
+    conn.execute("CREATE TABLE signals (timestamp TEXT, status TEXT, r_multiple REAL)")
     conn.close()
     return str(db_path)
 
@@ -93,3 +93,29 @@ def test_calculate_layers():
     # Sell layers
     layers_sell = RiskManager.calculate_layers(0.1, 1.1000, 1.1100, "SELL")
     assert layers_sell[1]['price'] > 1.1000 # Pullback for sell is higher
+
+def test_calculate_layers_a_plus():
+    layers = RiskManager.calculate_layers(0.1, 1.1000, 1.0900, "BUY", quality="A+")
+    assert layers[0]['lots'] == 0.05 # 50% for A+
+    assert "50%" in layers[0]['label']
+
+def test_calculate_kelly_fraction(mock_db):
+    # Insert some WIN/LOSS trades
+    conn = sqlite3.connect(mock_db)
+    conn.execute("CREATE TABLE IF NOT EXISTS signals (status TEXT, r_multiple REAL, timestamp TEXT)")
+    for _ in range(10):
+        conn.execute("INSERT INTO signals (status, r_multiple, timestamp) VALUES ('WIN', 2.0, '2026-01-01')")
+        conn.execute("INSERT INTO signals (status, r_multiple, timestamp) VALUES ('LOSS', 1.0, '2026-01-02')")
+    conn.commit()
+    conn.close()
+    
+    fraction = RiskManager._calculate_kelly_fraction(mock_db)
+    assert 0.0 <= fraction <= 0.1 # Capped at 10%
+    assert fraction > 0
+
+def test_calculate_optimal_rr():
+    res = RiskManager.calculate_optimal_rr(8.5, "TRENDING")
+    assert res['tp1_rr'] > 1.5 # Should be boosted
+    
+    res_choppy = RiskManager.calculate_optimal_rr(5.0, "CHOPPY")
+    assert res_choppy['tp1_rr'] < 1.5 # Should be reduced

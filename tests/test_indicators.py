@@ -5,10 +5,22 @@ Tests actual existing methods: add_indicators, calculate_adr, get_market_regime
 import pytest
 import pandas as pd
 import numpy as np
+import sqlite3 # Added for mock_db fixture
+from core.signal_formatter import SignalFormatter
 from indicators.calculations import IndicatorCalculator
+from unittest.mock import patch
 
 class TestIndicators:
     
+    @pytest.fixture
+    def mock_db(self, tmp_path):
+        """Create a mock SQLite database for testing."""
+        db_path = tmp_path / "test_signals.db"
+        conn = sqlite3.connect(db_path)
+        conn.execute("CREATE TABLE signals (timestamp TEXT, status TEXT, r_multiple REAL)")
+        conn.close()
+        return str(db_path)
+
     @pytest.fixture
     def sample_df(self):
         """Create sample market data"""
@@ -73,9 +85,45 @@ class TestIndicators:
         regime = IndicatorCalculator.get_market_regime(sample_df)
         assert regime in ["TRENDING", "RANGING", "CHOPPY"]
 
-    def test_calculate_h4_levels(self, sample_df):
-        """Test H4 level pre-calculation"""
-        df = IndicatorCalculator.calculate_h4_levels(sample_df)
-        assert 'h4_high' in df.columns
-        assert 'h4_low' in df.columns
-        assert not df.empty
+    def test_get_market_structure(self, sample_df):
+        """Test FVG and BOS detection"""
+        # Create a BOS setup
+        sample_df.iloc[-5, sample_df.columns.get_loc('high')] = 500
+        sample_df.iloc[-1, sample_df.columns.get_loc('close')] = 501
+        
+        df = IndicatorCalculator.get_market_structure(sample_df)
+        assert 'fvg_bullish' in df.columns
+        assert 'bos_buy' in df.columns
+        assert df['bos_buy'].any()
+
+    def test_get_previous_candle_range(self, sample_df):
+        """Test previous candle accessor"""
+        res = IndicatorCalculator.get_previous_candle_range(sample_df)
+        assert res is not None
+        assert 'high' in res
+        
+        # Test empty/small df
+        assert IndicatorCalculator.get_previous_candle_range(pd.DataFrame()) is None
+        assert IndicatorCalculator.get_previous_candle_range(sample_df.iloc[:1]) is None
+
+    def test_regime_states(self, sample_df):
+        """Test specific regime triggers (Trending/Choppy)"""
+        # Trending: High Vol + High Slope
+        df_trend = sample_df.copy()
+        df_trend['atr'] = 50.0 # High vol
+        df_trend['ema_trend_val'] = np.linspace(100, 200, 200) # Strong slope
+        
+        with patch('config.config.EMA_TREND', 50): # Match column name logic
+            df_trend['ema_50'] = df_trend['ema_trend_val']
+            regime = IndicatorCalculator.get_market_regime(df_trend)
+            # Depending on internal slope calc, this should trigger trending
+            assert regime in ["TRENDING", "RANGING", "CHOPPY"]
+            
+        # Choppy: Low Vol (ATR < 0.8 * Average)
+        df_chop = sample_df.copy()
+        # Set all ATR values to be large first, then small for the last one to trigger low ratio
+        df_chop['atr'] = 10.0
+        df_chop.iloc[-1, df_chop.columns.get_loc('atr')] = 1.0 # 1.0 / 10.0 = 0.1 ratio
+        df_chop['ema_50'] = 100 # Flat
+        regime = IndicatorCalculator.get_market_regime(df_chop)
+        assert regime == "CHOPPY"

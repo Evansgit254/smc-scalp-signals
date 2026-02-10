@@ -46,6 +46,35 @@ class TestSignalFormatter:
         assert 'SCALP' in formatted
         assert '1.0850' in formatted
         assert '1.0830' in formatted
+        assert '📝 SIGNAL REASONING:' in formatted
+        assert 'Current Session:' in formatted
+
+    def test_reasoning_generation(self):
+        """Test the reasoning engine logic directly"""
+        signal_data = {
+            'direction': 'BUY',
+            'regime': 'TRENDING',
+            'score_details': {
+                'velocity': 0.8,
+                'zscore': -2.0,
+                'momentum': 0.6
+            }
+        }
+        reasoning = SignalFormatter._generate_reasoning(signal_data)
+        
+        assert 'Strong trend confirmed.' in reasoning
+        assert 'Positive price velocity' in reasoning
+        assert 'Mean reversion setup' in reasoning
+        assert 'Bullish momentum breakout' in reasoning
+
+    def test_high_probability_formatting(self, sample_signal):
+        """Test high probability highlighting with quality score >= 8.0"""
+        sample_signal['quality_score'] = 8.5
+        formatted = SignalFormatter.format_signal(sample_signal)
+        
+        assert 'HIGH PROBABILITY' in formatted
+        assert '🔥⚡' in formatted
+        assert '🏆' in formatted
         
     def test_format_signal_jpy_pair(self):
         """Test formatting for JPY pair (different pip calculation)"""
