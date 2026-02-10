@@ -20,7 +20,7 @@ from core.signal_formatter import SignalFormatter
 
 # Configuration
 SIGNAL_INTERVAL = 300  # 5 minutes in seconds
-DEDUP_WINDOW_HOURS = 4  # Don't resend same signal within this window
+DEDUP_WINDOW_HOURS = 2  # Don't resend same signal within this window (reduced from 4)
 MAX_RETRIES = 3
 RETRY_DELAY = 30  # seconds
 
@@ -44,11 +44,13 @@ class SignalService:
         self.running = False
     
     def _signal_hash(self, signal_data: dict) -> str:
-        """Generate unique hash for a signal to detect duplicates."""
+        """
+        Generate unique hash for a signal to detect duplicates.
+        Strict: Only based on Symbol, Direction, and Timeframe to prevent price-bounce flooding.
+        """
         key_parts = [
             signal_data.get('symbol', ''),
             signal_data.get('direction', ''),
-            str(round(signal_data.get('entry_price', 0), 4)),
             signal_data.get('timeframe', '')
         ]
         return hashlib.md5('|'.join(key_parts).encode()).hexdigest()[:12]
