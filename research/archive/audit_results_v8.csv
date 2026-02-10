@@ -1,0 +1,12 @@
+t,symbol,dir,res,score,r,strategy_id,confidence,tp0_hit,be_active,f_rsi,f_is_pin_bar,f_macro_bias,f_regime
+2025-12-29 13:00:00+00:00,GC=F,BUY,PARTIAL_LOSS,7.0,0.0,price_action_specialist,7.0,True,True,59.64935337484013,True,"{'DXY': 'NEUTRAL', 'TNX': 'NEUTRAL', 'RISK': 'NEUTRAL'}",RANGING
+2025-12-31 15:20:00+00:00,GC=F,BUY,BE,7.0,0.5,price_action_specialist,7.0,True,True,48.939174036630355,True,"{'DXY': 'NEUTRAL', 'TNX': 'NEUTRAL', 'RISK': 'NEUTRAL'}",RANGING
+2026-01-05 14:35:00+00:00,GC=F,BUY,PARTIAL_LOSS,7.0,0.0,price_action_specialist,7.0,True,True,59.68934372020092,True,"{'DXY': 'NEUTRAL', 'TNX': 'NEUTRAL', 'RISK': 'NEUTRAL'}",RANGING
+2026-01-06 15:35:00+00:00,GC=F,BUY,BE,7.0,0.5,price_action_specialist,7.0,True,True,46.425779375754665,True,"{'DXY': 'NEUTRAL', 'TNX': 'NEUTRAL', 'RISK': 'NEUTRAL'}",RANGING
+2026-01-07 08:05:00+00:00,GC=F,BUY,LOSS,7.0,-1.0,price_action_specialist,7.0,False,False,64.56799985085536,True,"{'DXY': 'NEUTRAL', 'TNX': 'NEUTRAL', 'RISK': 'NEUTRAL'}",RANGING
+2026-01-08 14:20:00+00:00,GC=F,BUY,PARTIAL_LOSS,7.0,0.0,price_action_specialist,7.0,True,True,54.63487327080853,True,"{'DXY': 'NEUTRAL', 'TNX': 'NEUTRAL', 'RISK': 'NEUTRAL'}",RANGING
+2026-01-12 14:15:00+00:00,GC=F,BUY,PARTIAL_LOSS,7.0,0.0,price_action_specialist,7.0,True,True,46.71702244849162,True,"{'DXY': 'NEUTRAL', 'TNX': 'NEUTRAL', 'RISK': 'NEUTRAL'}",RANGING
+2026-01-13 08:15:00+00:00,GC=F,BUY,BE,7.0,0.5,price_action_specialist,7.0,True,True,55.17099892173644,True,"{'DXY': 'NEUTRAL', 'TNX': 'NEUTRAL', 'RISK': 'NEUTRAL'}",RANGING
+2026-01-14 13:50:00+00:00,GC=F,BUY,BE,7.0,0.5,price_action_specialist,7.0,True,True,52.92054149560218,True,"{'DXY': 'NEUTRAL', 'TNX': 'NEUTRAL', 'RISK': 'NEUTRAL'}",RANGING
+2026-01-15 08:30:00+00:00,GC=F,BUY,BE,7.0,0.5,price_action_specialist,7.0,True,True,48.65593846111886,True,"{'DXY': 'NEUTRAL', 'TNX': 'NEUTRAL', 'RISK': 'NEUTRAL'}",RANGING
+2026-01-22 15:00:00+00:00,GC=F,BUY,PARTIAL_LOSS,7.0,0.0,price_action_specialist,7.0,True,True,53.60905782828988,True,"{'DXY': 'NEUTRAL', 'TNX': 'NEUTRAL', 'RISK': 'NEUTRAL'}",RANGING

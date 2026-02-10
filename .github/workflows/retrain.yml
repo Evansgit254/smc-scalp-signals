@@ -1,0 +1,52 @@
+name: Autonomous ML Retraining
+
+on:
+  schedule:
+    - cron: '0 0 * * 0' # Every Sunday at Midnight UTC
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  retrain:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run Self-Improvement Cycle
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          export PYTHONPATH=$PYTHONPATH:.
+          echo "🔍 Resolving Live Signal Outcomes..."
+          python audit/performance_auditor.py
+          echo "📊 Collecting Data..."
+          python training/data_collector.py
+          echo "🧠 Training Model..."
+          python training/trainer.py
+          echo "📈 Optimizing Parameters..."
+          python training/optimizer.py
+          echo "🤖 Generating Strategy Advisor Report..."
+          python audit/advisor.py
+
+      - name: Commit and Push Updates
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add training/win_prob_model.joblib training/optimization_results.csv training/historical_data.csv
+          git diff --quiet && git diff --staged --quiet || (git commit -m "Auto: Weekly ML Model and Parameter Optimization Update [skip ci]" && git push)

@@ -1,0 +1,30 @@
+
+═════════════════════════════════════════════
+🏁 V9.6 HYBRID REAPER SUMMARY
+Total Signals: 1
+Layers Triggered: 2 (Avg 2.0 per signal)
+Wins (Portfolio): 0
+Losses (Portfolio): 0
+Breakevens (Protected): 1
+Adjusted Win Rate: 0.0%
+Raw Win Rate (inc. BE): 0.0%
+--------------------
+Signals per Symbol:
+• EURUSD=X: 0 trades
+• GBPUSD=X: 0 trades
+• USDCAD=X: 0 trades
+• NZDUSD=X: 0 trades
+• GC=F: 1 trades
+• CL=F: 0 trades
+• ^IXIC: 0 trades
+--------------------
+Rejection Reasons (Gold Only):
+• Session: 0
+• Bias: 0
+• Sweep: 2082
+• Displaced: 100
+• Pullback: 106
+• Confidence: 0
+• Volatile: 5
+• Global Session Block: 13766
+═════════════════════════════════════════════

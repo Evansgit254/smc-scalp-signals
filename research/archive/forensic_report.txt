@@ -1,0 +1,32 @@
+
+==================================================
+🔬 QUANT FORENSIC FACTOR AUDIT
+==================================================
+Alpha Factor              | Correlation to Win
+--------------------------------------------------
+Velocity Alpha            |             0.1263
+Mean Reversion (Z)        |             0.1153
+
+📊 Win Rate by Signal Strength (Deciles)
+--------------------------------------------------
+Strength (0.799, 0.822]            | WR:   53.6%
+Strength (0.822, 0.847]            | WR:   52.1%
+Strength (0.847, 0.876]            | WR:   50.0%
+Strength (0.876, 0.909]            | WR:   52.4%
+Strength (0.909, 0.939]            | WR:   52.2%
+Strength (0.939, 0.971]            | WR:   49.3%
+Strength (0.971, 1.001]            | WR:   53.3%
+Strength (1.001, 1.039]            | WR:   49.4%
+Strength (1.039, 1.088]            | WR:   49.5%
+Strength (1.088, 1.677]            | WR:   46.3%
+
+🎯 Feature Centroids (Averaged Math Signature)
+--------------------------------------------------
+Feature                   | Winners    | Losers    
+Avg Velocity              |     0.1196 |     0.0241
+Avg Z-Score               |     0.8629 |     0.2213
+
+💡 OPTIMIZATION RECOMMENDATIONS
+--------------------------------------------------
+🚀 DEEPEN VELOCITY: Increasing velocity weight will likely improve WR.
+📐 RE-ZEN: Mean reversion is a strong discriminator at higher Z-scores.
