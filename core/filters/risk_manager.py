@@ -19,7 +19,8 @@ class RiskManager:
         "GBPJPY": 0.065,
         
         # Commodities - Per Contract
-        "GC": 0.10,       # Gold: $10 per 0.1 oz on 0.01 lot
+        "GC": 0.10,       # Gold Futures: $10 per 0.1 oz on 0.01 lot
+        "XAUUSD": 0.10,   # Spot Gold: $1 per $1.00 move on 0.01 lot (Standard Retail)
         "CL": 0.001,      # Oil: $0.10 per $0.1 barrel on 0.01 lot (FIXED)
         
         # Crypto - Per Contract
@@ -88,8 +89,8 @@ class RiskManager:
             pips = sl_distance  # $1 SL = 1 pip for BTC (FIXED)
         elif "CL" in symbol:
             pips = sl_distance * 10  # $1 SL = 10 pips for Oil (FIXED)
-        elif "GC" in symbol or "GSPC" in symbol or "IXIC" in symbol:
-            pips = sl_distance * 10  # $1 SL = 10 pips for indices
+        elif "GC" in symbol or "XAU" in symbol or "GSPC" in symbol or "IXIC" in symbol:
+            pips = sl_distance * 10  # $1 SL = 10 pips for Gold/Indices
         else:
             pips = sl_distance * 10000  # 10000 pips per 1.0000 move (FX)
 
@@ -120,16 +121,21 @@ class RiskManager:
             actual_risk = (final_lots / 0.01) * pip_val * pips
             actual_risk_pct = (actual_risk / ACCOUNT_BALANCE) * 100
         
+        # V10.0 Hard-Skip Safety (Skip if account cannot handle risk even at min lot)
+        SKIP_THRESHOLD = 5.0
+        skip_trade = False
         risk_warning = ""
-        if actual_risk > (ACCOUNT_BALANCE * 0.10): # Check if this risk exceeds 10% of account (absolute safety)
-            risk_warning = "⚠️ *HIGH RISK:* This SL is very wide for a $50 account."
+        if actual_risk_pct > SKIP_THRESHOLD:
+            skip_trade = True
+            risk_warning = f"🛑 SKIPPED: Risk {actual_risk_pct:.1f}% exceeds safety limit ({SKIP_THRESHOLD}%)"
 
         return {
             'lots': final_lots,
             'risk_cash': round(actual_risk, 2),
-            'risk_percent': round(actual_risk_pct, 1),  # ✅ FIXED: Return the capped risk percent
+            'risk_percent': round(actual_risk_pct, 1),
             'pips': round(pips, 1),
-            'warning': risk_warning
+            'warning': risk_warning,
+            'skip_trade': skip_trade
         }
 
     @staticmethod

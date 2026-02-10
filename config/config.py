@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Trading Settings
-SYMBOLS = ["EURUSD=X", "GBPUSD=X", "NZDUSD=X", "USDJPY=X", "AUDUSD=X", "GBPJPY=X", "GC=F", "CL=F", "BTC-USD"] # Alpha Core Plus (V16.0)
+SYMBOLS = ["EURUSD=X", "GBPUSD=X", "NZDUSD=X", "USDJPY=X", "AUDUSD=X", "GBPJPY=X", "XAUUSD=X", "CL=F", "BTC-USD"] # Alpha Core Plus (V16.0)
 DXY_SYMBOL = "DX-Y.NYB"
 TNX_SYMBOL = "^TNX"
 NARRATIVE_TF = "1h"
