@@ -26,7 +26,9 @@ class TestAlphaCombiner:
         # With current weights: velocity=0.4, zscore=0.6
         factors = {
             'velocity': 1.0,
-            'zscore': 1.0
+            'zscore': 1.0,
+            'momentum': 1.0,
+            'volatility': 1.0
         }
         
         signal = AlphaCombiner.combine(factors)
@@ -36,8 +38,10 @@ class TestAlphaCombiner:
     def test_combine_clipping(self):
         """Test outlier clipping at 4.0"""
         factors = {
-            'velocity': 10.0,  # Extreme value
-            'zscore': 10.0     # Extreme value
+            'velocity': 10.0,
+            'zscore': 10.0,
+            'momentum': 10.0,
+            'volatility': 10.0
         }
         
         signal = AlphaCombiner.combine(factors)
@@ -50,7 +54,9 @@ class TestAlphaCombiner:
         """Test negative outlier clipping"""
         factors = {
             'velocity': -10.0,
-            'zscore': -10.0
+            'zscore': -10.0,
+            'momentum': -10.0,
+            'volatility': -10.0
         }
         
         signal = AlphaCombiner.combine(factors)
@@ -66,7 +72,9 @@ class TestAlphaCombiner:
         factors = {
             'unknown_factor': 100.0,
             'velocity': 1.0,
-            'zscore': 1.0
+            'zscore': 1.0,
+            'momentum': 1.0,
+            'volatility': 1.0
         }
         
         signal = AlphaCombiner.combine(factors)
