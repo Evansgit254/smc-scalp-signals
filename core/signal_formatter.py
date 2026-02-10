@@ -1,3 +1,5 @@
+from core.filters.session_filter import SessionFilter
+
 class SignalFormatter:
     """
     Formats raw strategy signals into comprehensive trading instructions.
@@ -32,14 +34,23 @@ class SignalFormatter:
         tp1_pips = abs(tp1 - entry) * pip_divisor
         tp2_pips = abs(tp2 - entry) * pip_divisor
         
+        # Session and Probability Formatting
+        session_name = SessionFilter.get_session_name()
+        quality_score = signal.get('quality_score', 0)
+        is_high_prob = quality_score >= 8.0
+        
+        session_emoji = "🇬🇧" if "London Open" in session_name else "🇺🇸" if "Overlap" in session_name else "🌐"
+        prob_header = " 🔥⚡ HIGH PROBABILITY ⚡🔥" if is_high_prob else ""
+        
         # Format output
         output = f"""
 {'='*60}
-📊 TRADE SIGNAL - {trade_type}
+{session_emoji} TRADE SIGNAL - {trade_type}{prob_header}
 {'='*60}
 Symbol:           {symbol}
 Direction:        {direction}
 Timeframe:        {signal.get('timeframe', 'N/A')}
+Current Session:  {session_name}
 Entry Price:      {entry:.5f}
 Stop Loss:        {sl:.5f} ({'-' if direction == 'BUY' else '+'}{sl_pips:.1f} pips)
 ──────────────────────────────────────────────────────────
@@ -52,6 +63,7 @@ Risk Amount:      ${risk_details.get('risk_cash', risk_details.get('risk_amount'
 Risk Percent:     {risk_details.get('risk_percent', 0):.1f}%
 Expected Hold:    {hold_time}
 Alpha Score:      {confidence:.2f} {"(STRONG)" if confidence > 1.5 else "(MODERATE)" if confidence > 1.0 else "(WEAK)"}
+Quality Score:    {quality_score:.1f} {"🏆" if is_high_prob else "✅"}
 {'='*60}
 """
         return output
