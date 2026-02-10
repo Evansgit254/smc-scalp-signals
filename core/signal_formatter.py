@@ -6,6 +6,42 @@ class SignalFormatter:
     """
     
     @staticmethod
+    def _generate_reasoning(signal: dict) -> str:
+        """
+        Translates raw alpha factors and regime into human-readable logic.
+        """
+        score_details = signal.get('score_details', {})
+        direction = signal.get('direction', 'N/A')
+        regime = signal.get('regime', 'NORMAL')
+        
+        velocity = score_details.get('velocity', 0)
+        zscore = score_details.get('zscore', 0)
+        momentum = score_details.get('momentum', 0)
+        
+        reasons = []
+        
+        # 1. Regime Context
+        if regime == "TRENDING":
+            reasons.append(f"Strong trend confirmed.")
+        elif regime == "RANGING":
+            reasons.append(f"Range-bound market conditions.")
+            
+        # 2. Main Factor Alignment
+        if direction == "BUY":
+            if velocity > 0.5: reasons.append("Positive price velocity indicates bullish strength.")
+            if zscore < -1.5: reasons.append("Mean reversion setup: price is oversold relative to EMA.")
+            if momentum > 0.5: reasons.append("Bullish momentum breakout detected.")
+        else:
+            if velocity < -0.5: reasons.append("Negative price velocity indicates bearish strength.")
+            if zscore > 1.5: reasons.append("Mean reversion setup: price is overbought relative to EMA.")
+            if momentum < -0.5: reasons.append("Bearish momentum breakout detected.")
+            
+        if not reasons:
+            reasons.append("Alpha factor alignment meets institutional threshold.")
+            
+        return " ".join(reasons)
+
+    @staticmethod
     def format_signal(signal: dict) -> str:
         """
         Convert raw signal dict to human-readable comprehensive instructions.
@@ -41,6 +77,7 @@ class SignalFormatter:
         
         session_emoji = "🇬🇧" if "London Open" in session_name else "🇺🇸" if "Overlap" in session_name else "🌐"
         prob_header = " 🔥⚡ HIGH PROBABILITY ⚡🔥" if is_high_prob else ""
+        reasoning = SignalFormatter._generate_reasoning(signal)
         
         # Format output
         output = f"""
@@ -53,6 +90,9 @@ Timeframe:        {signal.get('timeframe', 'N/A')}
 Current Session:  {session_name}
 Entry Price:      {entry:.5f}
 Stop Loss:        {sl:.5f} ({'-' if direction == 'BUY' else '+'}{sl_pips:.1f} pips)
+
+📝 SIGNAL REASONING:
+{reasoning}
 ──────────────────────────────────────────────────────────
 TP0 (50% Exit):   {tp0:.5f} ({'+' if direction == 'BUY' else '-'}{tp0_pips:.1f} pips)
 TP1 (30% Exit):   {tp1:.5f} ({'+' if direction == 'BUY' else '-'}{tp1_pips:.1f} pips)
