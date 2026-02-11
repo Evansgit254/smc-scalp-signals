@@ -140,7 +140,11 @@ TP2 (20% Exit):   {tp2:.5f} ({'+' if direction == 'BUY' else '-'}{tp2_pips:.1f} 
             return False
         
         try:
-            await self.bot.send_message(chat_id=target_id, text=text)
+            await self.bot.send_message(
+                chat_id=target_id, 
+                text=text,
+                parse_mode='HTML'
+            )
             return True
         except Exception as e:
             print(f"❌ Error sending Telegram message: {e}")
