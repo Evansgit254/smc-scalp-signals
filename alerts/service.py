@@ -162,6 +162,22 @@ TP2 (20% Exit):   {tp2:.5f} ({'+' if direction == 'BUY' else '-'}{tp2_pips:.1f} 
         manager = ClientManager()
         clients = manager.get_all_active_clients()
         
+        # V11.2 Auto-Register Primary Chat if Database is Empty
+        if not clients and self.chat_id:
+            from config.config import ACCOUNT_BALANCE
+            print(f"⚙️ Auto-registering primary chat {self.chat_id} with ${ACCOUNT_BALANCE} balance...")
+            manager.register_client(
+                telegram_chat_id=self.chat_id,
+                account_balance=ACCOUNT_BALANCE,
+                risk_percent=2.0
+            )
+            clients = manager.get_all_active_clients()
+            print(f"✅ Primary client registered successfully.")
+        
+        if not clients:
+            print("⚠️ No active clients found. Signal not sent.")
+            return
+        
         success_count = 0
         for client in clients:
             try:
