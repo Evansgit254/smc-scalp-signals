@@ -41,13 +41,18 @@ class TestSignalFormatter:
         """Test formatted signal contains critical information"""
         formatted = SignalFormatter.format_signal(sample_signal)
         
+        # Core details
         assert 'EURUSD' in formatted
         assert 'BUY' in formatted
         assert 'SCALP' in formatted
         assert '1.0850' in formatted
         assert '1.0830' in formatted
-        assert '📝 SIGNAL REASONING:' in formatted
-        assert 'Current Session:' in formatted
+        
+        # New Educational Sections
+        assert '📝 **WHY WE ARE ENTERING THIS TRADE**' in formatted
+        assert '📊 **TRADE SETUP**' in formatted
+        assert '🎯 **PROFIT TARGETS**' in formatted
+        assert '🛡️ **RISK GUIDANCE**' in formatted
 
     def test_reasoning_generation(self):
         """Test the reasoning engine logic directly"""
@@ -62,10 +67,11 @@ class TestSignalFormatter:
         }
         reasoning = SignalFormatter._generate_reasoning(signal_data)
         
-        assert 'Strong trend confirmed.' in reasoning
-        assert 'Positive price velocity' in reasoning
-        assert 'Mean reversion setup' in reasoning
-        assert 'Bullish momentum breakout' in reasoning
+        # New Beginner-Friendly Phrases
+        assert '✅ **Trend Alignment:**' in reasoning
+        assert '🚀 **Speed:**' in reasoning
+        assert '📉 **Discount:**' in reasoning
+        assert '💪 **Strength:**' in reasoning
 
     def test_high_probability_formatting(self, sample_signal):
         """Test high probability highlighting with quality score >= 8.0"""

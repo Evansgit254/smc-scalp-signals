@@ -8,7 +8,7 @@ class SignalFormatter:
     @staticmethod
     def _generate_reasoning(signal: dict) -> str:
         """
-        Translates raw alpha factors and regime into human-readable logic.
+        Translates raw alpha factors and regime into beginner-friendly logic.
         """
         score_details = signal.get('score_details', {})
         direction = signal.get('direction', 'N/A')
@@ -20,31 +20,37 @@ class SignalFormatter:
         
         reasons = []
         
-        # 1. Regime Context
+        # 1. Market Context (The "Where are we?" part)
         if regime == "TRENDING":
-            reasons.append(f"Strong trend confirmed.")
+            reasons.append("✅ **Trend Alignment:** The overall market trend supports this trade.")
         elif regime == "RANGING":
-            reasons.append(f"Range-bound market conditions.")
+            reasons.append("↔️ **Market Structure:** Price is bouncing within a range, perfect for quick scalps.")
             
-        # 2. Main Factor Alignment
+        # 2. Key Drivers (The "Why now?" part)
         if direction == "BUY":
-            if velocity > 0.5: reasons.append("Positive price velocity indicates bullish strength.")
-            if zscore < -1.5: reasons.append("Mean reversion setup: price is oversold relative to EMA.")
-            if momentum > 0.5: reasons.append("Bullish momentum breakout detected.")
+            if velocity > 0.5: 
+                reasons.append("🚀 **Speed:** Price is moving up quickly, showing strong buyer interest.")
+            if zscore < -1.5: 
+                reasons.append("📉 **Discount:** Price has dropped too fast and is likely to snap back up (Oversold).")
+            if momentum > 0.5: 
+                reasons.append("💪 **Strength:** Buyers are stepping in aggressively right now.")
         else:
-            if velocity < -0.5: reasons.append("Negative price velocity indicates bearish strength.")
-            if zscore > 1.5: reasons.append("Mean reversion setup: price is overbought relative to EMA.")
-            if momentum < -0.5: reasons.append("Bearish momentum breakout detected.")
+            if velocity < -0.5: 
+                reasons.append("🔻 **Speed:** Price is dropping quickly, showing strong seller pressure.")
+            if zscore > 1.5: 
+                reasons.append("📈 **Premium:** Price has rallied too fast and is likely to pullback (Overbought).")
+            if momentum < -0.5: 
+                reasons.append("💪 **Strength:** Sellers are dominating the market right now.")
             
         if not reasons:
-            reasons.append("Alpha factor alignment meets institutional threshold.")
+            reasons.append("✅ **Confirmation:** Multiple technical factors verify this entry.")
             
-        return " ".join(reasons)
+        return "\n".join(reasons)
 
     @staticmethod
     def format_signal(signal: dict) -> str:
         """
-        Convert raw signal dict to human-readable comprehensive instructions.
+        Convert raw signal into a comprehensive, educational trade instruction.
         """
         symbol = signal.get('symbol', 'UNKNOWN')
         direction = signal.get('direction', 'N/A')
@@ -82,28 +88,30 @@ class SignalFormatter:
         # Format output
         output = f"""
 {'='*60}
-{session_emoji} TRADE SIGNAL - {trade_type}{prob_header}
+{session_emoji} {direction} SIGNAL - {symbol} {prob_header}
 {'='*60}
-Symbol:           {symbol}
-Direction:        {direction}
-Timeframe:        {signal.get('timeframe', 'N/A')}
-Current Session:  {session_name}
-Entry Price:      {entry:.5f}
-Stop Loss:        {sl:.5f} ({'-' if direction == 'BUY' else '+'}{sl_pips:.1f} pips)
+📊 **TRADE SETUP**
+• **Direction:**    {direction} ({trade_type})
+• **Entry Price:**  {entry:.5f}
+• **Stop Loss:**    {sl:.5f} ({sl_pips:.1f} pips risk)
 
-📝 SIGNAL REASONING:
+🎯 **PROFIT TARGETS**
+1️⃣ **TP1 (Secure):** {tp0:.5f} (+{tp0_pips:.1f} pips)
+2️⃣ **TP2 (Growth):** {tp1:.5f} (+{tp1_pips:.1f} pips)
+3️⃣ **TP3 (Runner):** {tp2:.5f} (+{tp2_pips:.1f} pips)
+
+📝 **WHY WE ARE ENTERING THIS TRADE**
 {reasoning}
-──────────────────────────────────────────────────────────
-TP0 (50% Exit):   {tp0:.5f} ({'+' if direction == 'BUY' else '-'}{tp0_pips:.1f} pips)
-TP1 (30% Exit):   {tp1:.5f} ({'+' if direction == 'BUY' else '-'}{tp1_pips:.1f} pips)
-TP2 (20% Exit):   {tp2:.5f} ({'+' if direction == 'BUY' else '-'}{tp2_pips:.1f} pips)
-──────────────────────────────────────────────────────────
-Position Size:    {risk_details.get('lots', risk_details.get('lot_size', 0)):.2f} lots
-Risk Amount:      ${risk_details.get('risk_cash', risk_details.get('risk_amount', 0)):.2f}
-Risk Percent:     {risk_details.get('risk_percent', 0):.1f}%
-Expected Hold:    {hold_time}
-Alpha Score:      {confidence:.2f} {"(STRONG)" if confidence > 1.5 else "(MODERATE)" if confidence > 1.0 else "(WEAK)"}
-Quality Score:    {quality_score:.1f} {"🏆" if is_high_prob else "✅"}
+
+🛡️ **RISK GUIDANCE**
+• **Recommended Risk:** {risk_details.get('risk_percent', 0):.1f}% of balance
+• **Position Size:**    {risk_details.get('lots', risk_details.get('lot_size', 0)):.2f} lots
+• **Dollar Risk:**      ${risk_details.get('risk_cash', risk_details.get('risk_amount', 0)):.2f}
+• **Hold Time:**        ~{hold_time}
+
+⚙️ **Strategy Details**
+• **Quality Score:** {quality_score:.1f}/10.0 {"🏆 Excellent" if is_high_prob else "✅ Good"}
+• **Session:**       {session_name}
 {'='*60}
 """
         return output
@@ -131,20 +139,23 @@ Quality Score:    {quality_score:.1f} {"🏆" if is_high_prob else "✅"}
         # Add client-specific banner to the output
         base_output = SignalFormatter.format_signal(personal_signal)
         
-        client_banner = f"""
-🎯 TARGETED FOR YOUR ACCOUNT:
-💰 Balance: ${client['account_balance']:.2f}
-📉 Risk:    {p_risk.get('risk_percent', 0.0):.1f}%
-💡 Min Balance for this SL: ${p_risk.get('min_balance_req', 0.0):.2f}
-"""
+        # Beginner-friendly personalization
+        safety_check = "✅ **SAFE:** Risk is within healthy limits."
         if p_risk.get('is_high_risk'):
-            client_banner += "⚠️ WARNING: High risk for your balance!\n"
-        # Insert personalize banner after the reasoning section
-        parts = base_output.split("📝 SIGNAL REASONING:")
+            safety_check = "⚠️ **CAUTION:** High risk for your account size. Consider reducing lot size."
+
+        client_banner = f"""
+👤 **YOUR PERSONAL PLAN**
+💰 **Balance:** ${client['account_balance']:.2f}
+📉 **Your Risk:** {p_risk.get('risk_percent', 0.0):.1f}%
+🛡️ **Status:** {safety_check}
+"""
+        # Insert personalize banner before Risk Guidance
+        parts = base_output.split("🛡️ **RISK GUIDANCE**")
         if len(parts) > 1:
             header = parts[0]
             rest = parts[1]
-            return f"{header}{client_banner}\n📝 SIGNAL REASONING:{rest}"
+            return f"{header}{client_banner}\n🛡️ **RISK GUIDANCE**{rest}"
             
         return base_output
 
