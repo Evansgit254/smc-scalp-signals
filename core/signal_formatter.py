@@ -9,6 +9,7 @@ class SignalFormatter:
     def _generate_reasoning(signal: dict) -> str:
         """
         Translates raw alpha factors and regime into beginner-friendly logic.
+        Includes "Why Not" comparative reasoning.
         """
         score_details = signal.get('score_details', {})
         direction = signal.get('direction', 'N/A')
@@ -28,19 +29,30 @@ class SignalFormatter:
             
         # 2. Key Drivers (The "Why now?" part)
         if direction == "BUY":
+            # Pro-Buy Arguments
             if velocity > 0.5: 
                 reasons.append("🚀 <b>Speed:</b> Price is moving up quickly, showing strong buyer interest.")
             if zscore < -1.5: 
                 reasons.append("📉 <b>Discount:</b> Price has dropped too fast and is likely to snap back up (Oversold).")
             if momentum > 0.5: 
                 reasons.append("💪 <b>Strength:</b> Buyers are stepping in aggressively right now.")
+                
+            # Anti-Sell Arguments (The "Why Not" part)
+            reasons.append("⛔ <b>Why NOT Sell?</b> Sellers have failed to push price lower (Support Holding).")
+            reasons.append("⛔ <b>Risk of Selling:</b> Momentum has shifted up; selling now would be fighting the trend.")
+                
         else:
+            # Pro-Sell Arguments
             if velocity < -0.5: 
                 reasons.append("🔻 <b>Speed:</b> Price is dropping quickly, showing strong seller pressure.")
             if zscore > 1.5: 
                 reasons.append("📈 <b>Premium:</b> Price has rallied too fast and is likely to pullback (Overbought).")
             if momentum < -0.5: 
                 reasons.append("💪 <b>Strength:</b> Sellers are dominating the market right now.")
+                
+            # Anti-Buy Arguments (The "Why Not" part)
+            reasons.append("⛔ <b>Why NOT Buy?</b> Buyers failed to break higher (Resistance Holding).")
+            reasons.append("⛔ <b>Risk of Buying:</b> Upside momentum is weak; buying here is catching a falling knife.")
             
         if not reasons:
             reasons.append("✅ <b>Confirmation:</b> Multiple technical factors verify this entry.")

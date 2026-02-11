@@ -70,8 +70,8 @@ class TestSignalFormatter:
         # New Beginner-Friendly Phrases
         assert '✅ <b>Trend Alignment:</b>' in reasoning
         assert '🚀 <b>Speed:</b>' in reasoning
-        assert '📉 <b>Discount:</b>' in reasoning
-        assert '💪 <b>Strength:</b>' in reasoning
+        assert '⛔ <b>Why NOT Sell?</b>' in reasoning
+        assert '⛔ <b>Risk of Selling:</b>' in reasoning
 
     def test_high_probability_formatting(self, sample_signal):
         """Test high probability highlighting with quality score >= 8.0"""
