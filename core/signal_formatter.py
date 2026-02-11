@@ -9,8 +9,11 @@ class SignalFormatter:
     def _generate_reasoning(signal: dict) -> str:
         """
         Translates raw alpha factors and regime into beginner-friendly logic.
-        Includes "Why Not" comparative reasoning.
+        Uses randomized phrases from REASONING_LIBRARY for variety.
         """
+        import random
+        from core.reasoning_library import REASONING_LIBRARY
+        
         score_details = signal.get('score_details', {})
         direction = signal.get('direction', 'N/A')
         regime = signal.get('regime', 'NORMAL')
@@ -23,36 +26,40 @@ class SignalFormatter:
         
         # 1. Market Context (The "Where are we?" part)
         if regime == "TRENDING":
-            reasons.append("✅ <b>Trend Alignment:</b> The overall market trend supports this trade.")
+            reasons.append(random.choice(REASONING_LIBRARY['CONTEXT']['TRENDING']))
         elif regime == "RANGING":
-            reasons.append("↔️ <b>Market Structure:</b> Price is bouncing within a range, perfect for quick scalps.")
+            reasons.append(random.choice(REASONING_LIBRARY['CONTEXT']['RANGING']))
             
         # 2. Key Drivers (The "Why now?" part)
         if direction == "BUY":
             # Pro-Buy Arguments
             if velocity > 0.5: 
-                reasons.append("🚀 <b>Speed:</b> Price is moving up quickly, showing strong buyer interest.")
+                reasons.append(random.choice(REASONING_LIBRARY['BUY']['SPEED']))
             if zscore < -1.5: 
-                reasons.append("📉 <b>Discount:</b> Price has dropped too fast and is likely to snap back up (Oversold).")
+                reasons.append(random.choice(REASONING_LIBRARY['BUY']['DISCOUNT']))
             if momentum > 0.5: 
-                reasons.append("💪 <b>Strength:</b> Buyers are stepping in aggressively right now.")
+                reasons.append(random.choice(REASONING_LIBRARY['BUY']['STRENGTH']))
                 
             # Anti-Sell Arguments (The "Why Not" part)
-            reasons.append("⛔ <b>Why NOT Sell?</b> Sellers have failed to push price lower (Support Holding).")
-            reasons.append("⛔ <b>Risk of Selling:</b> Momentum has shifted up; selling now would be fighting the trend.")
+            # Pick 2 random reasons from the 'Why Not' list for variety
+            why_not_list = REASONING_LIBRARY['BUY']['WHY_NOT_SELL']
+            selected_why_nots = random.sample(why_not_list, min(2, len(why_not_list)))
+            reasons.extend(selected_why_nots)
                 
         else:
             # Pro-Sell Arguments
             if velocity < -0.5: 
-                reasons.append("🔻 <b>Speed:</b> Price is dropping quickly, showing strong seller pressure.")
+                reasons.append(random.choice(REASONING_LIBRARY['SELL']['SPEED']))
             if zscore > 1.5: 
-                reasons.append("📈 <b>Premium:</b> Price has rallied too fast and is likely to pullback (Overbought).")
+                reasons.append(random.choice(REASONING_LIBRARY['SELL']['PREMIUM']))
             if momentum < -0.5: 
-                reasons.append("💪 <b>Strength:</b> Sellers are dominating the market right now.")
+                reasons.append(random.choice(REASONING_LIBRARY['SELL']['STRENGTH']))
                 
             # Anti-Buy Arguments (The "Why Not" part)
-            reasons.append("⛔ <b>Why NOT Buy?</b> Buyers failed to break higher (Resistance Holding).")
-            reasons.append("⛔ <b>Risk of Buying:</b> Upside momentum is weak; buying here is catching a falling knife.")
+            # Pick 2 random reasons from the 'Why Not' list for variety
+            why_not_list = REASONING_LIBRARY['SELL']['WHY_NOT_BUY']
+            selected_why_nots = random.sample(why_not_list, min(2, len(why_not_list)))
+            reasons.extend(selected_why_nots)
             
         if not reasons:
             reasons.append("✅ <b>Confirmation:</b> Multiple technical factors verify this entry.")

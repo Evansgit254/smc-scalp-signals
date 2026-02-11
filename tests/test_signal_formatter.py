@@ -48,11 +48,14 @@ class TestSignalFormatter:
         assert '1.0850' in formatted
         assert '1.0830' in formatted
         
-        # New Educational Sections
+        # Dynamic Educational Sections
         assert '📝 <b>WHY WE ARE ENTERING THIS TRADE</b>' in formatted
         assert '📊 <b>TRADE SETUP</b>' in formatted
         assert '🎯 <b>PROFIT TARGETS</b>' in formatted
         assert '🛡️ <b>RISK GUIDANCE</b>' in formatted
+        
+        # Check for randomized content presence (at least some explanation exists)
+        assert '<b>' in formatted
 
     def test_reasoning_generation(self):
         """Test the reasoning engine logic directly"""
@@ -67,11 +70,16 @@ class TestSignalFormatter:
         }
         reasoning = SignalFormatter._generate_reasoning(signal_data)
         
-        # New Beginner-Friendly Phrases
-        assert '✅ <b>Trend Alignment:</b>' in reasoning
-        assert '🚀 <b>Speed:</b>' in reasoning
-        assert '⛔ <b>Why NOT Sell?</b>' in reasoning
-        assert '⛔ <b>Risk of Selling:</b>' in reasoning
+        # Dynamic Phrases - checks for key categories which are present in all variations
+        # or implies logical correctness
+        assert '<b>Trend Alignment:</b>' in reasoning or '<b>With the Flow:</b>' in reasoning or '<b>Momentum:</b>' in reasoning or '<b>Path of Least Resistance:</b>' in reasoning
+        
+        # Check for core components (at least one from each triggered category)
+        assert any(x in reasoning for x in ['<b>Speed:</b>', '<b>Momentum:</b>', '<b>Velocity:</b>', '<b>Surge:</b>'])
+        assert any(x in reasoning for x in ['<b>Discount:</b>', '<b>Value:</b>', '<b>Pullback:</b>', '<b>Cheap:</b>'])
+        
+        # Check for "Why Not" logic (checks for negative constraints)
+        assert '⛔' in reasoning
 
     def test_high_probability_formatting(self, sample_signal):
         """Test high probability highlighting with quality score >= 8.0"""
