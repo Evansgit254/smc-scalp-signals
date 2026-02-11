@@ -22,28 +22,28 @@ class SignalFormatter:
         
         # 1. Market Context (The "Where are we?" part)
         if regime == "TRENDING":
-            reasons.append("✅ **Trend Alignment:** The overall market trend supports this trade.")
+            reasons.append("✅ <b>Trend Alignment:</b> The overall market trend supports this trade.")
         elif regime == "RANGING":
-            reasons.append("↔️ **Market Structure:** Price is bouncing within a range, perfect for quick scalps.")
+            reasons.append("↔️ <b>Market Structure:</b> Price is bouncing within a range, perfect for quick scalps.")
             
         # 2. Key Drivers (The "Why now?" part)
         if direction == "BUY":
             if velocity > 0.5: 
-                reasons.append("🚀 **Speed:** Price is moving up quickly, showing strong buyer interest.")
+                reasons.append("🚀 <b>Speed:</b> Price is moving up quickly, showing strong buyer interest.")
             if zscore < -1.5: 
-                reasons.append("📉 **Discount:** Price has dropped too fast and is likely to snap back up (Oversold).")
+                reasons.append("📉 <b>Discount:</b> Price has dropped too fast and is likely to snap back up (Oversold).")
             if momentum > 0.5: 
-                reasons.append("💪 **Strength:** Buyers are stepping in aggressively right now.")
+                reasons.append("💪 <b>Strength:</b> Buyers are stepping in aggressively right now.")
         else:
             if velocity < -0.5: 
-                reasons.append("🔻 **Speed:** Price is dropping quickly, showing strong seller pressure.")
+                reasons.append("🔻 <b>Speed:</b> Price is dropping quickly, showing strong seller pressure.")
             if zscore > 1.5: 
-                reasons.append("📈 **Premium:** Price has rallied too fast and is likely to pullback (Overbought).")
+                reasons.append("📈 <b>Premium:</b> Price has rallied too fast and is likely to pullback (Overbought).")
             if momentum < -0.5: 
-                reasons.append("💪 **Strength:** Sellers are dominating the market right now.")
+                reasons.append("💪 <b>Strength:</b> Sellers are dominating the market right now.")
             
         if not reasons:
-            reasons.append("✅ **Confirmation:** Multiple technical factors verify this entry.")
+            reasons.append("✅ <b>Confirmation:</b> Multiple technical factors verify this entry.")
             
         return "\n".join(reasons)
 
@@ -90,28 +90,28 @@ class SignalFormatter:
 {'='*60}
 {session_emoji} {direction} SIGNAL - {symbol} {prob_header}
 {'='*60}
-📊 **TRADE SETUP**
-• **Direction:**    {direction} ({trade_type})
-• **Entry Price:**  {entry:.5f}
-• **Stop Loss:**    {sl:.5f} ({sl_pips:.1f} pips risk)
+📊 <b>TRADE SETUP</b>
+• <b>Direction:</b>    {direction} ({trade_type})
+• <b>Entry Price:</b>  {entry:.5f}
+• <b>Stop Loss:</b>    {sl:.5f} ({sl_pips:.1f} pips risk)
 
-🎯 **PROFIT TARGETS**
-1️⃣ **TP1 (Secure):** {tp0:.5f} (+{tp0_pips:.1f} pips)
-2️⃣ **TP2 (Growth):** {tp1:.5f} (+{tp1_pips:.1f} pips)
-3️⃣ **TP3 (Runner):** {tp2:.5f} (+{tp2_pips:.1f} pips)
+🎯 <b>PROFIT TARGETS</b>
+1️⃣ <b>TP1 (Secure):</b> {tp0:.5f} (+{tp0_pips:.1f} pips)
+2️⃣ <b>TP2 (Growth):</b> {tp1:.5f} (+{tp1_pips:.1f} pips)
+3️⃣ <b>TP3 (Runner):</b> {tp2:.5f} (+{tp2_pips:.1f} pips)
 
-📝 **WHY WE ARE ENTERING THIS TRADE**
+📝 <b>WHY WE ARE ENTERING THIS TRADE</b>
 {reasoning}
 
-🛡️ **RISK GUIDANCE**
-• **Recommended Risk:** {risk_details.get('risk_percent', 0):.1f}% of balance
-• **Position Size:**    {risk_details.get('lots', risk_details.get('lot_size', 0)):.2f} lots
-• **Dollar Risk:**      ${risk_details.get('risk_cash', risk_details.get('risk_amount', 0)):.2f}
-• **Hold Time:**        ~{hold_time}
+🛡️ <b>RISK GUIDANCE</b>
+• <b>Recommended Risk:</b> {risk_details.get('risk_percent', 0):.1f}% of balance
+• <b>Position Size:</b>    {risk_details.get('lots', risk_details.get('lot_size', 0)):.2f} lots
+• <b>Dollar Risk:</b>      ${risk_details.get('risk_cash', risk_details.get('risk_amount', 0)):.2f}
+• <b>Hold Time:</b>        ~{hold_time}
 
-⚙️ **Strategy Details**
-• **Quality Score:** {quality_score:.1f}/10.0 {"🏆 Excellent" if is_high_prob else "✅ Good"}
-• **Session:**       {session_name}
+⚙️ <b>Strategy Details</b>
+• <b>Quality Score:</b> {quality_score:.1f}/10.0 {"🏆 Excellent" if is_high_prob else "✅ Good"}
+• <b>Session:</b>       {session_name}
 {'='*60}
 """
         return output
@@ -140,22 +140,22 @@ class SignalFormatter:
         base_output = SignalFormatter.format_signal(personal_signal)
         
         # Beginner-friendly personalization
-        safety_check = "✅ **SAFE:** Risk is within healthy limits."
+        safety_check = "✅ <b>SAFE:</b> Risk is within healthy limits."
         if p_risk.get('is_high_risk'):
-            safety_check = "⚠️ **CAUTION:** High risk for your account size. Consider reducing lot size."
+            safety_check = "⚠️ <b>CAUTION:</b> High risk for your account size. Consider reducing lot size."
 
         client_banner = f"""
-👤 **YOUR PERSONAL PLAN**
-💰 **Balance:** ${client['account_balance']:.2f}
-📉 **Your Risk:** {p_risk.get('risk_percent', 0.0):.1f}%
-🛡️ **Status:** {safety_check}
+👤 <b>YOUR PERSONAL PLAN</b>
+💰 <b>Balance:</b> ${client['account_balance']:.2f}
+📉 <b>Your Risk:</b> {p_risk.get('risk_percent', 0.0):.1f}%
+🛡️ <b>Status:</b> {safety_check}
 """
         # Insert personalize banner before Risk Guidance
-        parts = base_output.split("🛡️ **RISK GUIDANCE**")
+        parts = base_output.split("🛡️ <b>RISK GUIDANCE</b>")
         if len(parts) > 1:
             header = parts[0]
             rest = parts[1]
-            return f"{header}{client_banner}\n🛡️ **RISK GUIDANCE**{rest}"
+            return f"{header}{client_banner}\n🛡️ <b>RISK GUIDANCE</b>{rest}"
             
         return base_output
 
