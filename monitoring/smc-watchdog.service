@@ -1,0 +1,13 @@
+[Unit]
+Description=Signal Service Watchdog (Health Checks)
+After=network.target
+
+[Service]
+Type=oneshot
+User=evans
+WorkingDirectory=/home/evans/Projects/TradingExpert/smc-scalp-signals
+Environment="PYTHONUNBUFFERED=1"
+ExecStart=/home/evans/Projects/TradingExpert/smc-scalp-signals/venv/bin/python /home/evans/Projects/TradingExpert/smc-scalp-signals/monitoring/watchdog.py
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=smc-watchdog
