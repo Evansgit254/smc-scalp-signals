@@ -141,14 +141,19 @@ body {
 .table-container {
     width: 100%;
     overflow-x: auto;
+    /* Required for horizontal scroll */
     border-radius: 12px;
     border: 1px solid var(--glass-border);
     margin-bottom: 1rem;
     -webkit-overflow-scrolling: touch;
     /* Smooth mobile scrolling */
 
-    /* Custom Scrollbar for this container */
-    scrollbar-width: thin;
+    /* Ensure scrollbar is always visible */
+    overflow-y: hidden;
+
+    /* Scrollbar Styling */
+    scrollbar-width: auto;
+    /* Default width (not thin) */
     scrollbar-color: var(--acc-cyan) var(--bg-dark);
 }
 
@@ -170,13 +175,36 @@ body {
     background: #00c2cc;
 }
 
+/* Force table to be WIDE so it overflows on laptops */
 .glass-table {
     width: 100%;
     border-collapse: collapse;
     background: var(--card-bg);
-    min-width: 1000px;
-    /* Ensure minimum width for scrolling */
+    min-width: 1400px;
+    /* CRITICAL: Must be wider than screen (e.g. 1366px) */
+    table-layout: fixed;
+    /* Better performance */
 }
+
+/* Column Widths (Optional tuning) */
+.glass-table th:nth-child(1),
+.glass-table td:nth-child(1) {
+    width: 180px;
+}
+
+/* Timestamp */
+.glass-table th:nth-child(2),
+.glass-table td:nth-child(2) {
+    width: 100px;
+}
+
+/* Symbol */
+.glass-table th:nth-child(8),
+.glass-table td:nth-child(8) {
+    width: 400px;
+}
+
+/* Reasoning */
 
 .glass-table th {
     background: rgba(255, 255, 255, 0.1);
