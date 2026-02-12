@@ -113,6 +113,10 @@ class SignalService:
                 # Deduplication logic remains at the base level
                 await self.telegram.broadcast_personalized_signal(signal_data)
                 self._mark_sent(signal_data)
+                
+                # V17.2: Log to database for dashboard
+                self._log_to_database(signal_data)
+                
                 sent_count += 1
                 
                 # Small delay to avoid API flood
@@ -123,6 +127,28 @@ class SignalService:
         
         print(f"\n📊 Cycle summary: {sent_count} sent, {skipped} duplicates skipped")
         return len(signals), sent_count
+    
+    def _log_to_database(self, signal_data: dict):
+        """Log signal to database for dashboard display."""
+        import sqlite3
+        from datetime import datetime
+        
+        try:
+            conn = sqlite3.connect("database/signals.db")
+            conn.execute("""
+                INSERT INTO signals (timestamp, symbol, direction, reasoning)
+                VALUES (?, ?, ?, ?)
+            """, (
+                datetime.now().isoformat(),
+                signal_data.get('symbol', 'UNKNOWN'),
+                signal_data.get('direction', 'UNKNOWN'),
+                signal_data.get('reasoning', '')[:200]  # Truncate reasoning to 200 chars
+            ))
+            conn.commit()
+            conn.close()
+        except Exception as e:
+            print(f"⚠️  Failed to log signal to database: {e}")
+
     
     async def run(self, test_mode: bool = False):
         """
