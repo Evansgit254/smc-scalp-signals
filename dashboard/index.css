@@ -67,6 +67,39 @@ body {
     flex: 1;
     padding: 2.5rem;
     overflow-y: auto;
+    min-width: 0;
+    /* CRITICAL: Allows flex item to shrink below content size */
+}
+
+/* Mobile Adjustments */
+@media (max-width: 768px) {
+    body {
+        flex-direction: column;
+    }
+
+    .sidebar {
+        width: 100%;
+        height: auto;
+        padding: 1rem;
+        flex-direction: row;
+        overflow-x: auto;
+        border-right: none;
+        border-bottom: 1px solid var(--glass-border);
+    }
+
+    .nav-item {
+        margin-bottom: 0;
+        margin-right: 1rem;
+        white-space: nowrap;
+    }
+
+    .main-content {
+        padding: 1rem;
+    }
+
+    .stat-card {
+        margin-bottom: 1rem;
+    }
 }
 
 .header {
