@@ -186,22 +186,76 @@ body {
     /* Better performance */
 }
 
-/* Column Widths (Optional tuning) */
+/* Column Widths for High-Fidelity Table (12 columns) */
 .glass-table th:nth-child(1),
 .glass-table td:nth-child(1) {
-    width: 180px;
+    width: 120px;
 }
 
-/* Timestamp */
+/* Timestamp (Time only) */
 .glass-table th:nth-child(2),
 .glass-table td:nth-child(2) {
-    width: 100px;
+    width: 110px;
 }
 
 /* Symbol */
+.glass-table th:nth-child(3),
+.glass-table td:nth-child(3) {
+    width: 90px;
+}
+
+/* Type */
+.glass-table th:nth-child(4),
+.glass-table td:nth-child(4) {
+    width: 60px;
+}
+
+/* TF */
+.glass-table th:nth-child(5),
+.glass-table td:nth-child(5) {
+    width: 100px;
+}
+
+/* Direction */
+.glass-table th:nth-child(6),
+.glass-table td:nth-child(6) {
+    width: 110px;
+}
+
+/* Entry */
+.glass-table th:nth-child(7),
+.glass-table td:nth-child(7) {
+    width: 110px;
+}
+
+/* SL */
 .glass-table th:nth-child(8),
 .glass-table td:nth-child(8) {
-    width: 400px;
+    width: 110px;
+}
+
+/* TP1 */
+.glass-table th:nth-child(9),
+.glass-table td:nth-child(9) {
+    width: 110px;
+}
+
+/* TP2 */
+.glass-table th:nth-child(10),
+.glass-table td:nth-child(10) {
+    width: 80px;
+}
+
+/* Confidence */
+.glass-table th:nth-child(11),
+.glass-table td:nth-child(11) {
+    width: 80px;
+}
+
+/* Quality */
+.glass-table th:nth-child(12),
+.glass-table td:nth-child(12) {
+    width: 320px;
 }
 
 /* Reasoning */
