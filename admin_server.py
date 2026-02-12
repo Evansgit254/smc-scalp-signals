@@ -21,6 +21,38 @@ app.add_middleware(
 DB_CLIENTS = "database/clients.db"
 DB_SIGNALS = "database/signals.db"
 
+def ensure_db_schema():
+    """V18.1: Automatic Schema Migration - Ensures all required columns exist."""
+    if not os.path.exists(DB_SIGNALS):
+        return
+    
+    conn = sqlite3.connect(DB_SIGNALS)
+    cursor = conn.cursor()
+    
+    # Required columns for High Fidelity Dashboard
+    required_cols = [
+        ("trade_type", "TEXT DEFAULT 'SCALP'"),
+        ("quality_score", "REAL DEFAULT 0.0"),
+        ("regime", "TEXT DEFAULT 'UNKNOWN'"),
+        ("expected_hold", "TEXT DEFAULT 'UNKNOWN'"),
+        ("risk_details", "TEXT DEFAULT '{}'"),
+        ("score_details", "TEXT DEFAULT '{}'")
+    ]
+    
+    for col_name, col_def in required_cols:
+        try:
+            cursor.execute(f"ALTER TABLE signals ADD COLUMN {col_name} {col_def}")
+            print(f"✅ Auto-added missing column: {col_name}")
+        except sqlite3.OperationalError:
+            # Column likely already exists
+            pass
+    
+    conn.commit()
+    conn.close()
+
+# Run migration on startup
+ensure_db_schema()
+
 class ClientUpdate(BaseModel):
     account_balance: Optional[float] = None
     risk_percent: Optional[float] = None

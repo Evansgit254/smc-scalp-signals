@@ -136,10 +136,35 @@ class SignalService:
     def _log_to_database(self, signal_data: dict):
         """Log signal to database for dashboard display."""
         import sqlite3
+        import os
         from datetime import datetime
         
+        db_path = "database/signals.db"
+        
+        # V18.1: Self-Healing Schema - Ensure all columns exist before insert
         try:
-            conn = sqlite3.connect("database/signals.db")
+            conn = sqlite3.connect(db_path)
+            cursor = conn.cursor()
+            required_cols = [
+                ("trade_type", "TEXT DEFAULT 'SCALP'"),
+                ("quality_score", "REAL DEFAULT 0.0"),
+                ("regime", "TEXT DEFAULT 'UNKNOWN'"),
+                ("expected_hold", "TEXT DEFAULT 'UNKNOWN'"),
+                ("risk_details", "TEXT DEFAULT '{}'"),
+                ("score_details", "TEXT DEFAULT '{}'")
+            ]
+            for col_name, col_def in required_cols:
+                try:
+                    cursor.execute(f"ALTER TABLE signals ADD COLUMN {col_name} {col_def}")
+                except sqlite3.OperationalError:
+                    pass
+            conn.commit()
+            conn.close()
+        except:
+            pass
+            
+        try:
+            conn = sqlite3.connect(db_path)
             
             # V18.0: Full Signal Fidelity - Store all metadata
             import json
