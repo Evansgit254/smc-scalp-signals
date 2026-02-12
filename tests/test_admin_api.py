@@ -39,7 +39,19 @@ def setup_test_dbs(tmp_path):
             timestamp TIMESTAMP,
             symbol TEXT,
             direction TEXT,
-            reasoning TEXT
+            entry_price REAL,
+            sl REAL,
+            tp1 REAL,
+            tp2 REAL,
+            reasoning TEXT,
+            timeframe TEXT,
+            confidence REAL,
+            trade_type TEXT,
+            quality_score REAL,
+            regime TEXT,
+            expected_hold TEXT,
+            risk_details TEXT,
+            score_details TEXT
         )
     """)
     conn.commit()
@@ -125,10 +137,22 @@ def test_get_signals_with_data(tmp_path):
             timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             symbol TEXT,
             direction TEXT,
-            reasoning TEXT
+            entry_price REAL,
+            sl REAL,
+            tp1 REAL,
+            tp2 REAL,
+            reasoning TEXT,
+            timeframe TEXT,
+            confidence REAL,
+            trade_type TEXT,
+            quality_score REAL,
+            regime TEXT,
+            expected_hold TEXT,
+            risk_details TEXT,
+            score_details TEXT
         )
     """)
-    conn.execute("INSERT INTO signals (symbol, direction) VALUES ('EURUSD', 'BUY')")
+    conn.execute("INSERT INTO signals (symbol, direction, entry_price, sl, tp1, tp2, confidence) VALUES ('EURUSD', 'BUY', 1.10, 1.09, 1.11, 1.12, 0.9)")
     conn.commit()
     conn.close()
     

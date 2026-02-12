@@ -100,7 +100,7 @@ async def update_client(chat_id: str, update: ClientUpdate):
 @app.get("/api/signals")
 async def get_signals():
     try:
-        conn = sqlite3.connect("database/signals.db")
+        conn = sqlite3.connect(DB_SIGNALS)
         conn.row_factory = sqlite3.Row
         # V18.0: Fetch all signal fidelity fields
         cursor = conn.execute("""
