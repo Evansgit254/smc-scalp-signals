@@ -187,7 +187,10 @@ TP2 (20% Exit):   {tp2:.5f} ({'+' if direction == 'BUY' else '-'}{tp2_pips:.1f} 
         
         for client in clients:
             # V17.1 Monetization Check
-            if not manager.is_subscription_active(client['telegram_chat_id']):
+            chat_id = client['telegram_chat_id']
+            is_admin = str(chat_id) == str(self.chat_id)
+            
+            if not is_admin and not manager.is_subscription_active(chat_id):
                 skipped_count += 1
                 continue
                 
