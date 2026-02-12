@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trading Expert Dashboard</title>
+    <link rel="stylesheet" href="index.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/all.min.css">
+</head>
+<body>
+
+    <div class="sidebar">
+        <div class="logo">
+            <i class="fas fa-microchip"></i>
+            QUANT ADMIN
+        </div>
+        <div class="nav-item active" onclick="showView('clients')">
+            <i class="fas fa-users"></i> Clients
+        </div>
+        <div class="nav-item" onclick="showView('signals')">
+            <i class="fas fa-bolt"></i> Signal Feed
+        </div>
+        <div class="nav-item" onclick="showView('settings')">
+            <i class="fas fa-cog"></i> Server Config
+        </div>
+    </div>
+
+    <div class="main-content">
+        <div class="header">
+            <h1 id="view-title">User Management</h1>
+            <div id="server-time" style="color: var(--text-dim)">--:--:--</div>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-label">Active Clients</div>
+                <div class="stat-val" id="stat-active">0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Signals (24h)</div>
+                <div class="stat-val" id="stat-signals">0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">System Status</div>
+                <div class="stat-val" style="color: #00ff64;">ONLINE</div>
+            </div>
+        </div>
+
+        <div id="clients-view">
+            <table class="glass-table">
+                <thead>
+                    <tr>
+                        <th>Telegram ID</th>
+                        <th>Balance</th>
+                        <th>Tier</th>
+                        <th>Expiry</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="clients-body">
+                    <!-- Loaded via JS -->
+                </tbody>
+            </table>
+        </div>
+
+        <div id="signals-view" style="display: none;">
+            <table class="glass-table">
+                <thead>
+                    <tr>
+                        <th>Timestamp</th>
+                        <th>Symbol</th>
+                        <th>Direction</th>
+                        <th>Reasoning</th>
+                    </tr>
+                </thead>
+                <tbody id="signals-body">
+                    <!-- Loaded via JS -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Edit Modal -->
+    <div class="modal" id="edit-modal">
+        <div class="modal-content">
+            <h2 id="modal-title">Edit Client</h2>
+            <input type="hidden" id="edit-chat-id">
+            
+            <label>Balance ($):</label>
+            <input type="number" id="edit-balance">
+            
+            <label>Extend Subscription (Days):</label>
+            <input type="number" id="edit-days" placeholder="e.g. 30">
+            
+            <label>Tier:</label>
+            <select id="edit-tier">
+                <option value="BASIC">BASIC (Bronze)</option>
+                <option value="GOLD">GOLD (Platinum)</option>
+            </select>
+
+            <button onclick="saveClient()">SAVE CHANGES</button>
+            <button class="secondary" onclick="closeModal()">CANCEL</button>
+        </div>
+    </div>
+
+    <script>
+        let currentView = 'clients';
+
+        async function fetchStats() {
+            const res = await fetch('/api/stats');
+            const data = await res.json();
+            document.getElementById('stat-active').innerText = data.active_clients;
+            document.getElementById('stat-signals').innerText = data.signals_today;
+            document.getElementById('server-time').innerText = data.server_time;
+        }
+
+        async function loadClients() {
+            const res = await fetch('/api/clients');
+            const clients = await res.json();
+            const body = document.getElementById('clients-body');
+            body.innerHTML = '';
+
+            clients.forEach(c => {
+                const isActive = c.is_active;
+                body.innerHTML += `
+                    <tr>
+                        <td style="font-family: monospace">${c.telegram_chat_id}</td>
+                        <td>$${c.account_balance.toFixed(2)}</td>
+                        <td><span class="status-badge" style="border: 1px solid var(--acc-gold)">${c.subscription_tier}</span></td>
+                        <td>${c.subscription_expiry ? c.subscription_expiry.split(' ')[0] : 'N/A'}</td>
+                        <td>
+                            <span class="status-badge ${isActive ? 'active-badge' : 'expired-badge'}">
+                                ${isActive ? 'ACTIVE' : 'DEACTIVATED'}
+                            </span>
+                        </td>
+                        <td>
+                            <button onclick="openEdit('${c.telegram_chat_id}', ${c.account_balance}, '${c.subscription_tier}')" style="padding: 5px 10px; width: auto; font-size: 0.7rem;">EDIT</button>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+
+        async function loadSignals() {
+            const res = await fetch('/api/signals');
+            const signals = await res.json();
+            const body = document.getElementById('signals-body');
+            body.innerHTML = '';
+            
+            if (signals.length === 0) {
+                body.innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--text-dim)">No signals logged in database.</td></tr>';
+                return;
+            }
+
+            signals.forEach(s => {
+                body.innerHTML += `
+                    <tr>
+                        <td style="font-size: 0.8rem; color: var(--text-dim)">${s.timestamp}</td>
+                        <td style="font-weight: 700; color: var(--acc-cyan)">${s.symbol}</td>
+                        <td style="color: ${s.direction === 'BUY' ? '#00ff64' : '#ff3232'}">${s.direction}</td>
+                        <td style="font-size: 0.8rem">${s.reasoning || '--'}</td>
+                    </tr>
+                `;
+            });
+        }
+
+        function showView(view) {
+            currentView = view;
+            document.getElementById('clients-view').style.display = view === 'clients' ? 'block' : 'none';
+            document.getElementById('signals-view').style.display = view === 'signals' ? 'block' : 'none';
+            document.getElementById('view-title').innerText = view === 'clients' ? 'User Management' : 'Signal History';
+            
+            const items = document.querySelectorAll('.nav-item');
+            items.forEach(i => i.classList.remove('active'));
+            event.target.classList.add('active');
+
+            if (view === 'signals') loadSignals();
+            if (view === 'clients') loadClients();
+        }
+
+        function openEdit(chatId, balance, tier) {
+            document.getElementById('edit-chat-id').value = chatId;
+            document.getElementById('edit-balance').value = balance;
+            document.getElementById('edit-tier').value = tier;
+            document.getElementById('edit-modal').style.display = 'flex';
+        }
+
+        function closeModal() {
+            document.getElementById('edit-modal').style.display = 'none';
+        }
+
+        async function saveClient() {
+            const chatId = document.getElementById('edit-chat-id').value;
+            const data = {
+                account_balance: parseFloat(document.getElementById('edit-balance').value),
+                subscription_days: parseInt(document.getElementById('edit-days').value) || null,
+                tier: document.getElementById('edit-tier').value
+            };
+
+            await fetch(`/api/clients/${chatId}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+
+            closeModal();
+            loadClients();
+        }
+
+        // Initial Load
+        fetchStats();
+        loadClients();
+        setInterval(fetchStats, 5000);
+    </script>
+</body>
+</html>

@@ -183,7 +183,14 @@ TP2 (20% Exit):   {tp2:.5f} ({'+' if direction == 'BUY' else '-'}{tp2_pips:.1f} 
             return
         
         success_count = 0
+        skipped_count = 0
+        
         for client in clients:
+            # V17.1 Monetization Check
+            if not manager.is_subscription_active(client['telegram_chat_id']):
+                skipped_count += 1
+                continue
+                
             try:
                 formatted = SignalFormatter.format_personalized_signal(signal_data, client)
                 if await self.send_text(formatted, chat_id=client['telegram_chat_id']):
@@ -191,4 +198,4 @@ TP2 (20% Exit):   {tp2:.5f} ({'+' if direction == 'BUY' else '-'}{tp2_pips:.1f} 
             except Exception as e:
                 print(f"⚠️ Failed to send signal to {client['telegram_chat_id']}: {e}")
         
-        print(f"📢 Broadcast complete. {success_count}/{len(clients)} clients reached.")
+        print(f"📢 Broadcast complete. {success_count} sent, {skipped_count} expired/skipped. Total clients: {len(clients)}")

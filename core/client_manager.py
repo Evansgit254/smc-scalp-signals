@@ -25,11 +25,21 @@ class ClientManager:
                 account_balance REAL NOT NULL,
                 risk_percent REAL DEFAULT 2.0,
                 max_concurrent_trades INTEGER DEFAULT 4,
+                subscription_expiry TIMESTAMP,
+                subscription_tier TEXT DEFAULT 'BASIC',
                 is_active BOOLEAN DEFAULT 1,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
+        
+        # Add new columns if they don't exist (Migration)
+        try:
+            cursor.execute("ALTER TABLE clients ADD COLUMN subscription_expiry TIMESTAMP")
+            cursor.execute("ALTER TABLE clients ADD COLUMN subscription_tier TEXT DEFAULT 'BASIC'")
+        except sqlite3.OperationalError:
+            # Columns already exist
+            pass
         
         conn.commit()
         conn.close()
@@ -189,3 +199,63 @@ class ClientManager:
         
         conn.close()
         return count
+
+    def update_subscription(self, telegram_chat_id: str, days: int, tier: str = "BASIC") -> Dict:
+        """
+        Extends or starts a subscription.
+        """
+        from datetime import timedelta
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        # Get current expiry
+        cursor.execute("SELECT subscription_expiry FROM clients WHERE telegram_chat_id = ?", (telegram_chat_id,))
+        row = cursor.fetchone()
+        
+        if not row:
+            conn.close()
+            return {'status': 'error', 'message': 'Client not found'}
+            
+        current_expiry_str = row[0]
+        now = datetime.now()
+        
+        if current_expiry_str:
+            current_expiry = datetime.strptime(current_expiry_str, "%Y-%m-%d %H:%M:%S.%f") if "." in current_expiry_str else datetime.strptime(current_expiry_str, "%Y-%m-%d %H:%M:%S")
+            start_date = max(now, current_expiry)
+        else:
+            start_date = now
+            
+        new_expiry = start_date + timedelta(days=days)
+        
+        cursor.execute("""
+            UPDATE clients 
+            SET subscription_expiry = ?, subscription_tier = ?, updated_at = ?
+            WHERE telegram_chat_id = ?
+        """, (new_expiry, tier, now, telegram_chat_id))
+        
+        conn.commit()
+        conn.close()
+        return {'status': 'success', 'new_expiry': new_expiry.strftime("%Y-%m-%d %H:%M:%S"), 'tier': tier}
+
+    def is_subscription_active(self, telegram_chat_id: str) -> bool:
+        """
+        Checks if a client's subscription is still valid.
+        """
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        cursor.execute("SELECT subscription_expiry FROM clients WHERE telegram_chat_id = ?", (telegram_chat_id,))
+        row = cursor.fetchone()
+        conn.close()
+        
+        if not row or not row[0]:
+            return False
+            
+        expiry_str = row[0]
+        try:
+            expiry = datetime.strptime(expiry_str, "%Y-%m-%d %H:%M:%S.%f") if "." in expiry_str else datetime.strptime(expiry_str, "%Y-%m-%d %H:%M:%S")
+        except ValueError:
+            # Handle standard YYYY-MM-DD format if stored like that
+            expiry = datetime.strptime(expiry_str, "%Y-%m-%d")
+            
+        return expiry > datetime.now()
