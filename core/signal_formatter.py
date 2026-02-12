@@ -100,38 +100,63 @@ class SignalFormatter:
         quality_score = signal.get('quality_score', 0)
         is_high_prob = quality_score >= 8.0
         
+        # Theme Determination (V17.0: Visual Intensity)
+        is_swing = "H1" in signal.get('timeframe', '') or "swing" in signal.get('strategy_id', '').lower()
+        
+        if is_swing:
+            # 💎 INSTITUTIONAL SWING THEME
+            border = "█" * 45
+            header_text = f"🏛️ INSTITUTIONAL SWING POSITION 🏛️"
+            intensity_emoji = "💎💎💎"
+            theme_color = "GOLD" # Conceptual
+            main_icon = "🏆"
+            bullet = "🧱"
+        else:
+            # ⚡ FLASH SCALP THEME
+            border = "≈" * 60
+            header_text = f"⚡ QUANT INTRADAY SCALP ⚡"
+            intensity_emoji = "🏎️💨"
+            theme_color = "BLUE" # Conceptual
+            main_icon = "🏹"
+            bullet = "•"
+
         session_emoji = "🇬🇧" if "London Open" in session_name else "🇺🇸" if "Overlap" in session_name else "🌐"
-        prob_header = " 🔥⚡ HIGH PROBABILITY ⚡🔥" if is_high_prob else ""
+        prob_header = f" {intensity_emoji} HIGH PROBABILITY {intensity_emoji}" if is_high_prob else ""
         reasoning = SignalFormatter._generate_reasoning(signal)
         
         # Format output
         output = f"""
-{'='*60}
-{session_emoji} {direction} SIGNAL - {symbol} {prob_header}
-{'='*60}
+{border}
+{main_icon} {direction} {header_text} {main_icon}
+{border}
+{prob_header}
+
+{session_emoji} <b>MARKET CONTEXT:</b> {session_name}
+
 📊 <b>TRADE SETUP</b>
-• <b>Direction:</b>    {direction} ({trade_type})
-• <b>Entry Price:</b>  {entry:.5f}
-• <b>Stop Loss:</b>    {sl:.5f} ({sl_pips:.1f} pips risk)
+{bullet} <b>Symbol:</b>       {symbol}
+{bullet} <b>Direction:</b>    {direction} ({trade_type})
+{bullet} <b>Timeframe:</b>    {signal.get('timeframe', 'N/A')}
+{bullet} <b>Entry Price:</b>  {entry:.5f}
+{bullet} <b>Stop Loss:</b>    {sl:.5f} ({sl_pips:.1f} pips risk)
 
 🎯 <b>PROFIT TARGETS</b>
 1️⃣ <b>TP1 (Secure):</b> {tp0:.5f} (+{tp0_pips:.1f} pips)
 2️⃣ <b>TP2 (Growth):</b> {tp1:.5f} (+{tp1_pips:.1f} pips)
 3️⃣ <b>TP3 (Runner):</b> {tp2:.5f} (+{tp2_pips:.1f} pips)
 
-📝 <b>WHY WE ARE ENTERING THIS TRADE</b>
+📝 <b>STRATEGIC REASONING</b>
 {reasoning}
 
 🛡️ <b>RISK GUIDANCE</b>
-• <b>Recommended Risk:</b> {risk_details.get('risk_percent', 0):.1f}% of balance
-• <b>Position Size:</b>    {risk_details.get('lots', risk_details.get('lot_size', 0)):.2f} lots
-• <b>Dollar Risk:</b>      ${risk_details.get('risk_cash', risk_details.get('risk_amount', 0)):.2f}
-• <b>Hold Time:</b>        ~{hold_time}
+{bullet} <b>Recommended Risk:</b> {risk_details.get('risk_percent', 0):.1f}% of balance
+{bullet} <b>Position Size:</b>    {risk_details.get('lots', risk_details.get('lot_size', 0)):.2f} lots
+{bullet} <b>Dollar Risk:</b>      ${risk_details.get('risk_cash', risk_details.get('risk_amount', 0)):.2f}
+{bullet} <b>Expected Hold:</b>   ~{hold_time}
 
-⚙️ <b>Strategy Details</b>
-• <b>Quality Score:</b> {quality_score:.1f}/10.0 {"🏆 Excellent" if is_high_prob else "✅ Good"}
-• <b>Session:</b>       {session_name}
-{'='*60}
+⚙️ <b>V17.0 ENGINE DETAILS</b>
+{bullet} <b>Quality Score:</b> {quality_score:.1f}/10.0 {"🏆 INSTITUTIONAL QUALITY" if is_high_prob else "✅ QUANT VERIFIED"}
+{border}
 """
         return output
     

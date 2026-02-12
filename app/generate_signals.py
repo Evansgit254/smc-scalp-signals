@@ -6,6 +6,7 @@ from indicators.calculations import IndicatorCalculator
 from strategies.intraday_quant_strategy import IntradayQuantStrategy
 from strategies.swing_quant_strategy import SwingQuantStrategy
 from core.signal_formatter import SignalFormatter
+from core.market_status import MarketStatus
 
 async def generate_signals():
     """
@@ -59,6 +60,14 @@ async def generate_signals():
             m5_data = await fetcher.fetch_data_async(symbol, "5m", period="5d")
             h1_data = await fetcher.fetch_data_async(symbol, "1h", period="30d")
             
+            
+            # V16.1: Market Status Check (Prevent stale data processing)
+            if not MarketStatus.is_market_open(symbol):
+                # Only log once per hour or if debug mode to avoid spam
+                # For now, just skip silently or print if verbose
+                # print(f"zzz Market Closed for {symbol}")
+                continue
+
             if m5_data.empty or h1_data.empty:
                 continue
                 

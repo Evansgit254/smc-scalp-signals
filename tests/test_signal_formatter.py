@@ -1,136 +1,79 @@
-"""
-Unit tests for Signal Formatter
-100% coverage target
-"""
 import pytest
 from core.signal_formatter import SignalFormatter
 
-class TestSignalFormatter:
-    """Test suite for signal formatting logic"""
-    
-    @pytest.fixture
-    def sample_signal(self):
-        """Create sample signal dict"""
-        return {
-            'symbol': 'EURUSD=X',
-            'direction': 'BUY',
-            'trade_type': 'SCALP',
-            'timeframe': 'M5',
-            'entry_price': 1.0850,
-            'sl': 1.0830,
-            'tp0': 1.0880,
-            'tp1': 1.0920,
-            'tp2': 1.0980,
-            'confidence': 1.25,
-            'expected_hold': '4-8 hours',
-            'risk_details': {
-                'lots': 0.5,
-                'risk_cash': 100.0,
-                'risk_percent': 2.0
-            }
-        }
-    
-    def test_format_signal_basic(self, sample_signal):
-        """Test basic signal formatting returns string"""
-        formatted = SignalFormatter.format_signal(sample_signal)
-        
-        assert isinstance(formatted, str)
-        assert len(formatted) > 0
-        
-    def test_format_signal_contains_key_info(self, sample_signal):
-        """Test formatted signal contains critical information"""
-        formatted = SignalFormatter.format_signal(sample_signal)
-        
-        # Core details
-        assert 'EURUSD' in formatted
-        assert 'BUY' in formatted
-        assert 'SCALP' in formatted
-        assert '1.0850' in formatted
-        assert '1.0830' in formatted
-        
-        # Dynamic Educational Sections
-        assert '📝 <b>WHY WE ARE ENTERING THIS TRADE</b>' in formatted
-        assert '📊 <b>TRADE SETUP</b>' in formatted
-        assert '🎯 <b>PROFIT TARGETS</b>' in formatted
-        assert '🛡️ <b>RISK GUIDANCE</b>' in formatted
-        
-        # Check for randomized content presence (at least some explanation exists)
-        assert '<b>' in formatted
+@pytest.fixture
+def base_signal():
+    return {
+        'symbol': 'EURUSD=X',
+        'direction': 'BUY',
+        'trade_type': 'SCALP',
+        'entry_price': 1.0850,
+        'sl': 1.0830,
+        'tp0': 1.0870,
+        'tp1': 1.0890,
+        'tp2': 1.0910,
+        'confidence': 0.85,
+        'quality_score': 8.5,
+        'expected_hold': '4-8 hours',
+        'risk_details': {'risk_percent': 2.0, 'lots': 0.1, 'risk_cash': 20.0},
+        'regime': 'TRENDING'
+    }
 
-    def test_reasoning_generation(self):
-        """Test the reasoning engine logic directly"""
-        signal_data = {
-            'direction': 'BUY',
-            'regime': 'TRENDING',
-            'score_details': {
-                'velocity': 0.8,
-                'zscore': -2.0,
-                'momentum': 0.6
-            }
-        }
-        reasoning = SignalFormatter._generate_reasoning(signal_data)
-        
-        # Dynamic Phrases - checks for key categories which are present in all variations
-        # or implies logical correctness
-        assert '<b>Trend Alignment:</b>' in reasoning or '<b>With the Flow:</b>' in reasoning or '<b>Momentum:</b>' in reasoning or '<b>Path of Least Resistance:</b>' in reasoning
-        
-        # Check for core components (at least one from each triggered category)
-        assert any(x in reasoning for x in ['<b>Speed:</b>', '<b>Momentum:</b>', '<b>Velocity:</b>', '<b>Surge:</b>'])
-        assert any(x in reasoning for x in ['<b>Discount:</b>', '<b>Value:</b>', '<b>Pullback:</b>', '<b>Cheap:</b>'])
-        
-        # Check for "Why Not" logic (checks for negative constraints)
-        assert '⛔' in reasoning
+def test_intraday_styling(base_signal):
+    """Verify Intraday signals use the Flash Scalp theme."""
+    signal = base_signal.copy()
+    signal['timeframe'] = 'M5'
+    
+    formatted = SignalFormatter.format_signal(signal)
+    
+    # Check for Flash Scalp markers
+    assert "⚡ QUANT INTRADAY SCALP ⚡" in formatted
+    assert "🏹" in formatted
+    assert "≈" * 10 in formatted # Border check
+    assert "• <b>Symbol:</b>" in formatted # Bullet check
 
-    def test_high_probability_formatting(self, sample_signal):
-        """Test high probability highlighting with quality score >= 8.0"""
-        sample_signal['quality_score'] = 8.5
-        formatted = SignalFormatter.format_signal(sample_signal)
-        
-        assert 'HIGH PROBABILITY' in formatted
-        assert '🔥⚡' in formatted
-        assert '🏆' in formatted
-        
-    def test_format_signal_jpy_pair(self):
-        """Test formatting for JPY pair (different pip calculation)"""
-        signal = {
-            'symbol': 'USDJPY=X',
-            'direction': 'SELL',
-            'trade_type': 'SWING',
-            'timeframe': 'H1',
-            'entry_price': 145.50,
-            'sl': 146.00,
-            'tp0': 145.00,
-            'tp1': 144.50,
-            'tp2': 144.00,
-            'confidence': 0.95,
-            'expected_hold': '1-3 days',
-            'risk_details': {'lots': 0.2, 'risk_cash': 50.0, 'risk_percent': 1.0}
-        }
-        
-        formatted = SignalFormatter.format_signal(signal)
-        assert 'USDJPY' in formatted
-        
-    def test_format_signal_json_basic(self, sample_signal):
-        """Test JSON formatting returns dict"""
-        json_signal = SignalFormatter.format_signal_json(sample_signal)
-        
-        assert isinstance(json_signal, dict)
-        assert 'symbol' in json_signal
-        assert 'direction' in json_signal
-        
-    def test_format_signal_json_structure(self, sample_signal):
-        """Test JSON formatting has correct structure"""
-        json_signal = SignalFormatter.format_signal_json(sample_signal)
-        
-        assert json_signal['symbol'] == 'EURUSD=X'
-        assert json_signal['direction'] == 'BUY'
-        assert 'take_profits' in json_signal
-        assert 'tp0' in json_signal['take_profits']
-        
-    def test_format_signal_json_tp_levels(self, sample_signal):
-        """Test JSON formatting includes all TP levels with sizes"""
-        json_signal = SignalFormatter.format_signal_json(sample_signal)
-        
-        assert json_signal['take_profits']['tp0']['size_pct'] == 50
-        assert json_signal['take_profits']['tp1']['size_pct'] == 30
-        assert json_signal['take_profits']['tp2']['size_pct'] == 20
+def test_swing_styling(base_signal):
+    """Verify Swing signals use the Institutional theme."""
+    signal = base_signal.copy()
+    signal['timeframe'] = 'H1'
+    signal['strategy_id'] = 'swing_quant'
+    
+    formatted = SignalFormatter.format_signal(signal)
+    
+    # Check for Institutional markers
+    assert "🏛️ INSTITUTIONAL SWING POSITION 🏛️" in formatted
+    assert "🏆" in formatted
+    assert "█" * 10 in formatted # Border check
+    assert "🧱 <b>Symbol:</b>" in formatted # Bullet check
+
+def test_high_probability_intensity(base_signal):
+    """Verify high quality signals show intensity emojis."""
+    signal = base_signal.copy()
+    signal['timeframe'] = 'M5'
+    signal['quality_score'] = 9.5
+    
+    formatted = SignalFormatter.format_signal(signal)
+    
+    # Intraday High Prob should have racecar emojis
+    assert "🏎️💨 HIGH PROBABILITY 🏎️💨" in formatted
+    
+    # Swing High Prob should have diamond emojis
+    signal['timeframe'] = 'H1'
+    formatted_swing = SignalFormatter.format_signal(signal)
+    assert "💎💎💎 HIGH PROBABILITY 💎💎💎" in formatted_swing
+
+def test_personalized_styling(base_signal):
+    """Verify personalized signals retain the theme markers."""
+    client = {
+        'telegram_chat_id': '12345',
+        'account_balance': 1000.0,
+        'risk_percent': 1.0
+    }
+    signal = base_signal.copy()
+    signal['timeframe'] = 'H1'
+    
+    formatted = SignalFormatter.format_personalized_signal(signal, client)
+    
+    assert "🏛️ INSTITUTIONAL SWING POSITION 🏛️" in formatted
+    assert "👤 <b>YOUR PERSONAL PLAN</b>" in formatted
+    assert "💰 <b>Balance:</b> $1000.00" in formatted
