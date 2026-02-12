@@ -110,8 +110,22 @@
         </div>
     </div>
 
+    <!-- Signal Details Modal -->
+    <div class="modal" id="signal-modal">
+        <div class="modal-content signal-modal-content">
+            <h2 style="margin-bottom: 1.5rem; color: var(--acc-cyan);">Signal Details</h2>
+
+            <div id="signal-details-body">
+                <!-- Populated by JS -->
+            </div>
+
+            <button class="secondary" onclick="closeSignalModal()" style="margin-top: 2rem;">CLOSE</button>
+        </div>
+    </div>
+
     <script>
         let currentView = 'clients';
+        let allSignals = [];
 
         async function fetchStats() {
             const res = await fetch('/api/stats');
@@ -150,8 +164,8 @@
 
         async function loadSignals() {
             const res = await fetch('/api/signals');
-            const signals = await res.json();
-            renderSignals(signals);
+            allSignals = await res.json();
+            renderSignals(allSignals);
         }
 
         function renderSignals(signals) {
@@ -163,8 +177,14 @@
                 return;
             }
 
-            signals.forEach(sig => {
+            signals.forEach((sig, index) => {
                 const row = document.createElement('tr');
+                row.style.cursor = 'pointer';
+                row.style.transition = 'background 0.2s';
+                row.onmouseover = () => row.style.background = 'rgba(255,255,255,0.05)';
+                row.onmouseout = () => row.style.background = 'transparent';
+                row.onclick = () => openSignalModal(index);
+
                 const directionClass = sig.direction === 'BUY' ? 'status-active' : 'status-expired';
 
                 // Format confidence as percentage
@@ -178,10 +198,42 @@
                     <td style="color: #ff4d4d;">${sig.sl || '-'}</td>
                     <td style="color: #00ea90;">${sig.tp1 || '-'}</td>
                     <td>${confParams}</td>
-                    <td style="max-width: 300px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${sig.reasoning}">${sig.reasoning}</td>
+                    <td style="max-width: 300px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="Click to view full reasoning">${sig.reasoning || '-'}</td>
                 `;
                 tbody.appendChild(row);
             });
+        }
+
+        function openSignalModal(index) {
+            const sig = allSignals[index];
+            const content = document.getElementById('signal-details-body');
+
+            const directionColor = sig.direction === 'BUY' ? '#00ff64' : '#ff3232';
+
+            // Clean up reasoning text if it contains HTML
+            let reasoningText = sig.reasoning || 'No reasoning available.';
+            // If reasoning contains bullet points as HTML entities, they might need decoding, but innerText handles it usually.
+            // If it contains simple text, pre-wrap handles it.
+
+            content.innerHTML = `
+                <div class="detail-row"><span class="detail-label">TIMESTAMP</span> <span class="detail-value">${new Date(sig.timestamp).toLocaleString()}</span></div>
+                <div class="detail-row"><span class="detail-label">SYMBOL</span> <span class="detail-value" style="color: var(--acc-cyan)">${sig.symbol}</span></div>
+                <div class="detail-row"><span class="detail-label">DIRECTION</span> <span class="detail-value" style="color: ${directionColor}">${sig.direction}</span></div>
+                <div class="detail-row"><span class="detail-label">ENTRY PRICE</span> <span class="detail-value">${sig.entry_price}</span></div>
+                <div class="detail-row"><span class="detail-label">STOP LOSS</span> <span class="detail-value" style="color: #ff4d4d">${sig.sl}</span></div>
+                <div class="detail-row"><span class="detail-label">TP1</span> <span class="detail-value" style="color: #00ea90">${sig.tp1}</span></div>
+                <div class="detail-row"><span class="detail-label">TP2</span> <span class="detail-value" style="color: #00ea90">${sig.tp2 || '-'}</span></div>
+                <div class="detail-row"><span class="detail-label">CONFIDENCE</span> <span class="detail-value">${(sig.confidence * 100).toFixed(0)}%</span></div>
+                
+                <div style="margin-top: 1.5rem; color: var(--text-dim); font-size: 0.9rem; text-transform: uppercase;">Strategic Reasoning</div>
+                <div class="reasoning-box">${reasoningText}</div>
+            `;
+
+            document.getElementById('signal-modal').style.display = 'flex';
+        }
+
+        function closeSignalModal() {
+            document.getElementById('signal-modal').style.display = 'none';
         }
 
         function showView(view) {
