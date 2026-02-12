@@ -105,13 +105,20 @@ body {
 }
 
 /* Table styling */
+.table-container {
+    width: 100%;
+    overflow-x: auto;
+    border-radius: 12px;
+    border: 1px solid var(--glass-border);
+    margin-bottom: 1rem;
+}
+
 .glass-table {
     width: 100%;
     border-collapse: collapse;
     background: var(--card-bg);
-    border-radius: 12px;
-    overflow: hidden;
-    border: 1px solid var(--glass-border);
+    min-width: 1000px;
+    /* Ensure minimum width for scrolling */
 }
 
 .glass-table th {
