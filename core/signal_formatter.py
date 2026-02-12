@@ -169,11 +169,11 @@ class SignalFormatter:
         
         # Calculate personalized risk for this client
         p_risk = RiskManager.calculate_lot_size(
-            signal['symbol'], 
-            signal['entry_price'], 
-            signal['sl'],
-            balance=client['account_balance'],
-            risk_pct_override=client['risk_percent']
+            signal.get('symbol', 'EURUSD'), 
+            signal.get('entry_price', 0), 
+            signal.get('sl', 0),
+            balance=client.get('account_balance', 100),
+            risk_pct_override=client.get('risk_percent', 2.0)
         )
         
         # Update signal with personalized risk for the basic formatter
