@@ -350,6 +350,155 @@ body {
     border: 1px solid var(--glass-border);
 }
 
+/* Tab Navigation & View Management */
+.nav-item.active {
+    background: rgba(0, 234, 144, 0.1);
+    border-right: 3px solid var(--acc-cyan);
+    color: white;
+}
+
+.view-section {
+    display: none;
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Performance Report Styles */
+.analytics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+    gap: 1.5rem;
+    margin-top: 1rem;
+}
+
+.chart-card {
+    background: var(--card-bg);
+    border: 1px solid var(--glass-border);
+    padding: 1.5rem;
+    border-radius: 12px;
+    backdrop-filter: blur(10px);
+}
+
+.chart-header {
+    margin-bottom: 2rem;
+}
+
+.chart-title {
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-dim);
+    font-weight: bold;
+}
+
+/* Bar Chart */
+.analytics-bar-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1.2rem;
+}
+
+.bar-item {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.bar-label {
+    width: 80px;
+    font-size: 0.8rem;
+    color: var(--text-dim);
+}
+
+.bar-track {
+    flex: 1;
+    height: 8px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 4px;
+    position: relative;
+}
+
+.bar-progress {
+    height: 100%;
+    background: var(--acc-cyan);
+    border-radius: 4px;
+}
+
+.bar-value {
+    width: 30px;
+    font-size: 0.8rem;
+    text-align: right;
+    color: var(--acc-cyan);
+}
+
+/* Donut Chart */
+.donut-container {
+    position: relative;
+    width: 200px;
+    height: 200px;
+    margin: 0 auto;
+}
+
+.donut-label {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+}
+
+.donut-val {
+    font-size: 2rem;
+    font-weight: bold;
+    color: white;
+}
+
+.donut-sub {
+    font-size: 0.7rem;
+    color: var(--text-dim);
+}
+
+/* Heatmap */
+.heatmap {
+    display: grid;
+    grid-template-columns: repeat(24, 1fr);
+    gap: 4px;
+    margin-top: 1rem;
+}
+
+.heat-cell {
+    aspect-ratio: 1;
+    background: rgba(0, 234, 144, 0.05);
+    border-radius: 2px;
+    position: relative;
+}
+
+.heat-cell:hover::after {
+    content: attr(data-time);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: black;
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.6rem;
+    white-space: nowrap;
+    z-index: 10;
+}
+
 input,
 select {
     width: 100%;

@@ -25,6 +25,9 @@
         <div class="nav-item" onclick="showView('settings')">
             <i class="fas fa-cog"></i> Server Config
         </div>
+        <div class="nav-item" onclick="showView('performance')" id="nav-performance">
+            <i class="fas fa-chart-line"></i> Performance
+        </div>
     </div>
 
     <div class="main-content">
@@ -93,6 +96,66 @@
                 </table>
             </div>
         </div>
+
+        <div id="performance-view" style="display: none;">
+            <div class="analytics-grid">
+                <!-- Daily Volume & Avg Quality -->
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <div class="chart-title">Daily Summary</div>
+                    </div>
+                    <div style="display: flex; gap: 2rem; justify-content: center; padding: 1rem 0;">
+                        <div style="text-align: center;">
+                            <div class="stat-val" id="ana-total">0</div>
+                            <div class="stat-label">Total Signals</div>
+                        </div>
+                        <div style="text-align: center;">
+                            <div class="stat-val" id="ana-quality" style="color: var(--acc-cyan)">0.0</div>
+                            <div class="stat-label">Avg Quality</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Buy/Sell Bias (Donut Chart) -->
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <div class="chart-title">Market bias (BUY vs SELL)</div>
+                    </div>
+                    <div class="donut-container">
+                        <svg viewBox="0 0 36 36" style="width: 100%; height: 100%; transform: rotate(-90deg);">
+                            <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                                fill="none" stroke="#ff4d4d" stroke-width="3" />
+                            <circle cx="18" cy="18" r="15.9155" fill="none" stroke="var(--acc-cyan)" stroke-width="3"
+                                stroke-dasharray="0, 100" id="bias-stroke" />
+                        </svg>
+                        <div class="donut-label">
+                            <div class="donut-val" id="bias-pct">0%</div>
+                            <div class="donut-sub">BULLISH</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Top Assets -->
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <div class="chart-title">Symbol Distribution</div>
+                    </div>
+                    <div class="analytics-bar-list" id="asset-list">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+
+                <!-- Activity Heatmap -->
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <div class="chart-title">Daily Activity (24h)</div>
+                    </div>
+                    <div class="heatmap" id="hourly-heatmap">
+                        <!-- 24 cells -->
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Edit Modal -->
@@ -136,11 +199,85 @@
         let allSignals = [];
 
         async function fetchStats() {
-            const res = await fetch('/api/stats');
-            const data = await res.json();
-            document.getElementById('stat-active').innerText = data.active_clients;
-            document.getElementById('stat-signals').innerText = data.signals_today;
-            document.getElementById('server-time').innerText = data.server_time;
+            try {
+                const res = await fetch('/api/stats');
+                const data = await res.json();
+                document.getElementById('stat-active').innerText = data.active_clients;
+                document.getElementById('stat-signals').innerText = data.signals_today;
+                document.getElementById('server-time').innerText = data.server_time;
+            } catch (e) {
+                console.error("Stats fetch failed:", e);
+            }
+        }
+
+        async function loadAnalytics() {
+            try {
+                const res = await fetch('/api/analytics/daily');
+                const data = await res.json();
+
+                // 1. Summary
+                document.getElementById('ana-total').innerText = data.total_signals;
+                document.getElementById('ana-quality').innerText = data.avg_quality;
+
+                // 2. Bias (Donut)
+                const buys = data.bias['BUY'] || 0;
+                const sells = data.bias['SELL'] || 0;
+                const total = buys + sells;
+                const buyPct = total > 0 ? Math.round((buys / total) * 100) : 50;
+
+                document.getElementById('bias-stroke').setAttribute('stroke-dasharray', `${buyPct}, 100`);
+                document.getElementById('bias-pct').innerText = `${buyPct}%`;
+
+                const sub = document.getElementById('bias-pct').nextElementSibling;
+                if (buyPct > 55) {
+                    sub.innerText = 'BULLISH';
+                    sub.style.color = 'var(--acc-cyan)';
+                } else if (buyPct < 45) {
+                    sub.innerText = 'BEARISH';
+                    sub.style.color = '#ff4d4d';
+                } else {
+                    sub.innerText = 'NEUTRAL';
+                    sub.style.color = 'var(--acc-gold)';
+                }
+
+                // 3. Top Assets
+                const assetList = document.getElementById('asset-list');
+                assetList.innerHTML = '';
+                const maxCount = data.top_assets.length > 0 ? Math.max(...data.top_assets.map(a => a.count)) : 1;
+
+                data.top_assets.forEach(asset => {
+                    const pct = Math.round((asset.count / maxCount) * 100);
+                    assetList.innerHTML += `
+                        <div class="bar-item">
+                            <div class="bar-label">${asset.symbol}</div>
+                            <div class="bar-track">
+                                <div class="bar-progress" style="width: ${pct}%"></div>
+                            </div>
+                            <div class="bar-value">${asset.count}</div>
+                        </div>
+                    `;
+                });
+
+                // 4. Heatmap
+                const heatmap = document.getElementById('hourly-heatmap');
+                heatmap.innerHTML = '';
+                const counts = Object.values(data.hourly_heatmap);
+                const maxH = counts.length > 0 ? Math.max(...counts) : 1;
+
+                for (let i = 0; i < 24; i++) {
+                    const hStr = i.toString().padStart(2, '0');
+                    const count = data.hourly_heatmap[hStr] || 0;
+                    const opacity = count > 0 ? 0.1 + (count / maxH) * 0.8 : 0.05;
+                    heatmap.innerHTML += `
+                        <div class="heat-cell" 
+                             style="background: rgba(0, 234, 144, ${opacity})"
+                             data-time="${hStr}:00 - ${count} signals">
+                        </div>
+                    `;
+                }
+            } catch (e) {
+                console.error("Analytics error:", e);
+            }
         }
 
         async function loadClients() {
@@ -281,16 +418,34 @@
 
         function showView(view) {
             currentView = view;
-            document.getElementById('clients-view').style.display = view === 'clients' ? 'block' : 'none';
-            document.getElementById('signals-view').style.display = view === 'signals' ? 'block' : 'none';
-            document.getElementById('view-title').innerText = view === 'clients' ? 'User Management' : 'Signal History';
 
-            const items = document.querySelectorAll('.nav-item');
-            items.forEach(i => i.classList.remove('active'));
-            event.target.classList.add('active');
+            // Hide all
+            document.getElementById('clients-view').style.display = 'none';
+            document.getElementById('signals-view').style.display = 'none';
+            document.getElementById('performance-view').style.display = 'none';
+
+            // Show selected
+            const target = document.getElementById(view + '-view');
+            if (target) target.style.display = 'block';
+
+            // Update title
+            const titles = {
+                'clients': 'User Management',
+                'signals': 'Signal History',
+                'performance': 'Daily Performance Analysis'
+            };
+            document.getElementById('view-title').innerText = titles[view] || 'Dashboard';
+
+            // Sidebar Highlight
+            document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+            const activeNav = Array.from(document.querySelectorAll('.nav-item')).find(item =>
+                item.getAttribute('onclick').includes(`'${view}'`)
+            );
+            if (activeNav) activeNav.classList.add('active');
 
             if (view === 'signals') loadSignals();
             if (view === 'clients') loadClients();
+            if (view === 'performance') loadAnalytics();
         }
 
         function openEdit(chatId, balance, tier) {

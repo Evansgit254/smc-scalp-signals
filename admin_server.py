@@ -172,6 +172,66 @@ async def get_stats():
         "server_time": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     }
 
+@app.get("/api/analytics/daily")
+async def get_daily_analytics():
+    try:
+        conn = get_db_connection(DB_SIGNALS)
+        today = datetime.now().strftime('%Y-%m-%d')
+        
+        # 1. Total Signals & Average Quality
+        summary = conn.execute("""
+            SELECT 
+                COUNT(*) as total,
+                AVG(quality_score) as avg_quality
+            FROM signals 
+            WHERE DATE(timestamp) = ?
+        """, (today,)).fetchone()
+        
+        # 2. BUY vs SELL Bias
+        bias_rows = conn.execute("""
+            SELECT direction, COUNT(*) as count 
+            FROM signals 
+            WHERE DATE(timestamp) = ?
+            GROUP BY direction
+        """, (today,)).fetchall()
+        
+        bias = {row['direction']: row['count'] for row in bias_rows}
+        
+        # 3. Top Assets
+        asset_rows = conn.execute("""
+            SELECT symbol, COUNT(*) as count 
+            FROM signals 
+            WHERE DATE(timestamp) = ?
+            GROUP BY symbol
+            ORDER BY count DESC
+            LIMIT 5
+        """, (today,)).fetchall()
+        
+        assets = [dict(row) for row in asset_rows]
+        
+        # 4. Hourly Heatmap
+        hourly_rows = conn.execute("""
+            SELECT STRFTIME('%H', timestamp) as hour, COUNT(*) as count
+            FROM signals
+            WHERE DATE(timestamp) = ?
+            GROUP BY hour
+        """, (today,)).fetchall()
+        
+        hourly = {row['hour']: row['count'] for row in hourly_rows}
+        
+        conn.close()
+        
+        return {
+            "total_signals": summary['total'] or 0,
+            "avg_quality": round(summary['avg_quality'] or 0, 1),
+            "bias": bias,
+            "top_assets": assets,
+            "hourly_heatmap": hourly
+        }
+    except Exception as e:
+        print(f"Error calculating analytics: {e}")
+        return {"error": str(e)}
+
 # Mount static files for the dashboard
 if os.path.exists("dashboard"):
     app.mount("/", StaticFiles(directory="dashboard", html=True), name="dashboard")
