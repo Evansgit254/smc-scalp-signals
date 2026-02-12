@@ -110,6 +110,11 @@ class SignalService:
             
             # Format and broadcast (V11.0 Personalized Multi-Client)
             try:
+                # V17.4: Generate reasoning once for consistency across all clients and logs
+                from core.signal_formatter import SignalFormatter
+                if 'reasoning' not in signal_data:
+                    signal_data['reasoning'] = SignalFormatter.generate_reasoning(signal_data)
+                
                 # Deduplication logic remains at the base level
                 await self.telegram.broadcast_personalized_signal(signal_data)
                 self._mark_sent(signal_data)

@@ -6,11 +6,15 @@ class SignalFormatter:
     """
     
     @staticmethod
-    def _generate_reasoning(signal: dict) -> str:
+    def generate_reasoning(signal: dict) -> str:
         """
         Translates raw alpha factors and regime into beginner-friendly logic.
         Uses randomized phrases from REASONING_LIBRARY for variety.
         """
+        # V17.4: Return existing reasoning if already generated (Consistency fix)
+        if signal.get('reasoning'):
+            return signal['reasoning']
+            
         import random
         from core.reasoning_library import REASONING_LIBRARY
         
@@ -53,7 +57,7 @@ class SignalFormatter:
             if zscore > 1.5: 
                 reasons.append(random.choice(REASONING_LIBRARY['SELL']['PREMIUM']))
             if momentum < -0.5: 
-                reasons.append(random.choice(REASONING_LIBRARY['SELL']['STRENGTH']))
+                reasons.append(random.choice(REASONING_LIBRARY['SELL']['WEAKNESS']))
                 
             # Anti-Buy Arguments (The "Why Not" part)
             # Pick 2 random reasons from the 'Why Not' list for variety
@@ -64,7 +68,8 @@ class SignalFormatter:
         if not reasons:
             reasons.append("✅ <b>Confirmation:</b> Multiple technical factors verify this entry.")
             
-        return "\n".join(reasons)
+        # 3. Join with bullet points
+        return "\n".join([f"• {r}" for r in reasons])
 
     @staticmethod
     def format_signal(signal: dict) -> str:
@@ -122,7 +127,7 @@ class SignalFormatter:
 
         session_emoji = "🇬🇧" if "London Open" in session_name else "🇺🇸" if "Overlap" in session_name else "🌐"
         prob_header = f" {intensity_emoji} HIGH PROBABILITY {intensity_emoji}" if is_high_prob else ""
-        reasoning = SignalFormatter._generate_reasoning(signal)
+        reasoning = SignalFormatter.generate_reasoning(signal)
         
         # Format output
         output = f"""
