@@ -140,12 +140,19 @@ class SignalService:
         
         try:
             conn = sqlite3.connect("database/signals.db")
+            
+            # V18.0: Full Signal Fidelity - Store all metadata
+            import json
+            risk_json = json.dumps(signal_data.get('risk_details', {}))
+            score_json = json.dumps(signal_data.get('score_details', {}))
+            
             conn.execute("""
                 INSERT INTO signals (
                     timestamp, symbol, direction, entry_price, 
-                    sl, tp0, tp1, tp2, reasoning, timeframe, confidence
+                    sl, tp0, tp1, tp2, reasoning, timeframe, confidence,
+                    trade_type, quality_score, regime, expected_hold, risk_details, score_details
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
                 datetime.now().isoformat(),
                 signal_data.get('symbol', 'UNKNOWN'),
@@ -155,9 +162,16 @@ class SignalService:
                 signal_data.get('tp0', 0.0),
                 signal_data.get('tp1', 0.0),
                 signal_data.get('tp2', 0.0),
-                signal_data.get('reasoning', '')[:500],  # Truncate reasoning to 500 chars
+                signal_data.get('reasoning', '')[:5000],  # Increased limit for full reasoning
                 signal_data.get('timeframe', 'M5'),
-                signal_data.get('confidence', 0.0)
+                signal_data.get('confidence', 0.0),
+                # New Fields
+                signal_data.get('trade_type', 'SCALP'),
+                signal_data.get('quality_score', 0.0),
+                signal_data.get('regime', 'UNKNOWN'),
+                signal_data.get('expected_hold', 'UNKNOWN'),
+                risk_json,
+                score_json
             ))
             conn.commit()
             conn.close()

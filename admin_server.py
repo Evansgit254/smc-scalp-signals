@@ -98,18 +98,25 @@ async def update_client(chat_id: str, update: ClientUpdate):
     return {"status": "success"}
 
 @app.get("/api/signals")
-async def get_signals(limit: int = 50):
-    if not os.path.exists(DB_SIGNALS):
-        return []
-    
-    conn = get_db_connection(DB_SIGNALS)
+async def get_signals():
     try:
-        signals = conn.execute("SELECT * FROM signals ORDER BY timestamp DESC LIMIT ?", (limit,)).fetchall()
-        return [dict(ix) for ix in signals]
-    except:
-        return []
-    finally:
+        conn = sqlite3.connect("database/signals.db")
+        conn.row_factory = sqlite3.Row
+        # V18.0: Fetch all signal fidelity fields
+        cursor = conn.execute("""
+            SELECT 
+                timestamp, symbol, direction, entry_price, sl, tp1, tp2, 
+                reasoning, timeframe, confidence,
+                trade_type, quality_score, regime, expected_hold, risk_details, score_details
+            FROM signals 
+            ORDER BY timestamp DESC LIMIT 50
+        """)
+        signals = [dict(row) for row in cursor.fetchall()]
         conn.close()
+        return signals
+    except Exception as e:
+        print(f"Error fetching signals: {e}")
+        return []
 
 @app.get("/api/stats")
 async def get_stats():

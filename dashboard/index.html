@@ -213,21 +213,53 @@
             const content = document.getElementById('signal-details-body');
 
             const directionColor = sig.direction === 'BUY' ? '#00ff64' : '#ff3232';
-
-            // Clean up reasoning text if it contains HTML
             let reasoningText = sig.reasoning || 'No reasoning available.';
-            // If reasoning contains bullet points as HTML entities, they might need decoding, but innerText handles it usually.
-            // If it contains simple text, pre-wrap handles it.
+
+            // Parse JSON fields safely
+            let risk = {};
+            let score = {};
+            try { risk = JSON.parse(sig.risk_details || '{}'); } catch (e) { }
+            try { score = JSON.parse(sig.score_details || '{}'); } catch (e) { }
 
             content.innerHTML = `
-                <div class="detail-row"><span class="detail-label">TIMESTAMP</span> <span class="detail-value">${new Date(sig.timestamp).toLocaleString()}</span></div>
-                <div class="detail-row"><span class="detail-label">SYMBOL</span> <span class="detail-value" style="color: var(--acc-cyan)">${sig.symbol}</span></div>
-                <div class="detail-row"><span class="detail-label">DIRECTION</span> <span class="detail-value" style="color: ${directionColor}">${sig.direction}</span></div>
-                <div class="detail-row"><span class="detail-label">ENTRY PRICE</span> <span class="detail-value">${sig.entry_price}</span></div>
-                <div class="detail-row"><span class="detail-label">STOP LOSS</span> <span class="detail-value" style="color: #ff4d4d">${sig.sl}</span></div>
-                <div class="detail-row"><span class="detail-label">TP1</span> <span class="detail-value" style="color: #00ea90">${sig.tp1}</span></div>
-                <div class="detail-row"><span class="detail-label">TP2</span> <span class="detail-value" style="color: #00ea90">${sig.tp2 || '-'}</span></div>
-                <div class="detail-row"><span class="detail-label">CONFIDENCE</span> <span class="detail-value">${(sig.confidence * 100).toFixed(0)}%</span></div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2rem;">
+                    <div>
+                        <div class="detail-row"><span class="detail-label">STRATEGY</span> <span class="detail-value" style="color:var(--acc-cyan)">${sig.trade_type || 'SCALP'} (${sig.timeframe || 'M5'})</span></div>
+                        <div class="detail-row"><span class="detail-label">SYMBOL</span> <span class="detail-value">${sig.symbol}</span></div>
+                        <div class="detail-row"><span class="detail-label">DIRECTION</span> <span class="detail-value" style="color: ${directionColor}">${sig.direction}</span></div>
+                        <div class="detail-row"><span class="detail-label">ENTRY</span> <span class="detail-value">${sig.entry_price}</span></div>
+                        <div class="detail-row"><span class="detail-label">STOP LOSS</span> <span class="detail-value" style="color: #ff4d4d">${sig.sl}</span></div>
+                        <div class="detail-row"><span class="detail-label">EXPECTED HOLD</span> <span class="detail-value">${sig.expected_hold || '-'}</span></div>
+                    </div>
+                    <div>
+                        <div class="detail-row"><span class="detail-label">CONFIDENCE</span> <span class="detail-value">${(sig.confidence * 100).toFixed(1)}%</span></div>
+                        <div class="detail-row"><span class="detail-label">QUALITY SCORE</span> <span class="detail-value" style="color: var(--acc-gold)">${sig.quality_score || '-'}</span></div>
+                        <div class="detail-row"><span class="detail-label">REGIME</span> <span class="detail-value">${sig.regime || '-'}</span></div>
+                        <div class="detail-row"><span class="detail-label">RISK RECOM.</span> <span class="detail-value">${risk.risk_per_trade_percent || '-'}% ($${risk.risk_amount_usd || '-'})</span></div>
+                        <div class="detail-row"><span class="detail-label">LOT SIZE</span> <span class="detail-value" style="color: var(--acc-cyan)">${risk.lot_size || '-'}</span></div>
+                    </div>
+                </div>
+
+                <div style="margin-bottom: 2rem; background: rgba(255,255,255,0.05); padding: 1rem; border-radius: 8px;">
+                     <div style="display: flex; justify-content: space-between; text-align: center;">
+                        <div>
+                            <div class="detail-label">TP1 (Safe)</div>
+                            <div style="color: #00ea90; font-weight: bold;">${sig.tp1 || '-'}</div>
+                        </div>
+                        <div>
+                            <div class="detail-label">TP2 (Growth)</div>
+                            <div style="color: #00ea90; font-weight: bold;">${sig.tp2 || '-'}</div>
+                        </div>
+                        <div>
+                            <div class="detail-label">Momentum</div>
+                            <div>${score.momentum ? score.momentum.toFixed(2) : '-'}</div>
+                        </div>
+                        <div>
+                            <div class="detail-label">Volatility</div>
+                            <div>${score.volatility ? score.volatility.toFixed(2) : '-'}</div>
+                        </div>
+                     </div>
+                </div>
                 
                 <div style="margin-top: 1.5rem; color: var(--text-dim); font-size: 0.9rem; text-transform: uppercase;">Strategic Reasoning</div>
                 <div class="reasoning-box">${reasoningText}</div>
