@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,6 +8,7 @@
     <link rel="stylesheet" href="index.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/all.min.css">
 </head>
+
 <body>
 
     <div class="sidebar">
@@ -68,14 +70,18 @@
             <table class="glass-table">
                 <thead>
                     <tr>
-                        <th>Timestamp</th>
-                        <th>Symbol</th>
-                        <th>Direction</th>
-                        <th>Reasoning</th>
+                        <th>TIMESTAMP</th>
+                        <th>SYMBOL</th>
+                        <th>DIRECTION</th>
+                        <th>ENTRY</th>
+                        <th>SL</th>
+                        <th>TP1</th>
+                        <th>CONFIDENCE</th>
+                        <th>REASONING</th>
                     </tr>
                 </thead>
-                <tbody id="signals-body">
-                    <!-- Loaded via JS -->
+                <tbody id="signal-table-body">
+                    <!-- Populated by JS -->
                 </tbody>
             </table>
         </div>
@@ -86,13 +92,13 @@
         <div class="modal-content">
             <h2 id="modal-title">Edit Client</h2>
             <input type="hidden" id="edit-chat-id">
-            
+
             <label>Balance ($):</label>
             <input type="number" id="edit-balance">
-            
+
             <label>Extend Subscription (Days):</label>
             <input type="number" id="edit-days" placeholder="e.g. 30">
-            
+
             <label>Tier:</label>
             <select id="edit-tier">
                 <option value="BASIC">BASIC (Bronze)</option>
@@ -145,23 +151,36 @@
         async function loadSignals() {
             const res = await fetch('/api/signals');
             const signals = await res.json();
-            const body = document.getElementById('signals-body');
-            body.innerHTML = '';
-            
+            renderSignals(signals);
+        }
+
+        function renderSignals(signals) {
+            const tbody = document.getElementById('signal-table-body');
+            tbody.innerHTML = '';
+
             if (signals.length === 0) {
-                body.innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--text-dim)">No signals logged in database.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding: 2rem;">No signals logged in database.</td></tr>';
                 return;
             }
 
-            signals.forEach(s => {
-                body.innerHTML += `
-                    <tr>
-                        <td style="font-size: 0.8rem; color: var(--text-dim)">${s.timestamp}</td>
-                        <td style="font-weight: 700; color: var(--acc-cyan)">${s.symbol}</td>
-                        <td style="color: ${s.direction === 'BUY' ? '#00ff64' : '#ff3232'}">${s.direction}</td>
-                        <td style="font-size: 0.8rem">${s.reasoning || '--'}</td>
-                    </tr>
+            signals.forEach(sig => {
+                const row = document.createElement('tr');
+                const directionClass = sig.direction === 'BUY' ? 'status-active' : 'status-expired';
+
+                // Format confidence as percentage
+                const confParams = sig.confidence ? `${(sig.confidence * 100).toFixed(0)}%` : '-';
+
+                row.innerHTML = `
+                    <td>${new Date(sig.timestamp).toLocaleString()}</td>
+                    <td style="font-weight:bold; color:var(--text-primary);">${sig.symbol}</td>
+                    <td><span class="${directionClass}" style="padding: 2px 8px; border-radius: 4px;">${sig.direction}</span></td>
+                    <td>${sig.entry_price || '-'}</td>
+                    <td style="color: #ff4d4d;">${sig.sl || '-'}</td>
+                    <td style="color: #00ea90;">${sig.tp1 || '-'}</td>
+                    <td>${confParams}</td>
+                    <td style="max-width: 300px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${sig.reasoning}">${sig.reasoning}</td>
                 `;
+                tbody.appendChild(row);
             });
         }
 
@@ -170,7 +189,7 @@
             document.getElementById('clients-view').style.display = view === 'clients' ? 'block' : 'none';
             document.getElementById('signals-view').style.display = view === 'signals' ? 'block' : 'none';
             document.getElementById('view-title').innerText = view === 'clients' ? 'User Management' : 'Signal History';
-            
+
             const items = document.querySelectorAll('.nav-item');
             items.forEach(i => i.classList.remove('active'));
             event.target.classList.add('active');
@@ -214,4 +233,5 @@
         setInterval(fetchStats, 5000);
     </script>
 </body>
+
 </html>

@@ -136,13 +136,23 @@ class SignalService:
         try:
             conn = sqlite3.connect("database/signals.db")
             conn.execute("""
-                INSERT INTO signals (timestamp, symbol, direction, reasoning)
-                VALUES (?, ?, ?, ?)
+                INSERT INTO signals (
+                    timestamp, symbol, direction, entry_price, 
+                    sl, tp0, tp1, tp2, reasoning, timeframe, confidence
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
                 datetime.now().isoformat(),
                 signal_data.get('symbol', 'UNKNOWN'),
                 signal_data.get('direction', 'UNKNOWN'),
-                signal_data.get('reasoning', '')[:200]  # Truncate reasoning to 200 chars
+                signal_data.get('entry_price', 0.0),
+                signal_data.get('sl', 0.0),
+                signal_data.get('tp0', 0.0),
+                signal_data.get('tp1', 0.0),
+                signal_data.get('tp2', 0.0),
+                signal_data.get('reasoning', '')[:500],  # Truncate reasoning to 500 chars
+                signal_data.get('timeframe', 'M5'),
+                signal_data.get('confidence', 0.0)
             ))
             conn.commit()
             conn.close()
