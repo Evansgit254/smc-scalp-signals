@@ -5,9 +5,9 @@ After=network.target
 [Service]
 Type=oneshot
 User=evans
-WorkingDirectory=/home/evans/Projects/TradingExpert/smc-scalp-signals
+WorkingDirectory=/home/evans/smc-scalp-signals
 Environment="PYTHONUNBUFFERED=1"
-ExecStart=/home/evans/Projects/TradingExpert/smc-scalp-signals/venv/bin/python /home/evans/Projects/TradingExpert/smc-scalp-signals/monitoring/watchdog.py
+ExecStart=/home/evans/smc-scalp-signals/venv/bin/python /home/evans/smc-scalp-signals/monitoring/watchdog.py
 StandardOutput=journal
 StandardError=journal
 SyslogIdentifier=smc-watchdog
