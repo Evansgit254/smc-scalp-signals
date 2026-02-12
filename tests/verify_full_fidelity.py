@@ -23,7 +23,7 @@ mock_full_signal = {
     'regime': 'TRENDING_DOWN',
     'expected_hold': '1-2 Days',
     'reasoning': 'Micro-structure break on H1. Volume confirming bearish divergence.',
-    'risk_details': {'risk_per_trade_percent': 1.0, 'risk_amount_usd': 50.0, 'lot_size': 0.05},
+    'risk_details': {'risk_percent': 1.0, 'risk_cash': 50.0, 'lots': 0.05},
     'score_details': {'momentum': 0.75, 'volatility': 0.45, 'zscore': 2.1}
 }
 
@@ -90,7 +90,7 @@ def verify_full_fidelity():
 
     # Check JSON parsing
     retrieved_risk = json.loads(row_dict['risk_details'])
-    if retrieved_risk['lot_size'] == 0.05:
+    if retrieved_risk['lots'] == 0.05:
         print("✅ risk_details JSON verified")
     else:
         print("❌ risk_details JSON parsing failed")
