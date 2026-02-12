@@ -4,6 +4,7 @@ Interactive Telegram Bot for Multi-Client Management
 Handles commands: /start, /register, /update_balance, /settings, /help
 """
 import logging
+import sqlite3
 from telegram import Update
 from telegram.ext import Application, CommandHandler, ContextTypes
 from config.config import TELEGRAM_BOT_TOKEN
@@ -24,6 +25,8 @@ class InteractiveBot:
     def _set_up_handlers(self, application):
         application.add_handler(CommandHandler("start", self.start))
         application.add_handler(CommandHandler("register", self.register))
+        application.add_handler(CommandHandler("subscribe", self.subscribe))
+        application.add_handler(CommandHandler("status", self.status))
         application.add_handler(CommandHandler("update_balance", self.update_balance))
         application.add_handler(CommandHandler("settings", self.settings))
         application.add_handler(CommandHandler("help", self.help))
@@ -61,6 +64,51 @@ class InteractiveBot:
         except ValueError:
             await update.message.reply_text("❌ Invalid balance. Please enter a numerical value.")
 
+    async def subscribe(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Show payment details for subscription."""
+        await update.message.reply_html(
+            "💎 <b>UPGRADE TO QUANT PREMIUM</b> 💎\n\n"
+            "Get high-probability Institutional Swing and Intraday signals directly to your Telegram.\n\n"
+            "💳 <b>PAYMENT METHODS:</b>\n"
+            "• <b>M-Pesa:</b> +254 XXX XXX XXX (Evans)\n"
+            "• <b>Bank:</b> KCB Bank - Acc: XXXXXXXX\n"
+            "• <b>Crypto:</b> <code>[Your-USDT-TRC20-Address]</code>\n\n"
+            "💵 <b>PRICING:</b>\n"
+            "• 1 Month: $30\n"
+            "• 3 Months: $75 (Save 15%)\n\n"
+            "⚠️ <b>After payment:</b> Send a screenshot of the transaction to @YourAdminUsername for manual verification. We will activate your signals within 1 hour."
+        )
+
+    async def status(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Check subscription status."""
+        chat_id = str(update.effective_chat.id)
+        # Use manager directly to get expiry since get_client only returns ACTIVE users
+        client = self.manager.get_client(chat_id)
+        
+        if not client:
+            await update.message.reply_text("❌ You are not registered. Use /register first.")
+            return
+
+        is_active = self.manager.is_subscription_active(chat_id)
+        
+        # Reload client to get expiry/tier as get_client might have filtered or not included them
+        # Actually I need a method in manager to get RAW client data including inactive/expired
+        conn = sqlite3.connect("database/clients.db")
+        conn.row_factory = sqlite3.Row
+        row = conn.execute("SELECT * FROM clients WHERE telegram_chat_id = ?", (chat_id,)).fetchone()
+        conn.close()
+        
+        expiry = row['subscription_expiry'] if row['subscription_expiry'] else 'N/A'
+        tier = row['subscription_tier'] if row['subscription_tier'] else 'BASIC'
+        
+        status_text = "✅ ACTIVE" if is_active else "❌ EXPIRED"
+        await update.message.reply_html(
+            f"📊 <b>SUBSCRIPTION STATUS:</b> {status_text}\n"
+            f"📅 <b>Expiry:</b> {expiry}\n"
+            f"🏆 <b>Tier:</b> {tier}\n\n"
+            "Use /subscribe to renew or upgrade your access."
+        )
+
     async def update_balance(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Update existing client's balance."""
         chat_id = str(update.effective_chat.id)
@@ -83,12 +131,13 @@ class InteractiveBot:
         chat_id = str(update.effective_chat.id)
         client = self.manager.get_client(chat_id)
         if client:
-            await update.message.reply_text(
-                f"📊 YOUR SETTINGS:\n"
+            is_active = self.manager.is_subscription_active(chat_id)
+            await update.message.reply_html(
+                f"📊 <b>YOUR SETTINGS:</b>\n"
                 f"────────────────────\n"
-                f"💰 Balance: ${client['account_balance']:.2f}\n"
-                f"📉 Risk: {client['risk_percent']:.1f}%\n"
-                f"🔥 Max concurrent: {client['max_concurrent_trades']}\n"
+                f"💰 <b>Balance:</b> ${client['account_balance']:.2f}\n"
+                f"📉 <b>Risk:</b> {client['risk_percent']:.1f}%\n"
+                f"🗓️ <b>Sub Status:</b> {'✅ Active' if is_active else '❌ Expired'}\n"
                 f"────────────────────\n"
                 f"Use /update_balance to change your size."
             )
@@ -99,9 +148,10 @@ class InteractiveBot:
         """Show help message."""
         await update.message.reply_text(
             "📚 COMMANDS:\n\n"
-            "/register <balance> - Join the signal service\n"
-            "/update_balance <val> - Update your account size\n"
-            "/settings - View your current risk parameters\n"
+            "/register <bal> - Join the service\n"
+            "/subscribe - Get payment details\n"
+            "/status - Check your subscription expiry\n"
+            "/settings - View your risk parameters\n"
             "/help - Show this message"
         )
 
