@@ -111,6 +111,30 @@ body {
     border-radius: 12px;
     border: 1px solid var(--glass-border);
     margin-bottom: 1rem;
+    -webkit-overflow-scrolling: touch;
+    /* Smooth mobile scrolling */
+
+    /* Custom Scrollbar for this container */
+    scrollbar-width: thin;
+    scrollbar-color: var(--acc-cyan) var(--bg-dark);
+}
+
+.table-container::-webkit-scrollbar {
+    height: 8px;
+}
+
+.table-container::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 4px;
+}
+
+.table-container::-webkit-scrollbar-thumb {
+    background: var(--acc-cyan);
+    border-radius: 4px;
+}
+
+.table-container::-webkit-scrollbar-thumb:hover {
+    background: #00c2cc;
 }
 
 .glass-table {
