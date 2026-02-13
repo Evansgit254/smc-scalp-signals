@@ -175,16 +175,23 @@ class SignalService:
             # V18.0: Full Signal Fidelity - Store all metadata
             import json
             
-            # V18.2: Sanitize data for JSON serialization (handle booleans)
+            # V18.2: Robustly sanitize data for JSON serialization (handles booleans and numpy)
             def sanitize_for_json(data):
-                """Convert booleans to integers for JSON compatibility."""
                 if isinstance(data, dict):
-                    return {k: sanitize_for_json(v) for k, v in data.items()}
-                elif isinstance(data, list):
+                    return {str(k): sanitize_for_json(v) for k, v in data.items()}
+                elif isinstance(data, (list, tuple, set)):
                     return [sanitize_for_json(item) for item in data]
                 elif isinstance(data, bool):
-                    return int(data)  # True -> 1, False -> 0
-                return data
+                    return int(data)
+                elif isinstance(data, (int, float, str)) or data is None:
+                    return data
+                elif hasattr(data, 'item') and callable(getattr(data, 'item', None)):
+                    # Handle numpy scalars like np.bool_, np.float64, etc.
+                    try:
+                        return sanitize_for_json(data.item())
+                    except:
+                        return str(data)
+                return str(data)
             
             risk_json = json.dumps(sanitize_for_json(signal_data.get('risk_details', {})))
             score_json = json.dumps(sanitize_for_json(signal_data.get('score_details', {})))
