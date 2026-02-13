@@ -174,8 +174,20 @@ class SignalService:
             
             # V18.0: Full Signal Fidelity - Store all metadata
             import json
-            risk_json = json.dumps(signal_data.get('risk_details', {}))
-            score_json = json.dumps(signal_data.get('score_details', {}))
+            
+            # V18.2: Sanitize data for JSON serialization (handle booleans)
+            def sanitize_for_json(data):
+                """Convert booleans to integers for JSON compatibility."""
+                if isinstance(data, dict):
+                    return {k: sanitize_for_json(v) for k, v in data.items()}
+                elif isinstance(data, list):
+                    return [sanitize_for_json(item) for item in data]
+                elif isinstance(data, bool):
+                    return int(data)  # True -> 1, False -> 0
+                return data
+            
+            risk_json = json.dumps(sanitize_for_json(signal_data.get('risk_details', {})))
+            score_json = json.dumps(sanitize_for_json(signal_data.get('score_details', {})))
             
             conn.execute("""
                 INSERT INTO signals (
