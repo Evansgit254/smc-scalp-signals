@@ -142,8 +142,10 @@ class SignalService:
         db_path = "database/signals.db"
         
         # V18.1: Self-Healing Schema - Ensure all columns exist before insert
+        conn = None
         try:
             conn = sqlite3.connect(db_path)
+            conn.execute("PRAGMA journal_mode=WAL")  # Enable WAL mode for concurrency
             cursor = conn.cursor()
             required_cols = [
                 ("trade_type", "TEXT DEFAULT 'SCALP'"),
@@ -159,12 +161,16 @@ class SignalService:
                 except sqlite3.OperationalError:
                     pass
             conn.commit()
-            conn.close()
-        except:
-            pass
+        except Exception as e:
+            print(f"⚠️  Schema check failed: {e}")
+        finally:
+            if conn:
+                conn.close()
             
+        conn = None
         try:
             conn = sqlite3.connect(db_path)
+            conn.execute("PRAGMA journal_mode=WAL")
             
             # V18.0: Full Signal Fidelity - Store all metadata
             import json
@@ -199,9 +205,11 @@ class SignalService:
                 score_json
             ))
             conn.commit()
-            conn.close()
         except Exception as e:
             print(f"⚠️  Failed to log signal to database: {e}")
+        finally:
+            if conn:
+                conn.close()
 
     
     async def run(self, test_mode: bool = False):

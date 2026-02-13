@@ -26,29 +26,34 @@ def ensure_db_schema():
     if not os.path.exists(DB_SIGNALS):
         return
     
-    conn = sqlite3.connect(DB_SIGNALS)
-    cursor = conn.cursor()
-    
-    # Required columns for High Fidelity Dashboard
-    required_cols = [
-        ("trade_type", "TEXT DEFAULT 'SCALP'"),
-        ("quality_score", "REAL DEFAULT 0.0"),
-        ("regime", "TEXT DEFAULT 'UNKNOWN'"),
-        ("expected_hold", "TEXT DEFAULT 'UNKNOWN'"),
-        ("risk_details", "TEXT DEFAULT '{}'"),
-        ("score_details", "TEXT DEFAULT '{}'")
-    ]
-    
-    for col_name, col_def in required_cols:
-        try:
-            cursor.execute(f"ALTER TABLE signals ADD COLUMN {col_name} {col_def}")
-            print(f"✅ Auto-added missing column: {col_name}")
-        except sqlite3.OperationalError:
-            # Column likely already exists
-            pass
-    
-    conn.commit()
-    conn.close()
+    conn = None
+    try:
+        conn = sqlite3.connect(DB_SIGNALS)
+        conn.execute("PRAGMA journal_mode=WAL")
+        cursor = conn.cursor()
+        
+        # Required columns for High Fidelity Dashboard
+        required_cols = [
+            ("trade_type", "TEXT DEFAULT 'SCALP'"),
+            ("quality_score", "REAL DEFAULT 0.0"),
+            ("regime", "TEXT DEFAULT 'UNKNOWN'"),
+            ("expected_hold", "TEXT DEFAULT 'UNKNOWN'"),
+            ("risk_details", "TEXT DEFAULT '{}'"),
+            ("score_details", "TEXT DEFAULT '{}'")
+        ]
+        
+        for col_name, col_def in required_cols:
+            try:
+                cursor.execute(f"ALTER TABLE signals ADD COLUMN {col_name} {col_def}")
+                print(f"✅ Auto-added missing column: {col_name}")
+            except sqlite3.OperationalError:
+                # Column likely already exists
+                pass
+        
+        conn.commit()
+    finally:
+        if conn:
+            conn.close()
 
 # Run migration on startup
 ensure_db_schema()
@@ -62,78 +67,90 @@ class ClientUpdate(BaseModel):
 
 def get_db_connection(db_path):
     conn = sqlite3.connect(db_path)
+    conn.execute("PRAGMA journal_mode=WAL")
     conn.row_factory = sqlite3.Row
     return conn
 
 @app.get("/api/clients")
 async def get_clients():
-    conn = get_db_connection(DB_CLIENTS)
-    clients = conn.execute("SELECT * FROM clients").fetchall()
-    conn.close()
-    return [dict(ix) for ix in clients]
+    conn = None
+    try:
+        conn = get_db_connection(DB_CLIENTS)
+        clients = conn.execute("SELECT * FROM clients").fetchall()
+        return [dict(ix) for ix in clients]
+    finally:
+        if conn:
+            conn.close()
 
 @app.post("/api/clients/{chat_id}")
 async def update_client(chat_id: str, update: ClientUpdate):
-    conn = get_db_connection(DB_CLIENTS)
-    client = conn.execute("SELECT * FROM clients WHERE telegram_chat_id = ?", (chat_id,)).fetchone()
-    
-    if not client:
-        conn.close()
-        raise HTTPException(status_code=404, detail="Client not found")
-    
-    fields = []
-    values = []
-    
-    if update.account_balance is not None:
-        fields.append("account_balance = ?")
-        values.append(update.account_balance)
-    
-    if update.risk_percent is not None:
-        fields.append("risk_percent = ?")
-        values.append(update.risk_percent)
+    conn = None
+    try:
+        conn = get_db_connection(DB_CLIENTS)
+        client = conn.execute("SELECT * FROM clients WHERE telegram_chat_id = ?", (chat_id,)).fetchone()
         
-    if update.is_active is not None:
-        fields.append("is_active = ?")
-        values.append(1 if update.is_active else 0)
+        if not client:
+            raise HTTPException(status_code=404, detail="Client not found")
         
-    if update.subscription_days is not None:
-        # Calculate new expiry
-        current_expiry_str = client['subscription_expiry']
-        now = datetime.now()
-        if current_expiry_str:
-            try:
-                current_expiry = datetime.strptime(current_expiry_str, "%Y-%m-%d %H:%M:%S.%f") if "." in current_expiry_str else datetime.strptime(current_expiry_str, "%Y-%m-%d %H:%M:%S")
-                start_date = max(now, current_expiry)
-            except:
+        fields = []
+        values = []
+        
+        if update.account_balance is not None:
+            fields.append("account_balance = ?")
+            values.append(update.account_balance)
+        
+        if update.risk_percent is not None:
+            fields.append("risk_percent = ?")
+            values.append(update.risk_percent)
+            
+        if update.is_active is not None:
+            fields.append("is_active = ?")
+            values.append(1 if update.is_active else 0)
+            
+        if update.subscription_days is not None:
+            # Calculate new expiry
+            current_expiry_str = client['subscription_expiry']
+            now = datetime.now()
+            if current_expiry_str:
+                try:
+                    current_expiry = datetime.strptime(current_expiry_str, "%Y-%m-%d %H:%M:%S.%f") if "." in current_expiry_str else datetime.strptime(current_expiry_str, "%Y-%m-%d %H:%M:%S")
+                    start_date = max(now, current_expiry)
+                except:
+                    start_date = now
+            else:
                 start_date = now
-        else:
-            start_date = now
+            
+            new_expiry = start_date + timedelta(days=update.subscription_days)
+            fields.append("subscription_expiry = ?")
+            values.append(new_expiry.strftime("%Y-%m-%d %H:%M:%S"))
+            
+        if update.tier is not None:
+            fields.append("subscription_tier = ?")
+            values.append(update.tier)
+            
+        if fields:
+            fields.append("updated_at = ?")
+            values.append(datetime.now())
+            values.append(chat_id)
+            
+            query = f"UPDATE clients SET {', '.join(fields)} WHERE telegram_chat_id = ?"
+            conn.execute(query, values)
+            conn.commit()
         
-        new_expiry = start_date + timedelta(days=update.subscription_days)
-        fields.append("subscription_expiry = ?")
-        values.append(new_expiry.strftime("%Y-%m-%d %H:%M:%S"))
-        
-    if update.tier is not None:
-        fields.append("subscription_tier = ?")
-        values.append(update.tier)
-        
-    if fields:
-        fields.append("updated_at = ?")
-        values.append(datetime.now())
-        values.append(chat_id)
-        
-        query = f"UPDATE clients SET {', '.join(fields)} WHERE telegram_chat_id = ?"
-        conn.execute(query, values)
-        conn.commit()
-    
-    conn.close()
-    return {"status": "success"}
+        return {"status": "success"}
+    except Exception as e:
+        if isinstance(e, HTTPException): raise e
+        print(f"Error updating client {chat_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        if conn:
+            conn.close()
 
 @app.get("/api/signals")
 async def get_signals():
+    conn = None
     try:
-        conn = sqlite3.connect(DB_SIGNALS)
-        conn.row_factory = sqlite3.Row
+        conn = get_db_connection(DB_SIGNALS)
         # V18.0: Fetch all signal fidelity fields
         cursor = conn.execute("""
             SELECT 
@@ -143,28 +160,38 @@ async def get_signals():
             FROM signals 
             ORDER BY timestamp DESC LIMIT 50
         """)
-        signals = [dict(row) for row in cursor.fetchall()]
-        conn.close()
-        return signals
+        return [dict(row) for row in cursor.fetchall()]
     except Exception as e:
         print(f"Error fetching signals: {e}")
         return []
+    finally:
+        if conn:
+            conn.close()
 
 @app.get("/api/stats")
 async def get_stats():
-    conn_c = get_db_connection(DB_CLIENTS)
-    active_clients = conn_c.execute("SELECT COUNT(*) FROM clients WHERE is_active = 1").fetchone()[0]
-    conn_c.close()
-    
+    active_clients = 0
     signals_today = 0
+    
+    conn_c = None
+    try:
+        conn_c = get_db_connection(DB_CLIENTS)
+        active_clients = conn_c.execute("SELECT COUNT(*) FROM clients WHERE is_active = 1").fetchone()[0]
+    except Exception as e:
+        print(f"Error fetching client stats: {e}")
+    finally:
+        if conn_c: conn_c.close()
+    
+    conn_s = None
     if os.path.exists(DB_SIGNALS):
-        conn_s = get_db_connection(DB_SIGNALS)
-        today = datetime.now().strftime('%Y-%m-%d')
         try:
+            conn_s = get_db_connection(DB_SIGNALS)
+            today = datetime.now().strftime('%Y-%m-%d')
             signals_today = conn_s.execute("SELECT COUNT(*) FROM signals WHERE DATE(timestamp) = ?", (today,)).fetchone()[0]
-        except:
-            pass
-        conn_s.close()
+        except Exception as e:
+            print(f"Error fetching signal stats: {e}")
+        finally:
+            if conn_s: conn_s.close()
         
     return {
         "active_clients": active_clients,
@@ -174,6 +201,7 @@ async def get_stats():
 
 @app.get("/api/analytics/daily")
 async def get_daily_analytics():
+    conn = None
     try:
         conn = get_db_connection(DB_SIGNALS)
         today = datetime.now().strftime('%Y-%m-%d')
@@ -219,8 +247,6 @@ async def get_daily_analytics():
         
         hourly = {row['hour']: row['count'] for row in hourly_rows}
         
-        conn.close()
-        
         return {
             "total_signals": summary['total'] or 0,
             "avg_quality": round(summary['avg_quality'] or 0, 1),
@@ -231,6 +257,9 @@ async def get_daily_analytics():
     except Exception as e:
         print(f"Error calculating analytics: {e}")
         return {"error": str(e)}
+    finally:
+        if conn:
+            conn.close()
 
 # Mount static files for the dashboard
 if os.path.exists("dashboard"):
