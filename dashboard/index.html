@@ -104,18 +104,28 @@
                     <div class="chart-header">
                         <div class="chart-title">Strategy breakdown</div>
                     </div>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; padding: 1rem;">
-                        <div
-                            style="padding: 10px; background: rgba(0,234,144,0.05); border-radius: 8px; text-align: center;">
-                            <div style="font-size: 0.7rem; color: var(--text-dim);">SCALP</div>
-                            <div class="stat-val" id="ana-scalp-sum" style="font-size: 1.2rem;">0/0</div>
-                            <div style="font-size: 0.7rem; color: var(--acc-cyan);" id="ana-scalp-wr">0% WR</div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; padding: 1.25rem;">
+                        <div style="padding: 15px; background: linear-gradient(135deg, rgba(0,234,144,0.08), rgba(0,234,144,0.03)); border: 1px solid rgba(0,234,144,0.1); border-radius: 12px; text-align: center; transition: transform 0.2s;"
+                            onmouseover="this.style.transform='translateY(-2px)'"
+                            onmouseout="this.style.transform='translateY(0)'">
+                            <div
+                                style="font-size: 0.75rem; font-weight: 600; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px;">
+                                SCALP</div>
+                            <div class="stat-val" id="ana-scalp-sum"
+                                style="font-size: 1.5rem; font-weight: 700; color: #fff; margin-bottom: 4px;">0/0</div>
+                            <div style="display: inline-block; padding: 2px 8px; background: rgba(0,234,144,0.1); border-radius: 4px; font-size: 0.75rem; font-weight: 600; color: var(--acc-cyan);"
+                                id="ana-scalp-wr">0% WR</div>
                         </div>
-                        <div
-                            style="padding: 10px; background: rgba(255,215,0,0.05); border-radius: 8px; text-align: center;">
-                            <div style="font-size: 0.7rem; color: var(--text-dim);">SWING</div>
-                            <div class="stat-val" id="ana-swing-sum" style="font-size: 1.2rem;">0/0</div>
-                            <div style="font-size: 0.7rem; color: var(--acc-gold);" id="ana-swing-wr">0% WR</div>
+                        <div style="padding: 15px; background: linear-gradient(135deg, rgba(255,215,0,0.08), rgba(255,215,0,0.03)); border: 1px solid rgba(255,215,0,0.1); border-radius: 12px; text-align: center; transition: transform 0.2s;"
+                            onmouseover="this.style.transform='translateY(-2px)'"
+                            onmouseout="this.style.transform='translateY(0)'">
+                            <div
+                                style="font-size: 0.75rem; font-weight: 600; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px;">
+                                SWING</div>
+                            <div class="stat-val" id="ana-swing-sum"
+                                style="font-size: 1.5rem; font-weight: 700; color: #fff; margin-bottom: 4px;">0/0</div>
+                            <div style="display: inline-block; padding: 2px 8px; background: rgba(255,215,0,0.1); border-radius: 4px; font-size: 0.75rem; font-weight: 600; color: var(--acc-gold);"
+                                id="ana-swing-wr">0% WR</div>
                         </div>
                     </div>
                 </div>
@@ -144,10 +154,15 @@
                     <div class="chart-header">
                         <div class="chart-title">Top performer</div>
                     </div>
-                    <div id="top-performer-content" style="padding: 1rem; text-align: center;">
-                        <div style="font-size: 2rem; color: var(--acc-gold); margin-bottom: 0.5rem;" id="top-symbol">---
-                        </div>
-                        <div style="font-size: 0.8rem; color: var(--text-dim);" id="top-stats">0 wins / 0 signals</div>
+                    <div id="top-performer-content"
+                        style="padding: 1.5rem; text-align: center; background: radial-gradient(circle at center, rgba(255,215,0,0.05), transparent);">
+                        <div style="font-size: 2.2rem; font-weight: 800; color: var(--acc-gold); margin-bottom: 0.25rem; text-shadow: 0 0 20px rgba(255,215,0,0.2);"
+                            id="top-symbol">---</div>
+                        <div
+                            style="font-size: 0.75rem; font-weight: 600; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 1rem;">
+                            Daily Champion</div>
+                        <div style="display: inline-block; padding: 6px 12px; background: rgba(255,215,0,0.1); border-radius: 20px; font-size: 0.8rem; color: #fff; font-weight: 500;"
+                            id="top-stats">0 wins / 0 signals</div>
                     </div>
                 </div>
 
