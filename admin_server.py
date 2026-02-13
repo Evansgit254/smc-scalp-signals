@@ -274,7 +274,7 @@ async def get_daily_analytics():
             GROUP BY symbol
             ORDER BY wins DESC, count DESC
             LIMIT 1
-        """).fetchone()
+        """, (today,)).fetchone()
 
         return {
             "total_signals": summary['total'] or 0,
