@@ -4,9 +4,16 @@ from fastapi.responses import HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 import sqlite3
 import os
+import json
+import stripe
 from datetime import datetime, timedelta
 from typing import List, Optional
 from pydantic import BaseModel
+from core.client_manager import ClientManager
+
+# Stripe Configuration
+stripe.api_key = os.getenv("STRIPE_API_KEY")
+STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET")
 
 app = FastAPI(title="Trading Expert Admin Dashboard")
 
@@ -145,6 +152,57 @@ async def update_client(chat_id: str, update: ClientUpdate):
     finally:
         if conn:
             conn.close()
+
+@app.post("/api/stripe/webhook")
+async def stripe_webhook(request: Request):
+    payload = await request.body()
+    sig_header = request.headers.get("stripe-signature")
+    
+    if not STRIPE_WEBHOOK_SECRET:
+        print("⚠️ STRIPE_WEBHOOK_SECRET not set. Webhook bypass for DEBUG only.")
+    
+    try:
+        event = None
+        if STRIPE_WEBHOOK_SECRET:
+            event = stripe.Webhook.construct_event(
+                payload, sig_header, STRIPE_WEBHOOK_SECRET
+            )
+        else:
+            # Fallback for debug if secret is missing
+            event = json.loads(payload)
+            
+    except Exception as e:
+        print(f"⚠️ Webhook signature verification failed: {e}")
+        raise HTTPException(status_code=400, detail="Invalid signature")
+
+    # Handle the checkout.session.completed event
+    if event["type"] == "checkout.session.completed":
+        session = event["data"]["object"]
+        
+        # Extract metadata
+        metadata = session.get("metadata", {})
+        chat_id = metadata.get("telegram_chat_id")
+        days = int(metadata.get("subscription_days", 30))
+        tier = metadata.get("tier", "BASIC")
+        
+        if chat_id:
+            print(f"💰 PAYMENT SUCCESS: Activating {chat_id} for {days} days ({tier})")
+            client_manager = ClientManager(DB_CLIENTS)
+            result = client_manager.update_subscription(chat_id, days, tier)
+            
+            # Also ensure client is marked as active
+            if result.get('status') == 'success':
+                conn = get_db_connection(DB_CLIENTS)
+                conn.execute("UPDATE clients SET is_active = 1 WHERE telegram_chat_id = ?", (chat_id,))
+                conn.commit()
+                conn.close()
+                print(f"✅ Client {chat_id} activated automatically.")
+            else:
+                print(f"❌ Failed to activate client {chat_id}: {result.get('message')}")
+        else:
+            print("⚠️ Webhook received but no telegram_chat_id in metadata.")
+
+    return {"status": "success"}
 
 @app.get("/api/signals")
 async def get_signals():
