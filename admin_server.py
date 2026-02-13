@@ -206,7 +206,7 @@ async def get_daily_analytics():
         conn = get_db_connection(DB_SIGNALS)
         today = datetime.now().strftime('%Y-%m-%d')
         
-        # 1. Total Signals & Average Quality
+        # 1. Overall Summary
         summary = conn.execute("""
             SELECT 
                 COUNT(*) as total,
@@ -215,7 +215,22 @@ async def get_daily_analytics():
             WHERE DATE(timestamp) = ?
         """, (today,)).fetchone()
         
-        # 2. BUY vs SELL Bias
+        # 2. Performance by Trade Type (SCALP vs SWING)
+        type_stats = conn.execute("""
+            SELECT 
+                trade_type,
+                COUNT(*) as total,
+                SUM(CASE WHEN result IN ('TP1', 'TP2', 'TP3') OR max_tp_reached > 0 THEN 1 ELSE 0 END) as wins,
+                SUM(CASE WHEN result = 'SL' THEN 1 ELSE 0 END) as losses,
+                AVG(quality_score) as avg_quality
+            FROM signals 
+            WHERE DATE(timestamp) = ?
+            GROUP BY trade_type
+        """, (today,)).fetchall()
+        
+        stats_by_type = {row['trade_type']: dict(row) for row in type_stats}
+        
+        # 3. BUY vs SELL Bias
         bias_rows = conn.execute("""
             SELECT direction, COUNT(*) as count 
             FROM signals 
@@ -225,9 +240,13 @@ async def get_daily_analytics():
         
         bias = {row['direction']: row['count'] for row in bias_rows}
         
-        # 3. Top Assets
+        # 4. Top Assets (by volume and quality)
         asset_rows = conn.execute("""
-            SELECT symbol, COUNT(*) as count 
+            SELECT 
+                symbol, 
+                COUNT(*) as count,
+                AVG(quality_score) as avg_quality,
+                SUM(CASE WHEN result IN ('TP1', 'TP2', 'TP3') OR max_tp_reached > 0 THEN 1 ELSE 0 END) as wins
             FROM signals 
             WHERE DATE(timestamp) = ?
             GROUP BY symbol
@@ -237,7 +256,7 @@ async def get_daily_analytics():
         
         assets = [dict(row) for row in asset_rows]
         
-        # 4. Hourly Heatmap
+        # 5. Hourly Heatmap
         hourly_rows = conn.execute("""
             SELECT STRFTIME('%H', timestamp) as hour, COUNT(*) as count
             FROM signals
@@ -247,12 +266,24 @@ async def get_daily_analytics():
         
         hourly = {row['hour']: row['count'] for row in hourly_rows}
         
+        # 6. Best Performing Symbol & Strategy
+        best_symbol = conn.execute("""
+            SELECT symbol, COUNT(*) as count, SUM(CASE WHEN result IN ('TP1', 'TP2', 'TP3') OR max_tp_reached > 0 THEN 1 ELSE 0 END) as wins
+            FROM signals 
+            WHERE DATE(timestamp) = ?
+            GROUP BY symbol
+            ORDER BY wins DESC, count DESC
+            LIMIT 1
+        """).fetchone()
+
         return {
             "total_signals": summary['total'] or 0,
             "avg_quality": round(summary['avg_quality'] or 0, 1),
+            "stats_by_type": stats_by_type,
             "bias": bias,
             "top_assets": assets,
-            "hourly_heatmap": hourly
+            "hourly_heatmap": hourly,
+            "top_performer": dict(best_symbol) if best_symbol else None
         }
     except Exception as e:
         print(f"Error calculating analytics: {e}")

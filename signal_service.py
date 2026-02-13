@@ -153,7 +153,10 @@ class SignalService:
                 ("regime", "TEXT DEFAULT 'UNKNOWN'"),
                 ("expected_hold", "TEXT DEFAULT 'UNKNOWN'"),
                 ("risk_details", "TEXT DEFAULT '{}'"),
-                ("score_details", "TEXT DEFAULT '{}'")
+                ("score_details", "TEXT DEFAULT '{}'"),
+                ("result", "TEXT DEFAULT 'OPEN'"),
+                ("closed_at", "TIMESTAMP"),
+                ("max_tp_reached", "INTEGER DEFAULT 0")
             ]
             for col_name, col_def in required_cols:
                 try:

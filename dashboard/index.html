@@ -102,16 +102,20 @@
                 <!-- Daily Volume & Avg Quality -->
                 <div class="chart-card">
                     <div class="chart-header">
-                        <div class="chart-title">Daily Summary</div>
+                        <div class="chart-title">Strategy breakdown</div>
                     </div>
-                    <div style="display: flex; gap: 2rem; justify-content: center; padding: 1rem 0;">
-                        <div style="text-align: center;">
-                            <div class="stat-val" id="ana-total">0</div>
-                            <div class="stat-label">Total Signals</div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; padding: 1rem;">
+                        <div
+                            style="padding: 10px; background: rgba(0,234,144,0.05); border-radius: 8px; text-align: center;">
+                            <div style="font-size: 0.7rem; color: var(--text-dim);">SCALP</div>
+                            <div class="stat-val" id="ana-scalp-sum" style="font-size: 1.2rem;">0/0</div>
+                            <div style="font-size: 0.7rem; color: var(--acc-cyan);" id="ana-scalp-wr">0% WR</div>
                         </div>
-                        <div style="text-align: center;">
-                            <div class="stat-val" id="ana-quality" style="color: var(--acc-cyan)">0.0</div>
-                            <div class="stat-label">Avg Quality</div>
+                        <div
+                            style="padding: 10px; background: rgba(255,215,0,0.05); border-radius: 8px; text-align: center;">
+                            <div style="font-size: 0.7rem; color: var(--text-dim);">SWING</div>
+                            <div class="stat-val" id="ana-swing-sum" style="font-size: 1.2rem;">0/0</div>
+                            <div style="font-size: 0.7rem; color: var(--acc-gold);" id="ana-swing-wr">0% WR</div>
                         </div>
                     </div>
                 </div>
@@ -138,10 +142,12 @@
                 <!-- Top Assets -->
                 <div class="chart-card">
                     <div class="chart-header">
-                        <div class="chart-title">Symbol Distribution</div>
+                        <div class="chart-title">Top performer</div>
                     </div>
-                    <div class="analytics-bar-list" id="asset-list">
-                        <!-- Populated by JS -->
+                    <div id="top-performer-content" style="padding: 1rem; text-align: center;">
+                        <div style="font-size: 2rem; color: var(--acc-gold); margin-bottom: 0.5rem;" id="top-symbol">---
+                        </div>
+                        <div style="font-size: 0.8rem; color: var(--text-dim);" id="top-stats">0 wins / 0 signals</div>
                     </div>
                 </div>
 
@@ -215,9 +221,15 @@
                 const res = await fetch('/api/analytics/daily');
                 const data = await res.json();
 
-                // 1. Summary
-                document.getElementById('ana-total').innerText = data.total_signals;
-                document.getElementById('ana-quality').innerText = data.avg_quality;
+                // 1. Scalp vs Swing Stats
+                const scalp = data.stats_by_type['SCALP'] || { wins: 0, total: 0 };
+                const swing = data.stats_by_type['SWING'] || { wins: 0, total: 0 };
+
+                document.getElementById('ana-scalp-sum').innerText = `${scalp.wins}/${scalp.total}`;
+                document.getElementById('ana-scalp-wr').innerText = `${scalp.total > 0 ? Math.round((scalp.wins / scalp.total) * 100) : 0}% WR`;
+
+                document.getElementById('ana-swing-sum').innerText = `${swing.wins}/${swing.total}`;
+                document.getElementById('ana-swing-wr').innerText = `${swing.total > 0 ? Math.round((swing.wins / swing.total) * 100) : 0}% WR`;
 
                 // 2. Bias (Donut)
                 const buys = data.bias['BUY'] || 0;
@@ -238,6 +250,12 @@
                 } else {
                     sub.innerText = 'NEUTRAL';
                     sub.style.color = 'var(--acc-gold)';
+                }
+
+                // 3. Top Performer
+                if (data.top_performer) {
+                    document.getElementById('top-symbol').innerText = data.top_performer.symbol;
+                    document.getElementById('top-stats').innerText = `${data.top_performer.wins} wins / ${data.top_performer.count} signals`;
                 }
 
                 // 3. Top Assets
