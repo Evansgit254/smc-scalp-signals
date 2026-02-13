@@ -161,3 +161,33 @@ def test_get_signals_with_data(tmp_path):
         assert response.status_code == 200
         assert len(response.json()) == 1
         assert response.json()[0]['symbol'] == 'EURUSD'
+
+def test_daily_analytics(tmp_path):
+    signals_db = str(tmp_path / "signals_analytics.db")
+    conn = sqlite3.connect(signals_db)
+    conn.execute("""
+        CREATE TABLE signals (
+            timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            symbol TEXT,
+            direction TEXT,
+            quality_score REAL
+        )
+    """)
+    today = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    conn.execute("INSERT INTO signals (timestamp, symbol, direction, quality_score) VALUES (?, ?, ?, ?)", (today, 'EURUSD', 'BUY', 8.5))
+    conn.execute("INSERT INTO signals (timestamp, symbol, direction, quality_score) VALUES (?, ?, ?, ?)", (today, 'EURUSD', 'BUY', 7.5))
+    conn.execute("INSERT INTO signals (timestamp, symbol, direction, quality_score) VALUES (?, ?, ?, ?)", (today, 'GBPUSD', 'SELL', 6.0))
+    conn.commit()
+    conn.close()
+
+    with patch('admin_server.DB_SIGNALS', signals_db):
+        response = client.get("/api/analytics/daily")
+        assert response.status_code == 200
+        data = response.json()
+        assert data['total_signals'] == 3
+        # Average of 8.5, 7.5, 6.0 = 22.0 / 3 = 7.333... -> rounded to 1 decimal in endpoint is 7.3
+        assert data['avg_quality'] == 7.3
+        assert data['bias']['BUY'] == 2
+        assert data['bias']['SELL'] == 1
+        assert data['top_assets'][0]['symbol'] == 'EURUSD'
+        assert data['top_assets'][0]['count'] == 2
