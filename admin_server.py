@@ -69,7 +69,7 @@ def ensure_db_schema():
 ensure_db_schema()
 
 def ensure_config_table():
-    """Ensure system_config table exists in clients.db"""
+    """Ensure system_config table exists and has required defaults."""
     conn = None
     try:
         conn = sqlite3.connect(DB_CLIENTS)
@@ -80,19 +80,25 @@ def ensure_config_table():
                 type TEXT
             )
         """)
-        # Seed default values if empty
+        
+        # Ensure defaults exist (INSERT OR IGNORE)
+        defaults = [
+            ("system_status", "ACTIVE", "str"),
+            ("risk_per_trade", "2.0", "float"),
+            ("max_concurrent_trades", "4", "int"),
+            ("min_quality_score", "5.0", "float"),
+            ("news_filter_minutes", "30", "int")
+        ]
+        
         cursor = conn.cursor()
-        if cursor.execute("SELECT COUNT(*) FROM system_config").fetchone()[0] == 0:
-            defaults = [
-                ("system_status", "ACTIVE", "str"),
-                ("risk_per_trade", "2.0", "float"),
-                ("max_concurrent_trades", "4", "int"),
-                ("min_quality_score", "5.0", "float"),
-                ("news_filter_minutes", "30", "int")
-            ]
-            cursor.executemany("INSERT INTO system_config (key, value, type) VALUES (?, ?, ?)", defaults)
-            conn.commit()
-            print("✅ Initialized system_config with defaults")
+        cursor.executemany("""
+            INSERT OR IGNORE INTO system_config (key, value, type) 
+            VALUES (?, ?, ?)
+        """, defaults)
+        
+        conn.commit()
+        print("✅ Verified system_config defaults")
+            
     except Exception as e:
         print(f"⚠️ Config table init failed: {e}")
     finally:

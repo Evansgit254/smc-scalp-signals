@@ -15,6 +15,12 @@ class TestServerConfig(unittest.TestCase):
     def setUp(self):
         self.client = TestClient(app)
         self.db_path = DB_CLIENTS
+        
+        # Authenticate
+        auth_res = self.client.post("/api/token", data={"username": "admin", "password": "admin123"})
+        self.token = auth_res.json()["access_token"]
+        self.headers = {"Authorization": f"Bearer {self.token}"}
+        
         # Backup original risk value
         self.original_risk = 2.0
         try:
@@ -33,11 +39,12 @@ class TestServerConfig(unittest.TestCase):
         conn.commit()
         conn.close()
         # Reset in memory config
+        import config.config as cfg
         cfg.RISK_PER_TRADE_PERCENT = self.original_risk
 
     def test_get_config(self):
         """Test retrieving configuration via API"""
-        response = self.client.get("/api/config")
+        response = self.client.get("/api/config", headers=self.headers)
         self.assertEqual(response.status_code, 200)
         data = response.json()
         self.assertIn("risk_per_trade", data)
@@ -47,7 +54,7 @@ class TestServerConfig(unittest.TestCase):
         """Test updating config via API and verifying service loads it"""
         # 1. Update Config via API
         new_risk = 5.5
-        response = self.client.post("/api/config", json={"key": "risk_per_trade", "value": str(new_risk)})
+        response = self.client.post("/api/config", json={"key": "risk_per_trade", "value": str(new_risk)}, headers=self.headers)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["value"], str(new_risk))
 
@@ -70,6 +77,32 @@ class TestServerConfig(unittest.TestCase):
         
         self.assertEqual(cfg.RISK_PER_TRADE_PERCENT, new_risk)
         print(f"\n✅ Verified: Config module updated to {cfg.RISK_PER_TRADE_PERCENT}% (Expected {new_risk}%)")
+
+    def test_ensure_defaults(self):
+        """Test that missing defaults are inserted even if table exists"""
+        # 1. Clear config table
+        conn = sqlite3.connect(self.db_path)
+        conn.execute("DELETE FROM system_config")
+        
+        # 2. Insert ONE random key (making count > 0)
+        conn.execute("INSERT INTO system_config (key, value, type) VALUES ('custom_key', '123', 'int')")
+        conn.commit()
+        conn.close()
+        
+        # 3. Run ensure_config_table (via import or calling it if we made it importable)
+        # Since it runs on import, we need to call it manually. 
+        # But we need to import it properly. 
+        from admin_server import ensure_config_table
+        ensure_config_table()
+        
+        # 4. Verify defaults are back
+        conn = sqlite3.connect(self.db_path)
+        risk = conn.execute("SELECT value FROM system_config WHERE key='risk_per_trade'").fetchone()
+        conn.close()
+        
+        self.assertIsNotNone(risk)
+        self.assertEqual(float(risk[0]), 2.0)
+        print("\n✅ Verified: Defaults backfilled successfully")
 
 if __name__ == '__main__':
     unittest.main()
