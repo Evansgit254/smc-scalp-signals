@@ -750,16 +750,16 @@ async def get_logs(service: str, lines: int = 100, current_user: User = Depends(
     allowed_services = [
         "smc-admin-dashboard",
         "smc-signal-service",
-        "smc-interactive-bot"
+        "smc-interactive-bot",
+        "smc-signal-tracker"
     ]
     
     if service not in allowed_services:
         raise HTTPException(status_code=400, detail="Invalid service name")
 
     try:
-        # Using -u for service and -n for number of lines
-        # We use sudo as journalctl usually requires it, but the user might have configured perms
-        cmd = ["sudo", "journalctl", "-u", f"{service}.service", "-n", str(lines), "--no-pager"]
+        # journalctl can be read without sudo if user is in systemd-journal group
+        cmd = ["journalctl", "-u", f"{service}.service", "-n", str(lines), "--no-pager"]
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=5)
         
         if result.returncode != 0:
