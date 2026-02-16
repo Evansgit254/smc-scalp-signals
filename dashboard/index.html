@@ -637,9 +637,12 @@
         // Auto-refresh clients every 30 seconds
         setInterval(loadClients, 30000);
 
-        loadClients();
-        await loadStats();
-        setInterval(loadStats, 10000);
+        // Initialize dashboard (wrapped in async IIFE to allow await)
+        (async () => {
+            loadClients();
+            await loadStats();
+            setInterval(loadStats, 10000);
+        })();
     </script>
 </body>
 
