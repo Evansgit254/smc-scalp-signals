@@ -180,6 +180,13 @@
         </div>
     </div>
 
+    <div id="settings-view" style="display: none;">
+        <div class="chart-card" style="padding: 2rem; text-align: center;">
+            <h2 style="color: var(--acc-cyan); margin-bottom: 1rem;">⚙️ Server Configuration</h2>
+            <p style="color: var(--text-dim);">Server settings and configuration coming soon...</p>
+        </div>
+    </div>
+
     <!-- Edit Modal -->
     <div class="modal" id="edit-modal">
         <div class="modal-content">
@@ -485,6 +492,8 @@
             document.getElementById('clients-view').style.display = 'none';
             document.getElementById('signals-view').style.display = 'none';
             document.getElementById('performance-view').style.display = 'none';
+            const settingsView = document.getElementById('settings-view');
+            if (settingsView) settingsView.style.display = 'none';
 
             // Show selected
             const target = document.getElementById(view + '-view');
@@ -494,7 +503,8 @@
             const titles = {
                 'clients': 'User Management',
                 'signals': 'Signal History',
-                'performance': 'Daily Performance Analysis'
+                'performance': 'Daily Performance Analysis',
+                'settings': 'Server Configuration'
             };
             document.getElementById('view-title').innerText = titles[view] || 'Dashboard';
 
