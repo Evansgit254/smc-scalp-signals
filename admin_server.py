@@ -582,14 +582,14 @@ async def get_daily_analytics(current_user: User = Depends(get_current_user)):
         # 2. Performance by Trade Type (SCALP vs SWING)
         type_stats = conn.execute("""
             SELECT 
-                trade_type,
+                UPPER(TRIM(trade_type)) as trade_type,
                 COUNT(*) as total,
                 SUM(CASE WHEN result IN ('TP1', 'TP2', 'TP3') OR max_tp_reached > 0 THEN 1 ELSE 0 END) as wins,
                 SUM(CASE WHEN result = 'SL' THEN 1 ELSE 0 END) as losses,
                 AVG(quality_score) as avg_quality
             FROM signals 
             WHERE DATE(timestamp) = ?
-            GROUP BY trade_type
+            GROUP BY UPPER(TRIM(trade_type))
         """, (today,)).fetchall()
         
         stats_by_type = {row['trade_type']: dict(row) for row in type_stats}
@@ -647,7 +647,11 @@ async def get_daily_analytics(current_user: User = Depends(get_current_user)):
             "bias": bias,
             "top_assets": assets,
             "hourly_heatmap": hourly,
-            "top_performer": dict(best_symbol) if best_symbol else None
+            "top_performer": dict(best_symbol) if best_symbol else None,
+            "debug": {
+                "server_today": today,
+                "raw_types": [row['trade_type'] for row in type_stats]
+            }
         }
     except Exception as e:
         print(f"Error calculating analytics: {e}")
