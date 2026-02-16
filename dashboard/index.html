@@ -11,7 +11,19 @@
 
 <body>
 
-    <div class="sidebar">
+    <!-- Login Screen -->
+    <div id="login-screen">
+        <h1 style="color: var(--acc-cyan); margin-bottom: 2rem; font-weight: 800; letter-spacing: 2px;">QUANT ADMIN</h1>
+        <div class="login-card">
+            <h2>Authentication</h2>
+            <input type="text" id="login-user" placeholder="Username" spellcheck="false">
+            <input type="password" id="login-pass" placeholder="Password">
+            <button onclick="login()">LOGIN TO DASHBOARD</button>
+            <div id="login-msg"></div>
+        </div>
+    </div>
+
+    <div class="sidebar" id="sidebar" style="display: none;">
         <div class="logo">
             <i class="fas fa-microchip"></i>
             QUANT ADMIN
