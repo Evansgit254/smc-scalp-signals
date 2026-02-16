@@ -536,13 +536,25 @@
 
         async function loadSignals() {
             try {
+                // showToast("Loading signals...", "info"); // DEBUG
                 const res = await apiFetch('/api/signals');
                 if (res.status === 401) return logout();
-                allSignals = await res.json();
-                renderSignals(allSignals || []);
+
+                const data = await res.json();
+                console.log("Signals loaded:", data); // DEBUG
+
+                if (Array.isArray(data)) {
+                    allSignals = data;
+                    renderSignals(allSignals);
+                    // showToast(`Loaded ${allSignals.length} signals`); // DEBUG
+                } else {
+                    console.error("Expected array but got:", data);
+                    showToast("Error: API returned invalid data format", "error");
+                    renderSignals([]);
+                }
             } catch (e) {
                 console.error("Signal load error:", e);
-                showToast("Failed to load signals", "error");
+                showToast("Failed to load signals: " + e.message, "error");
                 renderSignals([]);
             }
         }

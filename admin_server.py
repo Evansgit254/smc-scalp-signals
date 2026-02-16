@@ -28,8 +28,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-DB_CLIENTS = "database/clients.db"
-DB_SIGNALS = "database/signals.db"
+DB_BASE = os.path.dirname(os.path.abspath(__file__))
+DB_CLIENTS = os.path.join(DB_BASE, "database/clients.db")
+DB_SIGNALS = os.path.join(DB_BASE, "database/signals.db")
 
 def ensure_db_schema():
     """V18.1: Automatic Schema Migration - Ensures all required columns exist."""
