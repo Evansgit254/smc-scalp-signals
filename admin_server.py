@@ -65,6 +65,77 @@ def ensure_db_schema():
 # Run migration on startup
 ensure_db_schema()
 
+def ensure_config_table():
+    """Ensure system_config table exists in clients.db"""
+    conn = None
+    try:
+        conn = sqlite3.connect(DB_CLIENTS)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS system_config (
+                key TEXT PRIMARY KEY,
+                value TEXT,
+                type TEXT
+            )
+        """)
+        # Seed default values if empty
+        cursor = conn.cursor()
+        if cursor.execute("SELECT COUNT(*) FROM system_config").fetchone()[0] == 0:
+            defaults = [
+                ("system_status", "ACTIVE", "str"),
+                ("risk_per_trade", "2.0", "float"),
+                ("max_concurrent_trades", "4", "int"),
+                ("min_quality_score", "5.0", "float"),
+                ("news_filter_minutes", "30", "int")
+            ]
+            cursor.executemany("INSERT INTO system_config (key, value, type) VALUES (?, ?, ?)", defaults)
+            conn.commit()
+            print("✅ Initialized system_config with defaults")
+    except Exception as e:
+        print(f"⚠️ Config table init failed: {e}")
+    finally:
+        if conn: conn.close()
+
+ensure_config_table()
+
+class ConfigUpdate(BaseModel):
+    key: str
+    value: str
+
+@app.get("/api/config")
+async def get_config():
+    """Get all system configuration settings"""
+    conn = None
+    try:
+        conn = get_db_connection(DB_CLIENTS)
+        rows = conn.execute("SELECT key, value, type FROM system_config").fetchall()
+        config = {}
+        for row in rows:
+            val = row['value']
+            if row['type'] == 'int': val = int(val)
+            elif row['type'] == 'float': val = float(val)
+            elif row['type'] == 'bool': val = (val.lower() == 'true')
+            config[row['key']] = val
+        return config
+    except Exception as e:
+        print(f"Error fetching config: {e}")
+        return {}
+    finally:
+        if conn: conn.close()
+
+@app.post("/api/config")
+async def update_config(update: ConfigUpdate):
+    """Update a specific configuration setting"""
+    conn = None
+    try:
+        conn = get_db_connection(DB_CLIENTS)
+        conn.execute("UPDATE system_config SET value = ? WHERE key = ?", (str(update.value), update.key))
+        conn.commit()
+        return {"status": "success", "key": update.key, "value": update.value}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        if conn: conn.close()
+
 class ClientUpdate(BaseModel):
     account_balance: Optional[float] = None
     risk_percent: Optional[float] = None

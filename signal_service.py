@@ -72,17 +72,60 @@ class SignalService:
         """Mark signal as sent to prevent duplicates."""
         sig_hash = self._signal_hash(signal_data)
         self.sent_signals[sig_hash] = datetime.now()
+
+    def _load_dynamic_config(self):
+        """Load configuration overrides from database"""
+        import sqlite3
+        import config.config as cfg
+        
+        try:
+            conn = sqlite3.connect("database/clients.db")
+            conn.row_factory = sqlite3.Row
+            rows = conn.execute("SELECT key, value, type FROM system_config").fetchall()
+            conn.close()
+            
+            print("⚙️  Loading dynamic configuration...")
+            for row in rows:
+                key = row['key']
+                val = row['value']
+                
+                # Type conversion
+                if row['type'] == 'int': val = int(val)
+                elif row['type'] == 'float': val = float(val)
+                elif row['type'] == 'bool': val = (val.lower() == 'true')
+                
+                # Apply to config module if exists
+                if hasattr(cfg, key.upper()):
+                    setattr(cfg, key.upper(), val)
+                    print(f"   🔹 {key.upper()} = {val}")
+                
+                # Special handling for system status
+                if key == 'system_status':
+                    if val != 'ACTIVE':
+                        self.running = False # This pauses the NEXT cycle, need to handle current
+                    else:
+                        self.running = True
+                        
+        except Exception as e:
+            print(f"⚠️  Failed to load dynamic config: {e}")
     
     async def run_cycle(self) -> Tuple[int, int]:
         """
         Run one signal generation cycle.
         Returns: (total_signals, sent_count)
         """
+        # V19.0: Dynamic Configuration Loading
+        self._load_dynamic_config()
+        
         self.cycle_count += 1
         print(f"\n{'='*60}")
         print(f"🔄 CYCLE #{self.cycle_count} - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
         print(f"{'='*60}")
         
+        if not self.running:
+            print("⏸️  System is PAUSED via Server Config. Skipping cycle.")
+            return 0, 0
+            
         # Cleanup old tracked signals
         self._cleanup_old_signals()
         

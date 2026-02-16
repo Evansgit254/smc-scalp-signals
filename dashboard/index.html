@@ -181,9 +181,61 @@
     </div>
 
     <div id="settings-view" style="display: none;">
-        <div class="chart-card" style="padding: 2rem; text-align: center;">
-            <h2 style="color: var(--acc-cyan); margin-bottom: 1rem;">⚙️ Server Configuration</h2>
-            <p style="color: var(--text-dim);">Server settings and configuration coming soon...</p>
+        <div class="chart-card" style="padding: 2rem;">
+            <div class="chart-header" style="display:flex; justify-content:space-between; margin-bottom: 2rem;">
+                <div class="chart-title">⚙️ Server Configuration</div>
+                <button onclick="saveConfig()" style="width: auto; padding: 10px 20px;">SAVE CONFIG</button>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
+                <!-- System Control -->
+                <div style="background: rgba(255,255,255,0.03); padding: 1.5rem; border-radius: 12px;">
+                    <h3 style="color: var(--acc-cyan); margin-bottom: 1.5rem; font-size: 1.1rem;">System Control</h3>
+
+                    <div class="setting-row"
+                        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                        <div>
+                            <div style="font-weight: 600; margin-bottom: 4px;">Master Switch</div>
+                            <div style="font-size: 0.8rem; color: var(--text-dim);">Pause/Resume Signal Generation</div>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="cfg-system-status">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="setting-row">
+                        <label style="display: block; font-size: 0.9rem; margin-bottom: 8px;">News Filter Wash Zone
+                            (Min)</label>
+                        <input type="number" id="cfg-news-filter" class="dark-input"
+                            style="width: 100%; padding: 10px; background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); color: #fff; border-radius: 6px;">
+                    </div>
+                </div>
+
+                <!-- Risk Management -->
+                <div style="background: rgba(255,255,255,0.03); padding: 1.5rem; border-radius: 12px;">
+                    <h3 style="color: var(--acc-gold); margin-bottom: 1.5rem; font-size: 1.1rem;">Risk Parameters</h3>
+
+                    <div class="setting-row" style="margin-bottom: 1.5rem;">
+                        <label style="display: block; font-size: 0.9rem; margin-bottom: 8px;">Risk Per Trade (%)</label>
+                        <input type="number" step="0.1" id="cfg-risk" class="dark-input"
+                            style="width: 100%; padding: 10px; background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); color: #fff; border-radius: 6px;">
+                    </div>
+
+                    <div class="setting-row" style="margin-bottom: 1.5rem;">
+                        <label style="display: block; font-size: 0.9rem; margin-bottom: 8px;">Max Concurrent
+                            Trades</label>
+                        <input type="number" id="cfg-max-trades" class="dark-input"
+                            style="width: 100%; padding: 10px; background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); color: #fff; border-radius: 6px;">
+                    </div>
+
+                    <div class="setting-row">
+                        <label style="display: block; font-size: 0.9rem; margin-bottom: 8px;">Min Quality Score</label>
+                        <input type="number" step="0.1" id="cfg-min-quality" class="dark-input"
+                            style="width: 100%; padding: 10px; background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); color: #fff; border-radius: 6px;">
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -653,8 +705,55 @@
         (async () => {
             loadClients();
             await loadStats();
+            await loadConfig();
             setInterval(loadStats, 10000);
         })();
+
+        async function loadConfig() {
+            try {
+                const res = await fetch('/api/config');
+                const config = await res.json();
+
+                if (config.system_status) {
+                    document.getElementById('cfg-system-status').checked = (config.system_status === 'ACTIVE');
+                }
+                if (config.risk_per_trade) document.getElementById('cfg-risk').value = config.risk_per_trade;
+                if (config.max_concurrent_trades) document.getElementById('cfg-max-trades').value = config.max_concurrent_trades;
+                if (config.min_quality_score) document.getElementById('cfg-min-quality').value = config.min_quality_score;
+                if (config.news_filter_minutes) document.getElementById('cfg-news-filter').value = config.news_filter_minutes;
+
+            } catch (e) {
+                console.error("Config load failed:", e);
+                showToast("Failed to load config", "error");
+            }
+        }
+
+        async function saveConfig() {
+            const updates = [
+                { key: 'system_status', value: document.getElementById('cfg-system-status').checked ? 'ACTIVE' : 'PAUSED' },
+                { key: 'risk_per_trade', value: document.getElementById('cfg-risk').value },
+                { key: 'max_concurrent_trades', value: document.getElementById('cfg-max-trades').value },
+                { key: 'min_quality_score', value: document.getElementById('cfg-min-quality').value },
+                { key: 'news_filter_minutes', value: document.getElementById('cfg-news-filter').value }
+            ];
+
+            let success = true;
+            for (const update of updates) {
+                try {
+                    await fetch('/api/config', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(update)
+                    });
+                } catch (e) {
+                    print(e);
+                    success = false;
+                }
+            }
+
+            if (success) showToast("Configuration Saved!");
+            else showToast("Some settings failed to save", "error");
+        }
     </script>
 </body>
 
