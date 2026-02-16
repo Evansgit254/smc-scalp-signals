@@ -60,7 +60,8 @@
                             <th>Balance</th>
                             <th>Tier</th>
                             <th>Expiry</th>
-                            <th>Status</th>
+                            <th>Signals</th>
+                            <th>Dashboard</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
@@ -320,20 +321,48 @@
             body.innerHTML = '';
 
             clients.forEach(c => {
-                const isActive = c.is_active;
+                const signalsActive = c.is_active;
+                const dashboardActive = c.dashboard_access;
+                const expiry = c.subscription_expiry ? new Date(c.subscription_expiry) : null;
+                const now = new Date();
+                const isExpired = expiry && expiry < now;
+                const daysLeft = expiry ? Math.ceil((expiry - now) / (1000 * 60 * 60 * 24)) : null;
+
+                let expiryDisplay = 'N/A';
+                let expiryColor = 'var(--text-dim)';
+                if (expiry) {
+                    expiryDisplay = expiry.toISOString().split('T')[0];
+                    if (daysLeft <= 3) expiryColor = '#ff4d4d';
+                    else if (daysLeft <= 7) expiryColor = 'var(--acc-gold)';
+                    else expiryColor = 'var(--acc-cyan)';
+                }
+
                 body.innerHTML += `
                     <tr>
                         <td style="font-family: monospace">${c.telegram_chat_id}</td>
                         <td>$${c.account_balance.toFixed(2)}</td>
                         <td><span class="status-badge" style="border: 1px solid var(--acc-gold)">${c.subscription_tier}</span></td>
-                        <td>${c.subscription_expiry ? c.subscription_expiry.split(' ')[0] : 'N/A'}</td>
-                        <td>
-                            <span class="status-badge ${isActive ? 'active-badge' : 'expired-badge'}">
-                                ${isActive ? 'ACTIVE' : 'DEACTIVATED'}
-                            </span>
+                        <td style="color: ${expiryColor}">
+                            ${expiryDisplay}
+                            ${daysLeft !== null ? `<div style="font-size: 0.7rem; color: var(--text-dim);">${daysLeft}d left</div>` : ''}
                         </td>
                         <td>
-                            <button onclick="openEdit('${c.telegram_chat_id}', ${c.account_balance}, '${c.subscription_tier}')" style="padding: 5px 10px; width: auto; font-size: 0.7rem;">EDIT</button>
+                            <label class="toggle-switch">
+                                <input type="checkbox" ${signalsActive ? 'checked' : ''} onchange="toggleSignals('${c.telegram_chat_id}', this)">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </td>
+                        <td>
+                            <label class="toggle-switch">
+                                <input type="checkbox" ${dashboardActive ? 'checked' : ''} onchange="toggleDashboard('${c.telegram_chat_id}', this)">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </td>
+                        <td>
+                            <div style="display: flex; gap: 5px;">
+                                <button onclick="extendSubscription('${c.telegram_chat_id}')" style="padding: 5px 8px; width: auto; font-size: 0.7rem; background: var(--acc-cyan);">+30d</button>
+                                <button onclick="openEdit('${c.telegram_chat_id}', ${c.account_balance}, '${c.subscription_tier}')" style="padding: 5px 8px; width: auto; font-size: 0.7rem;">EDIT</button>
+                            </div>
                         </td>
                     </tr>
                 `;
@@ -506,14 +535,101 @@
                 body: JSON.stringify(data)
             });
 
-            closeModal();
+            alert('Changes saved!');
             loadClients();
         }
 
-        // Initial Load
-        fetchStats();
+        async function toggleSignals(chatId, checkbox) {
+            try {
+                const res = await fetch(`/api/clients/${chatId}/toggle-signals`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                const data = await res.json();
+
+                if (data.status === 'success') {
+                    // Show toast notification
+                    showToast(data.message);
+                    // Update stats
+                    await loadStats();
+                } else {
+                    checkbox.checked = !checkbox.checked; // Revert on error
+                    showToast('Failed to update signals access', 'error');
+                }
+            } catch (e) {
+                checkbox.checked = !checkbox.checked; // Revert on error
+                showToast('Network error', 'error');
+            }
+        }
+
+        async function toggleDashboard(chatId, checkbox) {
+            try {
+                const res = await fetch(`/api/clients/${chatId}/toggle-dashboard`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                const data = await res.json();
+
+                if (data.status === 'success') {
+                    showToast(data.message);
+                } else {
+                    checkbox.checked = !checkbox.checked; // Revert on error
+                    showToast('Failed to update dashboard access', 'error');
+                }
+            } catch (e) {
+                checkbox.checked = !checkbox.checked; // Revert on error
+                showToast('Network error', 'error');
+            }
+        }
+
+        async function extendSubscription(chatId) {
+            try {
+                const res = await fetch(`/api/clients/${chatId}/extend?days=30`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                const data = await res.json();
+
+                if (data.status === 'success') {
+                    showToast(data.message);
+                    loadClients(); // Refresh to show new expiry
+                } else {
+                    showToast('Failed to extend subscription', 'error');
+                }
+            } catch (e) {
+                showToast('Network error', 'error');
+            }
+        }
+
+        function showToast(message, type = 'success') {
+            const toast = document.createElement('div');
+            toast.style.cssText = `
+                position: fixed;
+                bottom: 30px;
+                right: 30px;
+                background: ${type === 'error' ? '#ff4d4d' : 'var(--acc-cyan)'};
+                color: #000;
+                padding: 15px 20px;
+                border-radius: 8px;
+                font-weight: 600;
+                z-index: 10000;
+                animation: slideIn 0.3s ease;
+            `;
+            toast.textContent = message;
+            document.body.appendChild(toast);
+
+            setTimeout(() => {
+                toast.style.animation = 'slideOut 0.3s ease';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        // Auto-refresh clients every 30 seconds
+        setInterval(loadClients, 30000);
+
         loadClients();
-        setInterval(fetchStats, 5000);
+        await loadStats();
+        setInterval(loadStats, 10000);
     </script>
 </body>
 

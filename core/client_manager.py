@@ -33,16 +33,19 @@ class ClientManager:
             )
         """)
         
+        
         # Add new columns if they don't exist (Migration)
         try:
             cursor.execute("ALTER TABLE clients ADD COLUMN subscription_expiry TIMESTAMP")
             cursor.execute("ALTER TABLE clients ADD COLUMN subscription_tier TEXT DEFAULT 'BASIC'")
+            cursor.execute("ALTER TABLE clients ADD COLUMN dashboard_access BOOLEAN DEFAULT 0")
         except sqlite3.OperationalError:
             # Columns already exist
             pass
         
         conn.commit()
         conn.close()
+
     
     def register_client(self, telegram_chat_id: str, account_balance: float, 
                        risk_percent: float = 2.0) -> Dict:
