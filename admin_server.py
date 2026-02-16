@@ -568,7 +568,7 @@ async def get_daily_analytics(current_user: User = Depends(get_current_user)):
     conn = None
     try:
         conn = get_db_connection(DB_SIGNALS)
-        today = datetime.now().strftime('%Y-%m-%d')
+        last_24h = (datetime.utcnow() - timedelta(days=1)).isoformat()
         
         # 1. Overall Summary
         summary = conn.execute("""
@@ -576,8 +576,8 @@ async def get_daily_analytics(current_user: User = Depends(get_current_user)):
                 COUNT(*) as total,
                 AVG(quality_score) as avg_quality
             FROM signals 
-            WHERE DATE(timestamp) = ?
-        """, (today,)).fetchone()
+            WHERE timestamp >= ?
+        """, (last_24h,)).fetchone()
         
         # 2. Performance by Trade Type (SCALP vs SWING)
         type_stats = conn.execute("""
@@ -586,21 +586,22 @@ async def get_daily_analytics(current_user: User = Depends(get_current_user)):
                 COUNT(*) as total,
                 SUM(CASE WHEN result IN ('TP1', 'TP2', 'TP3') OR max_tp_reached > 0 THEN 1 ELSE 0 END) as wins,
                 SUM(CASE WHEN result = 'SL' THEN 1 ELSE 0 END) as losses,
+                SUM(CASE WHEN result = 'OPEN' THEN 1 ELSE 0 END) as open,
                 AVG(quality_score) as avg_quality
             FROM signals 
-            WHERE DATE(timestamp) = ?
+            WHERE timestamp >= ?
             GROUP BY UPPER(TRIM(trade_type))
-        """, (today,)).fetchall()
+        """, (last_24h,)).fetchall()
         
         stats_by_type = {row['trade_type']: dict(row) for row in type_stats}
         
-        # 3. BUY vs SELL Bias
+        # 3. Market Bias (Long vs Short)
         bias_rows = conn.execute("""
-            SELECT direction, COUNT(*) as count 
+            SELECT direction, COUNT(*) as count
             FROM signals 
-            WHERE DATE(timestamp) = ?
+            WHERE timestamp >= ?
             GROUP BY direction
-        """, (today,)).fetchall()
+        """, (last_24h,)).fetchall()
         
         bias = {row['direction']: row['count'] for row in bias_rows}
         
@@ -612,11 +613,11 @@ async def get_daily_analytics(current_user: User = Depends(get_current_user)):
                 AVG(quality_score) as avg_quality,
                 SUM(CASE WHEN result IN ('TP1', 'TP2', 'TP3') OR max_tp_reached > 0 THEN 1 ELSE 0 END) as wins
             FROM signals 
-            WHERE DATE(timestamp) = ?
+            WHERE timestamp >= ?
             GROUP BY symbol
             ORDER BY count DESC
             LIMIT 5
-        """, (today,)).fetchall()
+        """, (last_24h,)).fetchall()
         
         assets = [dict(row) for row in asset_rows]
         
@@ -624,21 +625,21 @@ async def get_daily_analytics(current_user: User = Depends(get_current_user)):
         hourly_rows = conn.execute("""
             SELECT STRFTIME('%H', timestamp) as hour, COUNT(*) as count
             FROM signals
-            WHERE DATE(timestamp) = ?
+            WHERE timestamp >= ?
             GROUP BY hour
-        """, (today,)).fetchall()
+        """, (last_24h,)).fetchall()
         
         hourly = {row['hour']: row['count'] for row in hourly_rows}
         
-        # 6. Best Performing Symbol & Strategy
+        # 6. Best Performing Symbol
         best_symbol = conn.execute("""
             SELECT symbol, COUNT(*) as count, SUM(CASE WHEN result IN ('TP1', 'TP2', 'TP3') OR max_tp_reached > 0 THEN 1 ELSE 0 END) as wins
             FROM signals 
-            WHERE DATE(timestamp) = ?
+            WHERE timestamp >= ?
             GROUP BY symbol
             ORDER BY wins DESC, count DESC
             LIMIT 1
-        """, (today,)).fetchone()
+        """, (last_24h,)).fetchone()
 
         return {
             "total_signals": summary['total'] or 0,
@@ -649,7 +650,8 @@ async def get_daily_analytics(current_user: User = Depends(get_current_user)):
             "hourly_heatmap": hourly,
             "top_performer": dict(best_symbol) if best_symbol else None,
             "debug": {
-                "server_today": today,
+                "server_time": datetime.now().isoformat(),
+                "lookback_from": last_24h,
                 "raw_types": [row['trade_type'] for row in type_stats]
             }
         }

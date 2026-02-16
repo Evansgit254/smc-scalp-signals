@@ -101,9 +101,10 @@
                             <th>SL</th>
                             <th>TP1</th>
                             <th>TP2</th>
-                            <th>CONFIDENCE</th>
-                            <th>QUALITY</th>
-                            <th>REASONING</th>
+                            <th>Conf.</th>
+                            <th>Quality</th>
+                            <th>Result</th>
+                            <th>Reasoning</th>
                         </tr>
                     </thead>
                     <tbody id="signal-table-body">
@@ -416,14 +417,17 @@
                 const data = await res.json();
 
                 // 1. Scalp vs Swing Stats
-                const scalp = data.stats_by_type['SCALP'] || { wins: 0, total: 0 };
-                const swing = data.stats_by_type['SWING'] || { wins: 0, total: 0 };
+                const scalp = data.stats_by_type['SCALP'] || { wins: 0, losses: 0, total: 0, open: 0 };
+                const swing = data.stats_by_type['SWING'] || { wins: 0, losses: 0, total: 0, open: 0 };
 
-                document.getElementById('ana-scalp-sum').innerText = `${scalp.wins}/${scalp.total}`;
-                document.getElementById('ana-scalp-wr').innerText = `${scalp.total > 0 ? Math.round((scalp.wins / scalp.total) * 100) : 0}% WR`;
+                const closedScalp = scalp.wins + scalp.losses;
+                const closedSwing = swing.wins + swing.losses;
 
-                document.getElementById('ana-swing-sum').innerText = `${swing.wins}/${swing.total}`;
-                document.getElementById('ana-swing-wr').innerText = `${swing.total > 0 ? Math.round((swing.wins / swing.total) * 100) : 0}% WR`;
+                setText('ana-scalp-sum', `${scalp.wins}/${scalp.total}`);
+                setText('ana-scalp-wr', `${closedScalp > 0 ? Math.round((scalp.wins / closedScalp) * 100) : 0}% WR (${scalp.open} Open)`);
+
+                setText('ana-swing-sum', `${swing.wins}/${swing.total}`);
+                setText('ana-swing-wr', `${closedSwing > 0 ? Math.round((swing.wins / closedSwing) * 100) : 0}% WR (${swing.open} Open)`);
 
                 // 2. Bias (Donut)
                 const buys = data.bias['BUY'] || 0;
@@ -583,11 +587,11 @@
             tbody.innerHTML = '';
 
             if (signals.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="12" style="text-align:center; padding: 2rem;">No signals logged in database.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="13" style="text-align:center; padding: 2rem;">No signals logged in database.</td></tr>';
                 return;
             }
 
-            signals.forEach((sig, index) => {
+            signals.forEach((s, index) => {
                 const row = document.createElement('tr');
                 row.className = 'clickable-row';
                 row.style.cursor = 'pointer';
@@ -596,22 +600,22 @@
                 row.onmouseout = () => row.style.background = 'transparent';
                 row.onclick = () => openSignalModal(index);
 
-                const directionClass = sig.direction === 'BUY' ? 'status-active' : 'status-expired';
-                const confParams = sig.confidence ? `${(sig.confidence * 100).toFixed(0)}%` : '-';
+                const directionClass = s.direction === 'BUY' ? 'status-active' : 'status-expired';
 
                 row.innerHTML = `
-                    <td style="font-size: 0.75rem; color: var(--text-dim); white-space: nowrap;">${new Date(sig.timestamp).toLocaleTimeString()}</td>
-                    <td style="font-weight:bold; color:var(--acc-cyan);">${sig.symbol}</td>
-                    <td><span class="status-badge" style="border: 1px solid var(--glass-border); font-size: 0.65rem;">${sig.trade_type || 'SCALP'}</span></td>
-                    <td style="font-size: 0.75rem;">${sig.timeframe || 'M5'}</td>
-                    <td><span class="${directionClass}" style="padding: 2px 8px; border-radius: 4px;">${sig.direction}</span></td>
-                    <td style="font-family: monospace">${sig.entry_price ? sig.entry_price.toFixed(5) : '-'}</td>
-                    <td style="color: #ff4d4d; font-family: monospace">${sig.sl ? sig.sl.toFixed(5) : '-'}</td>
-                    <td style="color: #00ea90; font-family: monospace">${sig.tp1 ? sig.tp1.toFixed(5) : '-'}</td>
-                    <td style="color: #00ea90; font-family: monospace">${sig.tp2 ? sig.tp2.toFixed(5) : '-'}</td>
-                    <td>${confParams}</td>
-                    <td style="color: var(--acc-gold); font-weight: bold;">${sig.quality_score || '-'}</td>
-                    <td style="max-width: 250px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="Click to view full reasoning">${sig.reasoning || '-'}</td>
+                    <td style="font-size: 0.75rem; color: var(--text-dim); white-space: nowrap;">${new Date(s.timestamp).toLocaleTimeString()}</td>
+                    <td style="font-weight:bold; color:var(--acc-cyan);">${s.symbol}</td>
+                    <td><span class="status-badge" style="border: 1px solid var(--glass-border); font-size: 0.65rem;">${s.trade_type || 'SCALP'}</span></td>
+                    <td style="font-size: 0.75rem;">${s.timeframe || 'M5'}</td>
+                    <td><span class="${directionClass}" style="padding: 2px 8px; border-radius: 4px;">${s.direction}</span></td>
+                    <td style="font-family: monospace">${s.entry_price ? s.entry_price.toFixed(5) : '-'}</td>
+                    <td style="color: #ff4d4d; font-family: monospace">${s.sl ? s.sl.toFixed(5) : '-'}</td>
+                    <td style="color: #00ea90; font-family: monospace">${s.tp1 ? s.tp1.toFixed(5) : '-'}</td>
+                    <td style="color: #00ea90; font-family: monospace">${s.tp2 ? s.tp2.toFixed(5) : '-'}</td>
+                    <td>${Math.round((s.confidence || 0) * 100)}%</td>
+                    <td style="color: #FFD700; font-weight: bold;">${(s.quality_score || 0).toFixed(2)}</td>
+                    <td style="font-weight: bold; color: ${s.result === 'SL' ? '#ff4d4d' : (s.result && s.result.startsWith('TP') ? '#00ff88' : '#b0b0b0')}">${s.result || '-'}</td>
+                    <td style="max-width: 250px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="Click to view full reasoning">${s.reasoning || '-'}</td>
                 `;
                 tbody.appendChild(row);
             });
