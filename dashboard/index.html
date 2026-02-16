@@ -474,29 +474,31 @@
         }
 
         async function loadClients() {
-            const res = await fetch('/api/clients');
-            const clients = await res.json();
-            const body = document.getElementById('clients-body');
-            body.innerHTML = '';
+            try {
+                const res = await apiFetch('/api/clients');
+                if (res.status === 401) return logout();
+                const clients = await res.json();
+                const body = document.getElementById('clients-body');
+                body.innerHTML = '';
 
-            clients.forEach(c => {
-                const signalsActive = c.is_active;
-                const dashboardActive = c.dashboard_access;
-                const expiry = c.subscription_expiry ? new Date(c.subscription_expiry) : null;
-                const now = new Date();
-                const isExpired = expiry && expiry < now;
-                const daysLeft = expiry ? Math.ceil((expiry - now) / (1000 * 60 * 60 * 24)) : null;
+                clients.forEach(c => {
+                    const signalsActive = c.is_active;
+                    const dashboardActive = c.dashboard_access;
+                    const expiry = c.subscription_expiry ? new Date(c.subscription_expiry) : null;
+                    const now = new Date();
+                    const isExpired = expiry && expiry < now;
+                    const daysLeft = expiry ? Math.ceil((expiry - now) / (1000 * 60 * 60 * 24)) : null;
 
-                let expiryDisplay = 'N/A';
-                let expiryColor = 'var(--text-dim)';
-                if (expiry) {
-                    expiryDisplay = expiry.toISOString().split('T')[0];
-                    if (daysLeft <= 3) expiryColor = '#ff4d4d';
-                    else if (daysLeft <= 7) expiryColor = 'var(--acc-gold)';
-                    else expiryColor = 'var(--acc-cyan)';
-                }
+                    let expiryDisplay = 'N/A';
+                    let expiryColor = 'var(--text-dim)';
+                    if (expiry) {
+                        expiryDisplay = expiry.toISOString().split('T')[0];
+                        if (daysLeft <= 3) expiryColor = '#ff4d4d';
+                        else if (daysLeft <= 7) expiryColor = 'var(--acc-gold)';
+                        else expiryColor = 'var(--acc-cyan)';
+                    }
 
-                body.innerHTML += `
+                    body.innerHTML += `
                     <tr>
                         <td style="font-family: monospace">${c.telegram_chat_id}</td>
                         <td>$${c.account_balance.toFixed(2)}</td>
@@ -525,13 +527,23 @@
                         </td>
                     </tr>
                 `;
-            });
+                });
+            } catch (e) {
+                console.error("Load clients error:", e);
+                // logout if 401 isn't handled by apiFetch (apiFetch handles logic but returns res)
+            }
         }
 
         async function loadSignals() {
-            const res = await fetch('/api/signals');
-            allSignals = await res.json();
-            renderSignals(allSignals);
+            try {
+                const res = await apiFetch('/api/signals');
+                if (res.status === 401) return logout();
+                allSignals = await res.json();
+                renderSignals(allSignals || []);
+            } catch (e) {
+                console.error("Signal load error:", e);
+                renderSignals([]);
+            }
         }
 
         function renderSignals(signals) {
@@ -797,13 +809,15 @@
             setInterval(loadStats, 10000);
         })();
 
-        async function loadClients() {
+        async function loadConfig() {
             try {
-                const res = await apiFetch('/api/clients');
-                const clients = await res.json();
+                const res = await apiFetch('/api/config');
+                if (res.status === 401) return logout();
+                const config = await res.json();
 
                 if (config.system_status) {
-                    document.getElementById('cfg-system-status').checked = (config.system_status === 'ACTIVE');
+                    const el = document.getElementById('cfg-system-status');
+                    if (el) el.checked = (config.system_status === 'ACTIVE');
                 }
                 if (config.risk_per_trade) document.getElementById('cfg-risk').value = config.risk_per_trade;
                 if (config.max_concurrent_trades) document.getElementById('cfg-max-trades').value = config.max_concurrent_trades;
@@ -812,7 +826,7 @@
 
             } catch (e) {
                 console.error("Config load failed:", e);
-                showToast("Failed to load config", "error");
+                // showToast("Failed to load config", "error");
             }
         }
 
