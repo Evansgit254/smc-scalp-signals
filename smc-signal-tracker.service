@@ -1,5 +1,5 @@
 [Unit]
-Description=Pure Quant Trading Signal Service
+Description=TradingExpert Signal Tracker Service
 After=network.target
 
 [Service]
@@ -7,14 +7,14 @@ Type=simple
 User=evans
 WorkingDirectory=/home/evans/Projects/TradingExpert/smc-scalp-signals
 Environment="PYTHONPATH=/home/evans/Projects/TradingExpert/smc-scalp-signals"
-ExecStart=/home/evans/Projects/TradingExpert/smc-scalp-signals/venv/bin/python /home/evans/Projects/TradingExpert/smc-scalp-signals/signal_service.py
+ExecStart=/home/evans/Projects/TradingExpert/smc-scalp-signals/venv/bin/python /home/evans/Projects/TradingExpert/smc-scalp-signals/signal_tracker.py
 Restart=always
 RestartSec=30
 
 # Logging
 StandardOutput=journal
 StandardError=journal
-SyslogIdentifier=quant-signals
+SyslogIdentifier=smc-tracker
 
 [Install]
 WantedBy=multi-user.target
