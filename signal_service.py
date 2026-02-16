@@ -78,6 +78,12 @@ class SignalService:
         import sqlite3
         import config.config as cfg
         
+        # Mapping for keys that don't match config variable names exactly
+        key_mapping = {
+            "risk_per_trade": "RISK_PER_TRADE_PERCENT",
+            "news_filter_minutes": "NEWS_WASH_ZONE"
+        }
+        
         try:
             conn = sqlite3.connect("database/clients.db")
             conn.row_factory = sqlite3.Row
@@ -94,10 +100,13 @@ class SignalService:
                 elif row['type'] == 'float': val = float(val)
                 elif row['type'] == 'bool': val = (val.lower() == 'true')
                 
+                # Determine target variable name
+                target_var = key_mapping.get(key, key.upper())
+                
                 # Apply to config module if exists
-                if hasattr(cfg, key.upper()):
-                    setattr(cfg, key.upper(), val)
-                    print(f"   🔹 {key.upper()} = {val}")
+                if hasattr(cfg, target_var):
+                    setattr(cfg, target_var, val)
+                    print(f"   🔹 {target_var} = {val}")
                 
                 # Special handling for system status
                 if key == 'system_status':
