@@ -12,11 +12,29 @@ import hashlib
 from datetime import datetime, timedelta
 from typing import List, Optional
 from pydantic import BaseModel
+import subprocess
+import time
+from data.fetcher import DataFetcher
+from data.news_fetcher import NewsFetcher
+from indicators.calculations import IndicatorCalculator
+from core.filters.macro_filter import MacroFilter
+from config.config import DXY_SYMBOL, TNX_SYMBOL, SYMBOLS
 from core.client_manager import ClientManager
 
 # Stripe Configuration
 stripe.api_key = os.getenv("STRIPE_API_KEY")
 STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET")
+
+# Admin Password
+ADMIN_USER = os.getenv("ADMIN_USER", "admin")
+ADMIN_PASS = os.getenv("ADMIN_PASS", "Admin@1736")
+
+# Market Context Cache
+market_context_cache = {
+    "data": None,
+    "last_update": 0,
+    "ttl": 900 # 15 minutes
+}
 
 app = FastAPI(title="Trading Expert Admin Dashboard")
 
@@ -532,36 +550,75 @@ async def get_signals(current_user: User = Depends(get_current_user)):
         if conn:
             conn.close()
 
-@app.get("/api/stats")
-async def get_stats(current_user: User = Depends(get_current_user)):
-    active_clients = 0
-    signals_today = 0
-    
-    conn_c = None
+async def get_market_context():
+    """V19.0: Fetch and cache macro/news context for dashboard visibility."""
+    now = time.time()
+    if market_context_cache["data"] and (now - market_context_cache["last_update"]) < market_context_cache["ttl"]:
+        return market_context_cache["data"]
+
+    ctx = {"DXY": "NEUTRAL", "TNX": "NEUTRAL", "RISK": "NEUTRAL", "NEWS": "NO NEWS"}
     try:
-        conn_c = get_db_connection(DB_CLIENTS)
-        active_clients = conn_c.execute("SELECT COUNT(*) FROM clients WHERE is_active = 1").fetchone()[0]
-    except Exception as e:
-        print(f"Error fetching client stats: {e}")
-    finally:
-        if conn_c: conn_c.close()
-    
-    conn_s = None
-    if os.path.exists(DB_SIGNALS):
-        try:
-            conn_s = get_db_connection(DB_SIGNALS)
-            today = datetime.now().strftime('%Y-%m-%d')
-            signals_today = conn_s.execute("SELECT COUNT(*) FROM signals WHERE DATE(timestamp) = ?", (today,)).fetchone()[0]
-        except Exception as e:
-            print(f"Error fetching signal stats: {e}")
-        finally:
-            if conn_s: conn_s.close()
+        fetcher = DataFetcher()
+        # Non-blocking fetch
+        dxy_data = await fetcher.fetch_data_async(DXY_SYMBOL, "1h", period="10d")
+        tnx_data = await fetcher.fetch_data_async(TNX_SYMBOL, "1h", period="10d")
         
-    return {
-        "active_clients": active_clients,
-        "signals_today": signals_today,
-        "server_time": datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    }
+        bundle = {}
+        if dxy_data is not None and not dxy_data.empty:
+            bundle['DXY'] = IndicatorCalculator.add_indicators(dxy_data, "1h")
+        if tnx_data is not None and not tnx_data.empty:
+            bundle['^TNX'] = IndicatorCalculator.add_indicators(tnx_data, "1h")
+            
+        bias = MacroFilter.get_macro_bias(bundle)
+        ctx.update(bias)
+        
+        # News Check
+        news_fetcher = NewsFetcher()
+        events = news_fetcher.fetch_news()
+        relevant = news_fetcher.filter_relevant_news(events, SYMBOLS)
+        
+        # Check if any high impact news is coming in 30 mins
+        current_time_str = datetime.now().strftime('%Y%m%dT%H%M')
+        active_news = []
+        for e in relevant:
+            if e.get('impact') == 'High':
+                active_news.append(e.get('title'))
+        
+        if active_news:
+            ctx['NEWS'] = f"{len(active_news)} HIGH IMPACT EVENTS"
+            
+    except Exception as e:
+        print(f"Market Context Error: {e}")
+        
+    market_context_cache["data"] = ctx
+    market_context_cache["last_update"] = now
+    return ctx
+
+@app.get("/api/stats")
+async def get_basic_stats(current_user: User = Depends(get_current_user)):
+    conn = None
+    try:
+        conn = get_db_connection(DB_SIGNALS)
+        today = datetime.now().strftime('%Y-%m-%d')
+        signals_count = conn.execute("SELECT COUNT(*) FROM signals WHERE DATE(timestamp) = ?", (today,)).fetchone()[0]
+        
+        cm = ClientManager(DB_CLIENTS) # Initialize ClientManager with DB path
+        active_clients = len([c for c in cm.clients.values() if c.is_active])
+        
+        # V19.2: Market Context
+        mctx = await get_market_context()
+        
+        return {
+            "active_clients": active_clients,
+            "signals_today": signals_count,
+            "server_time": datetime.now().strftime("%H:%M:%S"),
+            "market_context": mctx
+        }
+    except Exception as e:
+        print(f"Error fetching stats: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        if conn: conn.close()
 
 @app.get("/api/analytics/daily")
 async def get_daily_analytics(current_user: User = Depends(get_current_user)):
@@ -641,6 +698,29 @@ async def get_daily_analytics(current_user: User = Depends(get_current_user)):
             LIMIT 1
         """, (last_24h,)).fetchone()
 
+        # 7. Equity Curve (Last 7 Days)
+        seven_days_ago = (datetime.utcnow() - timedelta(days=7)).isoformat()
+        equity_rows = conn.execute("""
+            SELECT 
+                DATE(timestamp) as day,
+                SUM(CASE 
+                    WHEN result = 'TP3' THEN 2.0
+                    WHEN result = 'TP2' THEN 1.0
+                    WHEN result = 'TP1' THEN 0.5
+                    WHEN result = 'SL' THEN -1.0
+                    ELSE 0 END) as profit
+            FROM signals 
+            WHERE timestamp >= ? AND result != 'OPEN'
+            GROUP BY day
+            ORDER BY day ASC
+        """, (seven_days_ago,)).fetchall()
+        
+        equity_curve = []
+        cumulative = 0
+        for row in equity_rows:
+            cumulative += row['profit']
+            equity_curve.append({"day": row['day'], "profit": round(cumulative, 2)})
+
         return {
             "total_signals": summary['total'] or 0,
             "avg_quality": round(summary['avg_quality'] or 0, 1),
@@ -649,9 +729,11 @@ async def get_daily_analytics(current_user: User = Depends(get_current_user)):
             "top_assets": assets,
             "hourly_heatmap": hourly,
             "top_performer": dict(best_symbol) if best_symbol else None,
+            "equity_curve": equity_curve,
             "debug": {
                 "server_time": datetime.now().isoformat(),
                 "lookback_from": last_24h,
+                "seven_days_ago": seven_days_ago,
                 "raw_types": [row['trade_type'] for row in type_stats]
             }
         }
@@ -661,6 +743,31 @@ async def get_daily_analytics(current_user: User = Depends(get_current_user)):
     finally:
         if conn:
             conn.close()
+
+@app.get("/api/logs/{service}")
+async def get_logs(service: str, lines: int = 100, current_user: User = Depends(get_current_user)):
+    """V19.0: System Log Retrieval - reads journalctl for specified service."""
+    allowed_services = [
+        "smc-admin-dashboard",
+        "smc-signal-service",
+        "smc-interactive-bot"
+    ]
+    
+    if service not in allowed_services:
+        raise HTTPException(status_code=400, detail="Invalid service name")
+
+    try:
+        # Using -u for service and -n for number of lines
+        # We use sudo as journalctl usually requires it, but the user might have configured perms
+        cmd = ["sudo", "journalctl", "-u", f"{service}.service", "-n", str(lines), "--no-pager"]
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=5)
+        
+        if result.returncode != 0:
+            return {"logs": f"Error retrieving logs: {result.stderr}"}
+            
+        return {"logs": result.stdout}
+    except Exception as e:
+        return {"logs": f"Log retrieval failed: {str(e)}"}
 
 # Mount static files for the dashboard
 if os.path.exists("dashboard"):

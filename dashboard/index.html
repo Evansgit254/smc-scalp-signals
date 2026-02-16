@@ -7,6 +7,19 @@
     <title>Trading Expert Dashboard</title>
     <link rel="stylesheet" href="index.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .mctx-item {
+            color: #fff;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .mctx-item span {
+            font-variant-numeric: tabular-nums;
+        }
+    </style>
 </head>
 
 <body>
@@ -40,6 +53,9 @@
         <div class="nav-item" onclick="showView('performance')" id="nav-performance">
             <i class="fas fa-chart-line"></i> Performance
         </div>
+        <div class="nav-item" onclick="showView('monitor')">
+            <i class="fas fa-terminal"></i> Monitor
+        </div>
         <div class="nav-item" onclick="logout()"
             style="margin-top: auto; color: var(--acc-red); border: 1px solid rgba(255,51,51,0.2);">Logout</div>
     </div>
@@ -49,6 +65,20 @@
         <div class="header">
             <h1 id="view-title">User Management</h1>
             <div id="server-time" style="color: var(--text-dim)">--:--:--</div>
+        </div>
+
+        <!-- Market Context Bar -->
+        <div id="market-context-bar"
+            style="display: flex; gap: 1rem; margin-bottom: 2rem; background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border); padding: 10px 20px; border-radius: 12px; align-items: center; font-size: 0.85rem;">
+            <div
+                style="color: var(--text-dim); font-weight: 700; letter-spacing: 1px; border-right: 1px solid rgba(255,255,255,0.1); padding-right: 1rem; margin-right: 0.5rem;">
+                MARKET CONTEXT</div>
+            <div class="mctx-item">DXY: <span id="mctx-dxy" style="font-weight: bold;">--</span></div>
+            <div class="mctx-item">10Y YIELD: <span id="mctx-tnx" style="font-weight: bold;">--</span></div>
+            <div class="mctx-item">BIAS: <span id="mctx-risk"
+                    style="font-weight: bold; padding: 2px 8px; border-radius: 4px;">--</span></div>
+            <div class="mctx-item" style="margin-left: auto;">NEWS: <span id="mctx-news"
+                    style="font-weight: bold; color: #00ff64;">NO NEWS</span></div>
         </div>
 
         <div class="stats-grid">
@@ -116,38 +146,48 @@
 
         <div id="performance-view" style="display: none;">
             <div class="analytics-grid">
-                <!-- Daily Volume & Avg Quality -->
+                <!-- Daily Volume & Strategy Stats -->
                 <div class="chart-card">
                     <div class="chart-header">
                         <div class="chart-title">Strategy breakdown</div>
                     </div>
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; padding: 1.25rem;">
-                        <div style="padding: 15px; background: linear-gradient(135deg, rgba(0,234,144,0.08), rgba(0,234,144,0.03)); border: 1px solid rgba(0,234,144,0.1); border-radius: 12px; text-align: center; transition: transform 0.2s;"
-                            onmouseover="this.style.transform='translateY(-2px)'"
-                            onmouseout="this.style.transform='translateY(0)'">
+                        <div
+                            style="padding: 15px; background: linear-gradient(135deg, rgba(0,234,144,0.08), rgba(0,234,144,0.03)); border: 1px solid rgba(0,234,144,0.1); border-radius: 12px; text-align: center;">
                             <div
-                                style="font-size: 0.75rem; font-weight: 600; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px;">
+                                style="font-size: 0.75rem; font-weight: 600; color: var(--text-dim); text-transform: uppercase;">
                                 SCALP</div>
                             <div class="stat-val" id="ana-scalp-sum"
                                 style="font-size: 1.5rem; font-weight: 700; color: #fff; margin-bottom: 4px;">0/0</div>
-                            <div style="display: inline-block; padding: 2px 8px; background: rgba(0,234,144,0.1); border-radius: 4px; font-size: 0.75rem; font-weight: 600; color: var(--acc-cyan);"
-                                id="ana-scalp-wr">0% WR</div>
+                            <div id="ana-scalp-wr"
+                                style="display: inline-block; padding: 2px 8px; background: rgba(0,234,144,0.1); border-radius: 4px; font-size: 0.75rem; color: var(--acc-cyan);">
+                                0% WR</div>
                         </div>
-                        <div style="padding: 15px; background: linear-gradient(135deg, rgba(255,215,0,0.08), rgba(255,215,0,0.03)); border: 1px solid rgba(255,215,0,0.1); border-radius: 12px; text-align: center; transition: transform 0.2s;"
-                            onmouseover="this.style.transform='translateY(-2px)'"
-                            onmouseout="this.style.transform='translateY(0)'">
+                        <div
+                            style="padding: 15px; background: linear-gradient(135deg, rgba(255,215,0,0.08), rgba(255,215,0,0.03)); border: 1px solid rgba(255,215,0,0.1); border-radius: 12px; text-align: center;">
                             <div
-                                style="font-size: 0.75rem; font-weight: 600; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px;">
+                                style="font-size: 0.75rem; font-weight: 600; color: var(--text-dim); text-transform: uppercase;">
                                 SWING</div>
                             <div class="stat-val" id="ana-swing-sum"
                                 style="font-size: 1.5rem; font-weight: 700; color: #fff; margin-bottom: 4px;">0/0</div>
-                            <div style="display: inline-block; padding: 2px 8px; background: rgba(255,215,0,0.1); border-radius: 4px; font-size: 0.75rem; font-weight: 600; color: var(--acc-gold);"
-                                id="ana-swing-wr">0% WR</div>
+                            <div id="ana-swing-wr"
+                                style="display: inline-block; padding: 2px 8px; background: rgba(255,215,0,0.1); border-radius: 4px; font-size: 0.75rem; color: var(--acc-gold);">
+                                0% WR</div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Buy/Sell Bias (Donut Chart) -->
+                <!-- Equity Curve Chart -->
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <div class="chart-title">7D Performance Curve</div>
+                    </div>
+                    <div style="padding: 1rem; height: 140px;">
+                        <canvas id="equity-chart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Market Bias (Donut Chart) -->
                 <div class="chart-card">
                     <div class="chart-header">
                         <div class="chart-title">Market bias (BUY vs SELL)</div>
@@ -159,39 +199,96 @@
                             <circle cx="18" cy="18" r="15.9155" fill="none" stroke="var(--acc-cyan)" stroke-width="3"
                                 stroke-dasharray="0, 100" id="bias-stroke" />
                         </svg>
-                        <div class="donut-label">
-                            <div class="donut-val" id="bias-pct">0%</div>
-                            <div class="donut-sub">BULLISH</div>
+                        <div class="donut-label" style="text-align: center;">
+                            <div class="donut-val" id="bias-pct"
+                                style="font-size: 1.2rem; font-weight: bold; color: #fff;">0%</div>
+                            <div class="donut-sub" style="font-size: 0.6rem; color: var(--text-dim);">NEUTRAL</div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Top Assets -->
+                <!-- Asset Performance -->
                 <div class="chart-card">
                     <div class="chart-header">
-                        <div class="chart-title">Top performer</div>
+                        <div class="chart-title">Top Asset Profitability</div>
                     </div>
-                    <div id="top-performer-content"
-                        style="padding: 1.5rem; text-align: center; background: radial-gradient(circle at center, rgba(255,215,0,0.05), transparent);">
-                        <div style="font-size: 2.2rem; font-weight: 800; color: var(--acc-gold); margin-bottom: 0.25rem; text-shadow: 0 0 20px rgba(255,215,0,0.2);"
-                            id="top-symbol">---</div>
-                        <div
-                            style="font-size: 0.75rem; font-weight: 600; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 1rem;">
-                            Daily Champion</div>
-                        <div style="display: inline-block; padding: 6px 12px; background: rgba(255,215,0,0.1); border-radius: 20px; font-size: 0.8rem; color: #fff; font-weight: 500;"
-                            id="top-stats">0 wins / 0 signals</div>
+                    <div style="padding: 1rem; height: 140px;">
+                        <canvas id="asset-chart"></canvas>
                     </div>
                 </div>
+            </div>
+        </div>
 
-                <!-- Activity Heatmap -->
-                <div class="chart-card">
-                    <div class="chart-header">
-                        <div class="chart-title">Daily Activity (24h)</div>
-                    </div>
-                    <div class="heatmap" id="hourly-heatmap">
-                        <!-- 24 cells -->
-                    </div>
+        <!-- Buy/Sell Bias (Donut Chart) -->
+        <div class="chart-card">
+            <div class="chart-header">
+                <div class="chart-title">Market bias (BUY vs SELL)</div>
+            </div>
+            <div class="donut-container">
+                <svg viewBox="0 0 36 36" style="width: 100%; height: 100%; transform: rotate(-90deg);">
+                    <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none"
+                        stroke="#ff4d4d" stroke-width="3" />
+                    <circle cx="18" cy="18" r="15.9155" fill="none" stroke="var(--acc-cyan)" stroke-width="3"
+                        stroke-dasharray="0, 100" id="bias-stroke" />
+                </svg>
+                <div class="donut-label">
+                    <div class="donut-val" id="bias-pct">0%</div>
+                    <div class="donut-sub">BULLISH</div>
                 </div>
+            </div>
+        </div>
+
+        <!-- Top Assets -->
+        <div class="chart-card">
+            <div class="chart-header">
+                <div class="chart-title">Top performer</div>
+            </div>
+            <div id="top-performer-content"
+                style="padding: 1.5rem; text-align: center; background: radial-gradient(circle at center, rgba(255,215,0,0.05), transparent);">
+                <div style="font-size: 2.2rem; font-weight: 800; color: var(--acc-gold); margin-bottom: 0.25rem; text-shadow: 0 0 20px rgba(255,215,0,0.2);"
+                    id="top-symbol">---</div>
+                <div
+                    style="font-size: 0.75rem; font-weight: 600; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 1rem;">
+                    Daily Champion</div>
+                <div style="display: inline-block; padding: 6px 12px; background: rgba(255,215,0,0.1); border-radius: 20px; font-size: 0.8rem; color: #fff; font-weight: 500;"
+                    id="top-stats">0 wins / 0 signals</div>
+            </div>
+        </div>
+
+        <!-- Activity Heatmap -->
+        <div class="chart-card">
+            <div class="chart-header">
+                <div class="chart-title">Daily Activity (24h)</div>
+            </div>
+            <div class="heatmap" id="hourly-heatmap">
+                <!-- 24 cells -->
+            </div>
+        </div>
+    </div>
+    </div>
+    </div>
+
+
+    <div id="monitor-view" style="display: none;">
+        <div class="chart-card"
+            style="padding: 1.5rem; height: calc(100vh - 200px); display: flex; flex-direction: column;">
+            <div class="chart-header"
+                style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                <div class="chart-title">System Logs</div>
+                <div style="display: flex; gap: 0.5rem;">
+                    <select id="log-service-select" class="dark-input"
+                        style="padding: 8px; border-radius: 4px; background: rgba(0,0,0,0.3); color: #fff; border: 1px solid var(--glass-border);">
+                        <option value="smc-signal-service">Signal Service</option>
+                        <option value="smc-admin-dashboard">Admin Dashboard</option>
+                        <option value="smc-interactive-bot">Telegram Bot</option>
+                    </select>
+                    <button onclick="loadLogs()" style="width: auto; padding: 8px 15px;">REFRESH</button>
+                </div>
+            </div>
+            <div id="log-terminal"
+                style="flex-grow: 1; background: #0c0c0c; border: 1px solid #333; border-radius: 6px; padding: 1rem; font-family: 'Courier New', Courier, monospace; font-size: 0.85rem; color: #00ff41; overflow-y: auto; white-space: pre-wrap; line-height: 1.4;">
+                <!-- Logs appear here -->
+                [SYSTEM] Waiting for initialization...
             </div>
         </div>
     </div>
@@ -299,6 +396,12 @@
             return false;
         };
 
+        let authToken = localStorage.getItem('authToken');
+        let currentView = 'clients';
+        let allSignals = [];
+        let equityChart = null;
+        let assetChart = null;
+
         // DOM Security Helpers
         function getEl(id) { return document.getElementById(id); }
         function setStyle(id, prop, val) { const el = getEl(id); if (el) el.style[prop] = val; }
@@ -398,6 +501,31 @@
                 document.getElementById('stat-signals').innerText = data.signals_today;
                 document.getElementById('server-time').innerText = data.server_time;
 
+                // V19.2: Market Context
+                if (data.market_context) {
+                    const ctx = data.market_context;
+                    const dxyEl = document.getElementById('mctx-dxy');
+                    const tnxEl = document.getElementById('mctx-tnx');
+                    const riskEl = document.getElementById('mctx-risk');
+                    const newsEl = document.getElementById('mctx-news');
+
+                    dxyEl.innerText = ctx.DXY;
+                    dxyEl.style.color = ctx.DXY === 'BULLISH' ? '#00ff64' : '#ff4d4d';
+
+                    tnxEl.innerText = ctx.TNX;
+                    tnxEl.style.color = ctx.TNX === 'BULLISH' ? '#00ff64' : '#ff4d4d';
+
+                    riskEl.innerText = ctx.RISK === 'OFF' ? 'RISK OFF' : (ctx.RISK === 'ON' ? 'RISK ON' : 'NEUTRAL');
+                    riskEl.style.background = ctx.RISK === 'OFF' ? 'rgba(255,77,77,0.1)' : (ctx.RISK === 'ON' ? 'rgba(0,255,100,0.1)' : 'rgba(255,215,0,0.1)');
+                    riskEl.style.color = ctx.RISK === 'OFF' ? '#ff4d4d' : (ctx.RISK === 'ON' ? '#00ff64' : 'var(--acc-gold)');
+
+                    newsEl.innerText = ctx.NEWS;
+                    newsEl.style.color = ctx.NEWS.includes('EVENTS') ? '#fff' : '#00ff64';
+                    newsEl.style.background = ctx.NEWS.includes('EVENTS') ? '#ff4d4d' : 'transparent';
+                    if (ctx.NEWS.includes('EVENTS')) newsEl.style.padding = '2px 8px';
+                    if (ctx.NEWS.includes('EVENTS')) newsEl.style.borderRadius = '4px';
+                }
+
                 if (statusEl) {
                     statusEl.innerText = "ONLINE";
                     statusEl.style.color = "#00ff64";
@@ -411,10 +539,74 @@
             }
         }
 
+        function updateCharts(data) {
+            const ctxEquity = document.getElementById('equity-chart').getContext('2d');
+            const ctxAsset = document.getElementById('asset-chart').getContext('2d');
+
+            // 1. Equity Curve Chart
+            const equityLabels = data.equity_curve.map(p => p.day);
+            const equityData = data.equity_curve.map(p => p.profit);
+
+            if (equityChart) equityChart.destroy();
+            equityChart = new Chart(ctxEquity, {
+                type: 'line',
+                data: {
+                    labels: equityLabels,
+                    datasets: [{
+                        label: 'Units Profit',
+                        data: equityData,
+                        borderColor: '#00ea90',
+                        backgroundColor: 'rgba(0, 234, 144, 0.1)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.4,
+                        pointRadius: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { grid: { display: false }, ticks: { color: '#888', font: { size: 9 } } },
+                        y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#888', font: { size: 9 } } }
+                    }
+                }
+            });
+
+            // 2. Asset Profitability (Bar Chart)
+            const assetLabels = data.top_assets.map(a => a.symbol);
+            const assetWins = data.top_assets.map(a => a.wins);
+            const assetLosses = data.top_assets.map(a => a.count - a.wins);
+
+            if (assetChart) assetChart.destroy();
+            assetChart = new Chart(ctxAsset, {
+                type: 'bar',
+                data: {
+                    labels: assetLabels,
+                    datasets: [
+                        { label: 'Wins', data: assetWins, backgroundColor: '#00ea90' },
+                        { label: 'Losses', data: assetLosses, backgroundColor: '#ff4d4d' }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { stacked: true, grid: { display: false }, ticks: { color: '#888', font: { size: 9 } } },
+                        y: { stacked: true, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#888', font: { size: 9 } } }
+                    }
+                }
+            });
+        }
+
         async function loadAnalytics() {
             try {
                 const res = await apiFetch('/api/analytics/daily');
                 const data = await res.json();
+
+                updateCharts(data);
 
                 // 1. Scalp vs Swing Stats
                 const scalp = data.stats_by_type['SCALP'] || { wins: 0, losses: 0, total: 0, open: 0 };
@@ -455,24 +647,6 @@
                     document.getElementById('top-symbol').innerText = data.top_performer.symbol;
                     document.getElementById('top-stats').innerText = `${data.top_performer.wins} wins / ${data.top_performer.count} signals`;
                 }
-
-                // 3. Top Assets
-                const assetList = document.getElementById('asset-list');
-                assetList.innerHTML = '';
-                const maxCount = data.top_assets.length > 0 ? Math.max(...data.top_assets.map(a => a.count)) : 1;
-
-                data.top_assets.forEach(asset => {
-                    const pct = Math.round((asset.count / maxCount) * 100);
-                    assetList.innerHTML += `
-                        <div class="bar-item">
-                            <div class="bar-label">${asset.symbol}</div>
-                            <div class="bar-track">
-                                <div class="bar-progress" style="width: ${pct}%"></div>
-                            </div>
-                            <div class="bar-value">${asset.count}</div>
-                        </div>
-                    `;
-                });
 
                 // 4. Heatmap
                 const heatmap = document.getElementById('hourly-heatmap');
@@ -689,7 +863,7 @@
             currentView = view;
 
             // Hide all views
-            ['clients-view', 'signals-view', 'performance-view', 'settings-view'].forEach(v => setStyle(v, 'display', 'none'));
+            ['clients-view', 'signals-view', 'performance-view', 'settings-view', 'monitor-view'].forEach(v => setStyle(v, 'display', 'none'));
 
             // Show selected view
             setStyle(view + '-view', 'display', 'block');
@@ -714,6 +888,33 @@
             if (view === 'signals') loadSignals();
             if (view === 'clients') loadClients();
             if (view === 'performance') loadAnalytics();
+            if (view === 'monitor') loadLogs();
+        }
+
+        async function loadLogs() {
+            const service = document.getElementById('log-service-select').value;
+            const terminal = document.getElementById('log-terminal');
+            terminal.innerHTML = `[SYSTEM] Fetching logs for ${service}...`;
+
+            try {
+                const res = await apiFetch(`/api/logs/${service}`);
+                const data = await res.json();
+
+                if (data.logs) {
+                    // XSS protection and auto-coloring
+                    const coloredLogs = data.logs
+                        .replace(/[<>]/g, '')
+                        .replace(/ERROR/g, '<span style="color: #ff4d4d; font-weight: bold;">ERROR</span>')
+                        .replace(/WARNING/g, '<span style="color: var(--acc-gold); font-weight: bold;">WARNING</span>')
+                        .replace(/🎯 UPDATING/g, '<span style="color: #00ff88; font-weight: bold;">🎯 UPDATING</span>')
+                        .replace(/📊/g, '<span style="color: var(--acc-cyan);">📊</span>');
+
+                    terminal.innerHTML = coloredLogs || "[SYSTEM] No log entries found for this service.";
+                    terminal.scrollTop = terminal.scrollHeight;
+                }
+            } catch (e) {
+                terminal.innerHTML = `[SYSTEM ERROR] Failed to load logs: ${e.message}`;
+            }
         }
 
         function openEdit(chatId, balance, tier) {
