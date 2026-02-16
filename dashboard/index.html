@@ -291,10 +291,17 @@
     </div>
 
     <script>
-        // State
-        let currentView = 'clients';
-        let allSignals = [];
-        let authToken = localStorage.getItem('authToken');
+        // Global error handler
+        window.onerror = function (msg, url, lineNo, columnNo, error) {
+            console.error("Global Error:", msg, "at", lineNo);
+            if (typeof showToast === 'function') showToast("System Error: " + msg, "error");
+            return false;
+        };
+
+        // DOM Security Helpers
+        function getEl(id) { return document.getElementById(id); }
+        function setStyle(id, prop, val) { const el = getEl(id); if (el) el.style[prop] = val; }
+        function setText(id, txt) { const el = getEl(id); if (el) el.innerText = txt; }
 
         // Check Auth on Init
         (async () => {
@@ -343,15 +350,15 @@
         function logout() {
             authToken = null;
             localStorage.removeItem('authToken');
-            document.getElementById('login-screen').style.display = 'flex';
-            document.getElementById('sidebar').style.display = 'none';
-            document.getElementById('main-content').style.display = 'none';
+            setStyle('login-screen', 'display', 'flex');
+            setStyle('sidebar', 'display', 'none');
+            setStyle('main-content', 'display', 'none');
         }
 
         function showDashboard() {
-            document.getElementById('login-screen').style.display = 'none';
-            document.getElementById('sidebar').style.display = 'flex';
-            document.getElementById('main-content').style.display = 'block';
+            setStyle('login-screen', 'display', 'none');
+            setStyle('sidebar', 'display', 'flex');
+            setStyle('main-content', 'display', 'block');
 
             // Start Data Loads
             loadClients();
@@ -677,16 +684,11 @@
         function showView(view) {
             currentView = view;
 
-            // Hide all
-            document.getElementById('clients-view').style.display = 'none';
-            document.getElementById('signals-view').style.display = 'none';
-            document.getElementById('performance-view').style.display = 'none';
-            const settingsView = document.getElementById('settings-view');
-            if (settingsView) settingsView.style.display = 'none';
+            // Hide all views
+            ['clients-view', 'signals-view', 'performance-view', 'settings-view'].forEach(v => setStyle(v, 'display', 'none'));
 
-            // Show selected
-            const target = document.getElementById(view + '-view');
-            if (target) target.style.display = 'block';
+            // Show selected view
+            setStyle(view + '-view', 'display', 'block');
 
             // Update title
             const titles = {
@@ -695,13 +697,14 @@
                 'performance': 'Daily Performance Analysis',
                 'settings': 'Server Configuration'
             };
-            document.getElementById('view-title').innerText = titles[view] || 'Dashboard';
+            setText('view-title', titles[view] || 'Dashboard');
 
             // Sidebar Highlight
             document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
-            const activeNav = Array.from(document.querySelectorAll('.nav-item')).find(item =>
-                item.getAttribute('onclick').includes(`'${view}'`)
-            );
+            const activeNav = Array.from(document.querySelectorAll('.nav-item')).find(item => {
+                const clickAttr = item.getAttribute('onclick');
+                return clickAttr && clickAttr.includes(`'${view}'`);
+            });
             if (activeNav) activeNav.classList.add('active');
 
             if (view === 'signals') loadSignals();
