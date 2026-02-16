@@ -542,6 +542,7 @@
                 renderSignals(allSignals || []);
             } catch (e) {
                 console.error("Signal load error:", e);
+                showToast("Failed to load signals", "error");
                 renderSignals([]);
             }
         }
@@ -801,13 +802,8 @@
         // Auto-refresh clients every 30 seconds
         setInterval(loadClients, 30000);
 
-        // Initialize dashboard (wrapped in async IIFE to allow await)
-        (async () => {
-            loadClients();
-            await loadStats();
-            await loadConfig();
-            setInterval(loadStats, 10000);
-        })();
+        // NOTE: Data loading is handled by showDashboard() after auth verification.
+        // We do NOT call loadClients/Stats/Config here to avoid race conditions and 401s.
 
         async function loadConfig() {
             try {
@@ -848,7 +844,7 @@
                         body: JSON.stringify(update)
                     });
                 } catch (e) {
-                    print(e);
+                    console.error(e);
                     success = false;
                 }
             }
