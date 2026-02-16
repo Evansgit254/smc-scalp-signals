@@ -96,7 +96,7 @@
             </div>
         </div>
 
-        <div id="clients-view">
+        <div id="clients-view" style="display: none;">
             <div class="table-container">
                 <table class="glass-table">
                     <thead>
@@ -216,486 +216,468 @@
                         <canvas id="asset-chart"></canvas>
                     </div>
                 </div>
+
+                <!-- Top Assets -->
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <div class="chart-title">Top performer</div>
+                    </div>
+                    <div id="top-performer-content"
+                        style="padding: 1.5rem; text-align: center; background: radial-gradient(circle at center, rgba(255,215,0,0.05), transparent);">
+                        <div style="font-size: 2.2rem; font-weight: 800; color: var(--acc-gold); margin-bottom: 0.25rem; text-shadow: 0 0 20px rgba(255,215,0,0.2);"
+                            id="top-symbol">---</div>
+                        <div
+                            style="font-size: 0.75rem; font-weight: 600; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 1rem;">
+                            Daily Champion</div>
+                        <div style="display: inline-block; padding: 6px 12px; background: rgba(255,215,0,0.1); border-radius: 20px; font-size: 0.8rem; color: #fff; font-weight: 500;"
+                            id="top-stats">0 wins / 0 signals</div>
+                    </div>
+                </div>
+
+                <!-- Activity Heatmap -->
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <div class="chart-title">Daily Activity (24h)</div>
+                    </div>
+                    <div class="heatmap" id="hourly-heatmap">
+                        <!-- 24 cells -->
+                    </div>
+                </div>
             </div>
         </div>
-
-        <!-- Buy/Sell Bias (Donut Chart) -->
-        <div class="chart-card">
-            <div class="chart-header">
-                <div class="chart-title">Market bias (BUY vs SELL)</div>
-            </div>
-            <div class="donut-container">
-                <svg viewBox="0 0 36 36" style="width: 100%; height: 100%; transform: rotate(-90deg);">
-                    <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none"
-                        stroke="#ff4d4d" stroke-width="3" />
-                    <circle cx="18" cy="18" r="15.9155" fill="none" stroke="var(--acc-cyan)" stroke-width="3"
-                        stroke-dasharray="0, 100" id="bias-stroke" />
-                </svg>
-                <div class="donut-label">
-                    <div class="donut-val" id="bias-pct">0%</div>
-                    <div class="donut-sub">BULLISH</div>
+        <div id="monitor-view" style="display: none;">
+            <div class="chart-card"
+                style="padding: 1.5rem; height: calc(100vh - 200px); display: flex; flex-direction: column;">
+                <div class="chart-header"
+                    style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                    <div class="chart-title">System Logs</div>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <select id="log-service-select" class="dark-input"
+                            style="padding: 8px; border-radius: 4px; background: rgba(0,0,0,0.3); color: #fff; border: 1px solid var(--glass-border);">
+                            <option value="smc-signal-service">Signal Service</option>
+                            <option value="smc-admin-dashboard">Admin Dashboard</option>
+                            <option value="smc-interactive-bot">Telegram Bot</option>
+                        </select>
+                        <button onclick="loadLogs()" style="width: auto; padding: 8px 15px;">REFRESH</button>
+                    </div>
+                </div>
+                <div id="log-terminal"
+                    style="flex-grow: 1; background: #0c0c0c; border: 1px solid #333; border-radius: 6px; padding: 1rem; font-family: 'Courier New', Courier, monospace; font-size: 0.85rem; color: #00ff41; overflow-y: auto; white-space: pre-wrap; line-height: 1.4;">
+                    <!-- Logs appear here -->
+                    [SYSTEM] Waiting for initialization...
                 </div>
             </div>
         </div>
 
-        <!-- Top Assets -->
-        <div class="chart-card">
-            <div class="chart-header">
-                <div class="chart-title">Top performer</div>
-            </div>
-            <div id="top-performer-content"
-                style="padding: 1.5rem; text-align: center; background: radial-gradient(circle at center, rgba(255,215,0,0.05), transparent);">
-                <div style="font-size: 2.2rem; font-weight: 800; color: var(--acc-gold); margin-bottom: 0.25rem; text-shadow: 0 0 20px rgba(255,215,0,0.2);"
-                    id="top-symbol">---</div>
-                <div
-                    style="font-size: 0.75rem; font-weight: 600; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 1rem;">
-                    Daily Champion</div>
-                <div style="display: inline-block; padding: 6px 12px; background: rgba(255,215,0,0.1); border-radius: 20px; font-size: 0.8rem; color: #fff; font-weight: 500;"
-                    id="top-stats">0 wins / 0 signals</div>
-            </div>
-        </div>
-
-        <!-- Activity Heatmap -->
-        <div class="chart-card">
-            <div class="chart-header">
-                <div class="chart-title">Daily Activity (24h)</div>
-            </div>
-            <div class="heatmap" id="hourly-heatmap">
-                <!-- 24 cells -->
-            </div>
-        </div>
-    </div>
-    </div>
-    </div>
-
-
-    <div id="monitor-view" style="display: none;">
-        <div class="chart-card"
-            style="padding: 1.5rem; height: calc(100vh - 200px); display: flex; flex-direction: column;">
-            <div class="chart-header"
-                style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                <div class="chart-title">System Logs</div>
-                <div style="display: flex; gap: 0.5rem;">
-                    <select id="log-service-select" class="dark-input"
-                        style="padding: 8px; border-radius: 4px; background: rgba(0,0,0,0.3); color: #fff; border: 1px solid var(--glass-border);">
-                        <option value="smc-signal-service">Signal Service</option>
-                        <option value="smc-admin-dashboard">Admin Dashboard</option>
-                        <option value="smc-interactive-bot">Telegram Bot</option>
-                    </select>
-                    <button onclick="loadLogs()" style="width: auto; padding: 8px 15px;">REFRESH</button>
+        <div id="settings-view" style="display: none;">
+            <div class="chart-card" style="padding: 2rem;">
+                <div class="chart-header" style="display:flex; justify-content:space-between; margin-bottom: 2rem;">
+                    <div class="chart-title">⚙️ Server Configuration</div>
+                    <button onclick="saveConfig()" style="width: auto; padding: 10px 20px;">SAVE CONFIG</button>
                 </div>
-            </div>
-            <div id="log-terminal"
-                style="flex-grow: 1; background: #0c0c0c; border: 1px solid #333; border-radius: 6px; padding: 1rem; font-family: 'Courier New', Courier, monospace; font-size: 0.85rem; color: #00ff41; overflow-y: auto; white-space: pre-wrap; line-height: 1.4;">
-                <!-- Logs appear here -->
-                [SYSTEM] Waiting for initialization...
-            </div>
-        </div>
-    </div>
 
-    <div id="settings-view" style="display: none;">
-        <div class="chart-card" style="padding: 2rem;">
-            <div class="chart-header" style="display:flex; justify-content:space-between; margin-bottom: 2rem;">
-                <div class="chart-title">⚙️ Server Configuration</div>
-                <button onclick="saveConfig()" style="width: auto; padding: 10px 20px;">SAVE CONFIG</button>
-            </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
+                    <!-- System Control -->
+                    <div style="background: rgba(255,255,255,0.03); padding: 1.5rem; border-radius: 12px;">
+                        <h3 style="color: var(--acc-cyan); margin-bottom: 1.5rem; font-size: 1.1rem;">System Control
+                        </h3>
 
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
-                <!-- System Control -->
-                <div style="background: rgba(255,255,255,0.03); padding: 1.5rem; border-radius: 12px;">
-                    <h3 style="color: var(--acc-cyan); margin-bottom: 1.5rem; font-size: 1.1rem;">System Control</h3>
-
-                    <div class="setting-row"
-                        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-                        <div>
-                            <div style="font-weight: 600; margin-bottom: 4px;">Master Switch</div>
-                            <div style="font-size: 0.8rem; color: var(--text-dim);">Pause/Resume Signal Generation</div>
+                        <div class="setting-row"
+                            style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                            <div>
+                                <div style="font-weight: 600; margin-bottom: 4px;">Master Switch</div>
+                                <div style="font-size: 0.8rem; color: var(--text-dim);">Pause/Resume Signal Generation
+                                </div>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="cfg-system-status">
+                                <span class="toggle-slider"></span>
+                            </label>
                         </div>
-                        <label class="toggle-switch">
-                            <input type="checkbox" id="cfg-system-status">
-                            <span class="toggle-slider"></span>
-                        </label>
+
+                        <div class="setting-row">
+                            <label style="display: block; font-size: 0.9rem; margin-bottom: 8px;">News Filter Wash Zone
+                                (Min)</label>
+                            <input type="number" id="cfg-news-filter" class="dark-input"
+                                style="width: 100%; padding: 10px; background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); color: #fff; border-radius: 6px;">
+                        </div>
                     </div>
 
-                    <div class="setting-row">
-                        <label style="display: block; font-size: 0.9rem; margin-bottom: 8px;">News Filter Wash Zone
-                            (Min)</label>
-                        <input type="number" id="cfg-news-filter" class="dark-input"
-                            style="width: 100%; padding: 10px; background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); color: #fff; border-radius: 6px;">
-                    </div>
-                </div>
+                    <!-- Risk Management -->
+                    <div style="background: rgba(255,255,255,0.03); padding: 1.5rem; border-radius: 12px;">
+                        <h3 style="color: var(--acc-gold); margin-bottom: 1.5rem; font-size: 1.1rem;">Risk Parameters
+                        </h3>
 
-                <!-- Risk Management -->
-                <div style="background: rgba(255,255,255,0.03); padding: 1.5rem; border-radius: 12px;">
-                    <h3 style="color: var(--acc-gold); margin-bottom: 1.5rem; font-size: 1.1rem;">Risk Parameters</h3>
+                        <div class="setting-row" style="margin-bottom: 1.5rem;">
+                            <label style="display: block; font-size: 0.9rem; margin-bottom: 8px;">Risk Per Trade
+                                (%)</label>
+                            <input type="number" step="0.1" id="cfg-risk" class="dark-input"
+                                style="width: 100%; padding: 10px; background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); color: #fff; border-radius: 6px;">
+                        </div>
 
-                    <div class="setting-row" style="margin-bottom: 1.5rem;">
-                        <label style="display: block; font-size: 0.9rem; margin-bottom: 8px;">Risk Per Trade (%)</label>
-                        <input type="number" step="0.1" id="cfg-risk" class="dark-input"
-                            style="width: 100%; padding: 10px; background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); color: #fff; border-radius: 6px;">
-                    </div>
+                        <div class="setting-row" style="margin-bottom: 1.5rem;">
+                            <label style="display: block; font-size: 0.9rem; margin-bottom: 8px;">Max Concurrent
+                                Trades</label>
+                            <input type="number" id="cfg-max-trades" class="dark-input"
+                                style="width: 100%; padding: 10px; background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); color: #fff; border-radius: 6px;">
+                        </div>
 
-                    <div class="setting-row" style="margin-bottom: 1.5rem;">
-                        <label style="display: block; font-size: 0.9rem; margin-bottom: 8px;">Max Concurrent
-                            Trades</label>
-                        <input type="number" id="cfg-max-trades" class="dark-input"
-                            style="width: 100%; padding: 10px; background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); color: #fff; border-radius: 6px;">
-                    </div>
-
-                    <div class="setting-row">
-                        <label style="display: block; font-size: 0.9rem; margin-bottom: 8px;">Min Quality Score</label>
-                        <input type="number" step="0.1" id="cfg-min-quality" class="dark-input"
-                            style="width: 100%; padding: 10px; background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); color: #fff; border-radius: 6px;">
+                        <div class="setting-row">
+                            <label style="display: block; font-size: 0.9rem; margin-bottom: 8px;">Min Quality
+                                Score</label>
+                            <input type="number" step="0.1" id="cfg-min-quality" class="dark-input"
+                                style="width: 100%; padding: 10px; background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); color: #fff; border-radius: 6px;">
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
 
-    <!-- Edit Modal -->
-    <div class="modal" id="edit-modal">
-        <div class="modal-content">
-            <h2 id="modal-title">Edit Client</h2>
-            <input type="hidden" id="edit-chat-id">
+        <!-- Edit Modal -->
+        <div class="modal" id="edit-modal">
+            <div class="modal-content">
+                <h2 id="modal-title">Edit Client</h2>
+                <input type="hidden" id="edit-chat-id">
 
-            <label>Balance ($):</label>
-            <input type="number" id="edit-balance">
+                <label>Balance ($):</label>
+                <input type="number" id="edit-balance">
 
-            <label>Extend Subscription (Days):</label>
-            <input type="number" id="edit-days" placeholder="e.g. 30">
+                <label>Extend Subscription (Days):</label>
+                <input type="number" id="edit-days" placeholder="e.g. 30">
 
-            <label>Tier:</label>
-            <select id="edit-tier">
-                <option value="BASIC">BASIC (Bronze)</option>
-                <option value="GOLD">GOLD (Platinum)</option>
-            </select>
+                <label>Tier:</label>
+                <select id="edit-tier">
+                    <option value="BASIC">BASIC (Bronze)</option>
+                    <option value="GOLD">GOLD (Platinum)</option>
+                </select>
 
-            <button onclick="saveClient()">SAVE CHANGES</button>
-            <button class="secondary" onclick="closeModal()">CANCEL</button>
-        </div>
-    </div>
-
-    <!-- Signal Details Modal -->
-    <div class="modal" id="signal-modal">
-        <div class="modal-content signal-modal-content">
-            <h2 style="margin-bottom: 1.5rem; color: var(--acc-cyan);">Signal Details</h2>
-
-            <div id="signal-details-body">
-                <!-- Populated by JS -->
+                <button onclick="saveClient()">SAVE CHANGES</button>
+                <button class="secondary" onclick="closeModal()">CANCEL</button>
             </div>
-
-            <button class="secondary" onclick="closeSignalModal()" style="margin-top: 2rem;">CLOSE</button>
         </div>
-    </div>
 
-    <script>
-        // Global error handler
-        window.onerror = function (msg, url, lineNo, columnNo, error) {
-            console.error("Global Error:", msg, "at", lineNo);
-            if (typeof showToast === 'function') showToast("System Error: " + msg, "error");
-            return false;
-        };
+        <!-- Signal Details Modal -->
+        <div class="modal" id="signal-modal">
+            <div class="modal-content signal-modal-content">
+                <h2 style="margin-bottom: 1.5rem; color: var(--acc-cyan);">Signal Details</h2>
 
-        let authToken = localStorage.getItem('authToken');
-        let currentView = 'clients';
-        let allSignals = [];
-        let equityChart = null;
-        let assetChart = null;
+                <div id="signal-details-body">
+                    <!-- Populated by JS -->
+                </div>
 
-        // DOM Security Helpers
-        function getEl(id) { return document.getElementById(id); }
-        function setStyle(id, prop, val) { const el = getEl(id); if (el) el.style[prop] = val; }
-        function setText(id, txt) { const el = getEl(id); if (el) el.innerText = txt; }
+                <button class="secondary" onclick="closeSignalModal()" style="margin-top: 2rem;">CLOSE</button>
+            </div>
+        </div>
 
-        // Check Auth on Init
-        (async () => {
-            if (authToken) {
-                // Verify token by trying to fetch config
-                const isValid = await verifyToken();
-                if (isValid) {
-                    showDashboard();
-                } else {
-                    logout();
+        <script>
+            // Global error handler
+            window.onerror = function (msg, url, lineNo, columnNo, error) {
+                console.error("Global Error:", msg, "at", lineNo);
+                if (typeof showToast === 'function') showToast("System Error: " + msg, "error");
+                return false;
+            };
+
+            let authToken = localStorage.getItem('authToken');
+            let currentView = 'clients';
+            let allSignals = [];
+            let equityChart = null;
+            let assetChart = null;
+
+            // DOM Security Helpers
+            function getEl(id) { return document.getElementById(id); }
+            function setStyle(id, prop, val) { const el = getEl(id); if (el) el.style[prop] = val; }
+            function setText(id, txt) { const el = getEl(id); if (el) el.innerText = txt; }
+
+            // Check Auth on Init
+            (async () => {
+                if (authToken) {
+                    // Verify token by trying to fetch config
+                    const isValid = await verifyToken();
+                    if (isValid) {
+                        showDashboard();
+                    } else {
+                        logout();
+                    }
+                }
+            })();
+
+            async function login() {
+                const user = document.getElementById('login-user').value;
+                const pass = document.getElementById('login-pass').value;
+                const msg = document.getElementById('login-msg');
+
+                msg.innerText = "Authenticating...";
+
+                try {
+                    const formData = new FormData();
+                    formData.append('username', user);
+                    formData.append('password', pass);
+
+                    const res = await fetch('/api/token', {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    if (res.ok) {
+                        const data = await res.json();
+                        authToken = data.access_token;
+                        localStorage.setItem('authToken', authToken);
+                        showDashboard();
+                    } else {
+                        msg.innerText = "Invalid username or password";
+                    }
+                } catch (e) {
+                    msg.innerText = "Connection error";
+                    console.error(e);
                 }
             }
-        })();
 
-        async function login() {
-            const user = document.getElementById('login-user').value;
-            const pass = document.getElementById('login-pass').value;
-            const msg = document.getElementById('login-msg');
+            function logout() {
+                authToken = null;
+                localStorage.removeItem('authToken');
+                setStyle('login-screen', 'display', 'flex');
+                setStyle('sidebar', 'display', 'none');
+                setStyle('main-content', 'display', 'none');
+            }
 
-            msg.innerText = "Authenticating...";
+            function showDashboard() {
+                setStyle('login-screen', 'display', 'none');
+                setStyle('sidebar', 'display', 'flex');
+                setStyle('main-content', 'display', 'block');
 
-            try {
-                const formData = new FormData();
-                formData.append('username', user);
-                formData.append('password', pass);
+                // Start Data Loads
+                loadClients();
+                loadStats();
+                loadConfig();
+                loadSignals();
+                loadAnalytics();
+                showView('clients'); // Explicitly show first view
+                setInterval(loadStats, 10000);
+            }
 
-                const res = await fetch('/api/token', {
-                    method: 'POST',
-                    body: formData
+            async function verifyToken() {
+                try {
+                    const res = await apiFetch('/api/me');
+                    return res.ok;
+                } catch { return false; }
+            }
+
+            // Helper wrapper for fetch with Auth
+            async function apiFetch(url, options = {}) {
+                if (!options.headers) options.headers = {};
+                if (authToken) {
+                    options.headers['Authorization'] = `Bearer ${authToken}`;
+                }
+                return fetch(url, options);
+            }
+
+            async function loadStats() {
+                const statusEl = document.getElementById('system-status');
+                try {
+                    const res = await apiFetch('/api/stats');
+                    if (res.status === 401) return logout();
+                    if (!res.ok) throw new Error("API Unreachable");
+                    const data = await res.json();
+
+                    document.getElementById('stat-active').innerText = data.active_clients;
+                    document.getElementById('stat-signals').innerText = data.signals_today;
+                    document.getElementById('server-time').innerText = data.server_time;
+
+                    // V19.2: Market Context
+                    if (data.market_context) {
+                        const ctx = data.market_context;
+                        const dxyEl = document.getElementById('mctx-dxy');
+                        const tnxEl = document.getElementById('mctx-tnx');
+                        const riskEl = document.getElementById('mctx-risk');
+                        const newsEl = document.getElementById('mctx-news');
+
+                        dxyEl.innerText = ctx.DXY;
+                        dxyEl.style.color = ctx.DXY === 'BULLISH' ? '#00ff64' : '#ff4d4d';
+
+                        tnxEl.innerText = ctx.TNX;
+                        tnxEl.style.color = ctx.TNX === 'BULLISH' ? '#00ff64' : '#ff4d4d';
+
+                        riskEl.innerText = ctx.RISK === 'OFF' ? 'RISK OFF' : (ctx.RISK === 'ON' ? 'RISK ON' : 'NEUTRAL');
+                        riskEl.style.background = ctx.RISK === 'OFF' ? 'rgba(255,77,77,0.1)' : (ctx.RISK === 'ON' ? 'rgba(0,255,100,0.1)' : 'rgba(255,215,0,0.1)');
+                        riskEl.style.color = ctx.RISK === 'OFF' ? '#ff4d4d' : (ctx.RISK === 'ON' ? '#00ff64' : 'var(--acc-gold)');
+
+                        newsEl.innerText = ctx.NEWS;
+                        newsEl.style.color = ctx.NEWS.includes('EVENTS') ? '#fff' : '#00ff64';
+                        newsEl.style.background = ctx.NEWS.includes('EVENTS') ? '#ff4d4d' : 'transparent';
+                        if (ctx.NEWS.includes('EVENTS')) newsEl.style.padding = '2px 8px';
+                        if (ctx.NEWS.includes('EVENTS')) newsEl.style.borderRadius = '4px';
+                    }
+
+                    if (statusEl) {
+                        statusEl.innerText = "ONLINE";
+                        statusEl.style.color = "#00ff64";
+                    }
+                } catch (e) {
+                    console.error("Stats fetch failed:", e);
+                    if (statusEl) {
+                        statusEl.innerText = "OFFLINE";
+                        statusEl.style.color = "#ff4d4d";
+                    }
+                }
+            }
+
+            function updateCharts(data) {
+                const ctxEquity = document.getElementById('equity-chart').getContext('2d');
+                const ctxAsset = document.getElementById('asset-chart').getContext('2d');
+
+                // 1. Equity Curve Chart
+                const equityLabels = data.equity_curve.map(p => p.day);
+                const equityData = data.equity_curve.map(p => p.profit);
+
+                if (equityChart) equityChart.destroy();
+                equityChart = new Chart(ctxEquity, {
+                    type: 'line',
+                    data: {
+                        labels: equityLabels,
+                        datasets: [{
+                            label: 'Units Profit',
+                            data: equityData,
+                            borderColor: '#00ea90',
+                            backgroundColor: 'rgba(0, 234, 144, 0.1)',
+                            borderWidth: 2,
+                            fill: true,
+                            tension: 0.4,
+                            pointRadius: 2
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { display: false } },
+                        scales: {
+                            x: { grid: { display: false }, ticks: { color: '#888', font: { size: 9 } } },
+                            y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#888', font: { size: 9 } } }
+                        }
+                    }
                 });
 
-                if (res.ok) {
+                // 2. Asset Profitability (Bar Chart)
+                const assetLabels = data.top_assets.map(a => a.symbol);
+                const assetWins = data.top_assets.map(a => a.wins);
+                const assetLosses = data.top_assets.map(a => a.count - a.wins);
+
+                if (assetChart) assetChart.destroy();
+                assetChart = new Chart(ctxAsset, {
+                    type: 'bar',
+                    data: {
+                        labels: assetLabels,
+                        datasets: [
+                            { label: 'Wins', data: assetWins, backgroundColor: '#00ea90' },
+                            { label: 'Losses', data: assetLosses, backgroundColor: '#ff4d4d' }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { display: false } },
+                        scales: {
+                            x: { stacked: true, grid: { display: false }, ticks: { color: '#888', font: { size: 9 } } },
+                            y: { stacked: true, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#888', font: { size: 9 } } }
+                        }
+                    }
+                });
+            }
+
+            async function loadAnalytics() {
+                try {
+                    const res = await apiFetch('/api/analytics/daily');
                     const data = await res.json();
-                    authToken = data.access_token;
-                    localStorage.setItem('authToken', authToken);
-                    showDashboard();
-                } else {
-                    msg.innerText = "Invalid username or password";
-                }
-            } catch (e) {
-                msg.innerText = "Connection error";
-                console.error(e);
-            }
-        }
 
-        function logout() {
-            authToken = null;
-            localStorage.removeItem('authToken');
-            setStyle('login-screen', 'display', 'flex');
-            setStyle('sidebar', 'display', 'none');
-            setStyle('main-content', 'display', 'none');
-        }
+                    updateCharts(data);
 
-        function showDashboard() {
-            setStyle('login-screen', 'display', 'none');
-            setStyle('sidebar', 'display', 'flex');
-            setStyle('main-content', 'display', 'block');
+                    // 1. Scalp vs Swing Stats
+                    const scalp = data.stats_by_type['SCALP'] || { wins: 0, losses: 0, total: 0, open: 0 };
+                    const swing = data.stats_by_type['SWING'] || { wins: 0, losses: 0, total: 0, open: 0 };
 
-            // Start Data Loads
-            loadClients();
-            loadStats();
-            loadConfig();
-            loadSignals();
-            loadAnalytics();
-            setInterval(loadStats, 10000);
-        }
+                    const closedScalp = scalp.wins + scalp.losses;
+                    const closedSwing = swing.wins + swing.losses;
 
-        async function verifyToken() {
-            try {
-                const res = await apiFetch('/api/me');
-                return res.ok;
-            } catch { return false; }
-        }
+                    setText('ana-scalp-sum', `${scalp.wins}/${scalp.total}`);
+                    setText('ana-scalp-wr', `${closedScalp > 0 ? Math.round((scalp.wins / closedScalp) * 100) : 0}% WR (${scalp.open} Open)`);
 
-        // Helper wrapper for fetch with Auth
-        async function apiFetch(url, options = {}) {
-            if (!options.headers) options.headers = {};
-            if (authToken) {
-                options.headers['Authorization'] = `Bearer ${authToken}`;
-            }
-            return fetch(url, options);
-        }
+                    setText('ana-swing-sum', `${swing.wins}/${swing.total}`);
+                    setText('ana-swing-wr', `${closedSwing > 0 ? Math.round((swing.wins / closedSwing) * 100) : 0}% WR (${swing.open} Open)`);
 
-        async function loadStats() {
-            const statusEl = document.getElementById('system-status');
-            try {
-                const res = await apiFetch('/api/stats');
-                if (res.status === 401) return logout();
-                if (!res.ok) throw new Error("API Unreachable");
-                const data = await res.json();
+                    // 2. Bias (Donut)
+                    const buys = data.bias['BUY'] || 0;
+                    const sells = data.bias['SELL'] || 0;
+                    const total = buys + sells;
+                    const buyPct = total > 0 ? Math.round((buys / total) * 100) : 50;
 
-                document.getElementById('stat-active').innerText = data.active_clients;
-                document.getElementById('stat-signals').innerText = data.signals_today;
-                document.getElementById('server-time').innerText = data.server_time;
+                    document.getElementById('bias-stroke').setAttribute('stroke-dasharray', `${buyPct}, 100`);
+                    document.getElementById('bias-pct').innerText = `${buyPct}%`;
 
-                // V19.2: Market Context
-                if (data.market_context) {
-                    const ctx = data.market_context;
-                    const dxyEl = document.getElementById('mctx-dxy');
-                    const tnxEl = document.getElementById('mctx-tnx');
-                    const riskEl = document.getElementById('mctx-risk');
-                    const newsEl = document.getElementById('mctx-news');
-
-                    dxyEl.innerText = ctx.DXY;
-                    dxyEl.style.color = ctx.DXY === 'BULLISH' ? '#00ff64' : '#ff4d4d';
-
-                    tnxEl.innerText = ctx.TNX;
-                    tnxEl.style.color = ctx.TNX === 'BULLISH' ? '#00ff64' : '#ff4d4d';
-
-                    riskEl.innerText = ctx.RISK === 'OFF' ? 'RISK OFF' : (ctx.RISK === 'ON' ? 'RISK ON' : 'NEUTRAL');
-                    riskEl.style.background = ctx.RISK === 'OFF' ? 'rgba(255,77,77,0.1)' : (ctx.RISK === 'ON' ? 'rgba(0,255,100,0.1)' : 'rgba(255,215,0,0.1)');
-                    riskEl.style.color = ctx.RISK === 'OFF' ? '#ff4d4d' : (ctx.RISK === 'ON' ? '#00ff64' : 'var(--acc-gold)');
-
-                    newsEl.innerText = ctx.NEWS;
-                    newsEl.style.color = ctx.NEWS.includes('EVENTS') ? '#fff' : '#00ff64';
-                    newsEl.style.background = ctx.NEWS.includes('EVENTS') ? '#ff4d4d' : 'transparent';
-                    if (ctx.NEWS.includes('EVENTS')) newsEl.style.padding = '2px 8px';
-                    if (ctx.NEWS.includes('EVENTS')) newsEl.style.borderRadius = '4px';
-                }
-
-                if (statusEl) {
-                    statusEl.innerText = "ONLINE";
-                    statusEl.style.color = "#00ff64";
-                }
-            } catch (e) {
-                console.error("Stats fetch failed:", e);
-                if (statusEl) {
-                    statusEl.innerText = "OFFLINE";
-                    statusEl.style.color = "#ff4d4d";
-                }
-            }
-        }
-
-        function updateCharts(data) {
-            const ctxEquity = document.getElementById('equity-chart').getContext('2d');
-            const ctxAsset = document.getElementById('asset-chart').getContext('2d');
-
-            // 1. Equity Curve Chart
-            const equityLabels = data.equity_curve.map(p => p.day);
-            const equityData = data.equity_curve.map(p => p.profit);
-
-            if (equityChart) equityChart.destroy();
-            equityChart = new Chart(ctxEquity, {
-                type: 'line',
-                data: {
-                    labels: equityLabels,
-                    datasets: [{
-                        label: 'Units Profit',
-                        data: equityData,
-                        borderColor: '#00ea90',
-                        backgroundColor: 'rgba(0, 234, 144, 0.1)',
-                        borderWidth: 2,
-                        fill: true,
-                        tension: 0.4,
-                        pointRadius: 2
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { display: false } },
-                    scales: {
-                        x: { grid: { display: false }, ticks: { color: '#888', font: { size: 9 } } },
-                        y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#888', font: { size: 9 } } }
+                    const sub = document.getElementById('bias-pct').nextElementSibling;
+                    if (buyPct > 55) {
+                        sub.innerText = 'BULLISH';
+                        sub.style.color = 'var(--acc-cyan)';
+                    } else if (buyPct < 45) {
+                        sub.innerText = 'BEARISH';
+                        sub.style.color = '#ff4d4d';
+                    } else {
+                        sub.innerText = 'NEUTRAL';
+                        sub.style.color = 'var(--acc-gold)';
                     }
-                }
-            });
 
-            // 2. Asset Profitability (Bar Chart)
-            const assetLabels = data.top_assets.map(a => a.symbol);
-            const assetWins = data.top_assets.map(a => a.wins);
-            const assetLosses = data.top_assets.map(a => a.count - a.wins);
-
-            if (assetChart) assetChart.destroy();
-            assetChart = new Chart(ctxAsset, {
-                type: 'bar',
-                data: {
-                    labels: assetLabels,
-                    datasets: [
-                        { label: 'Wins', data: assetWins, backgroundColor: '#00ea90' },
-                        { label: 'Losses', data: assetLosses, backgroundColor: '#ff4d4d' }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { display: false } },
-                    scales: {
-                        x: { stacked: true, grid: { display: false }, ticks: { color: '#888', font: { size: 9 } } },
-                        y: { stacked: true, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#888', font: { size: 9 } } }
+                    // 3. Top Performer
+                    if (data.top_performer) {
+                        document.getElementById('top-symbol').innerText = data.top_performer.symbol;
+                        document.getElementById('top-stats').innerText = `${data.top_performer.wins} wins / ${data.top_performer.count} signals`;
                     }
-                }
-            });
-        }
 
-        async function loadAnalytics() {
-            try {
-                const res = await apiFetch('/api/analytics/daily');
-                const data = await res.json();
+                    // 4. Heatmap
+                    const heatmap = document.getElementById('hourly-heatmap');
+                    heatmap.innerHTML = '';
+                    const counts = Object.values(data.hourly_heatmap);
+                    const maxH = counts.length > 0 ? Math.max(...counts) : 1;
 
-                updateCharts(data);
-
-                // 1. Scalp vs Swing Stats
-                const scalp = data.stats_by_type['SCALP'] || { wins: 0, losses: 0, total: 0, open: 0 };
-                const swing = data.stats_by_type['SWING'] || { wins: 0, losses: 0, total: 0, open: 0 };
-
-                const closedScalp = scalp.wins + scalp.losses;
-                const closedSwing = swing.wins + swing.losses;
-
-                setText('ana-scalp-sum', `${scalp.wins}/${scalp.total}`);
-                setText('ana-scalp-wr', `${closedScalp > 0 ? Math.round((scalp.wins / closedScalp) * 100) : 0}% WR (${scalp.open} Open)`);
-
-                setText('ana-swing-sum', `${swing.wins}/${swing.total}`);
-                setText('ana-swing-wr', `${closedSwing > 0 ? Math.round((swing.wins / closedSwing) * 100) : 0}% WR (${swing.open} Open)`);
-
-                // 2. Bias (Donut)
-                const buys = data.bias['BUY'] || 0;
-                const sells = data.bias['SELL'] || 0;
-                const total = buys + sells;
-                const buyPct = total > 0 ? Math.round((buys / total) * 100) : 50;
-
-                document.getElementById('bias-stroke').setAttribute('stroke-dasharray', `${buyPct}, 100`);
-                document.getElementById('bias-pct').innerText = `${buyPct}%`;
-
-                const sub = document.getElementById('bias-pct').nextElementSibling;
-                if (buyPct > 55) {
-                    sub.innerText = 'BULLISH';
-                    sub.style.color = 'var(--acc-cyan)';
-                } else if (buyPct < 45) {
-                    sub.innerText = 'BEARISH';
-                    sub.style.color = '#ff4d4d';
-                } else {
-                    sub.innerText = 'NEUTRAL';
-                    sub.style.color = 'var(--acc-gold)';
-                }
-
-                // 3. Top Performer
-                if (data.top_performer) {
-                    document.getElementById('top-symbol').innerText = data.top_performer.symbol;
-                    document.getElementById('top-stats').innerText = `${data.top_performer.wins} wins / ${data.top_performer.count} signals`;
-                }
-
-                // 4. Heatmap
-                const heatmap = document.getElementById('hourly-heatmap');
-                heatmap.innerHTML = '';
-                const counts = Object.values(data.hourly_heatmap);
-                const maxH = counts.length > 0 ? Math.max(...counts) : 1;
-
-                for (let i = 0; i < 24; i++) {
-                    const hStr = i.toString().padStart(2, '0');
-                    const count = data.hourly_heatmap[hStr] || 0;
-                    const opacity = count > 0 ? 0.1 + (count / maxH) * 0.8 : 0.05;
-                    heatmap.innerHTML += `
+                    for (let i = 0; i < 24; i++) {
+                        const hStr = i.toString().padStart(2, '0');
+                        const count = data.hourly_heatmap[hStr] || 0;
+                        const opacity = count > 0 ? 0.1 + (count / maxH) * 0.8 : 0.05;
+                        heatmap.innerHTML += `
                         <div class="heat-cell" 
                              style="background: rgba(0, 234, 144, ${opacity})"
                              data-time="${hStr}:00 - ${count} signals">
                         </div>
                     `;
-                }
-            } catch (e) {
-                console.error("Analytics error:", e);
-            }
-        }
-
-        async function loadClients() {
-            try {
-                const res = await apiFetch('/api/clients');
-                if (res.status === 401) return logout();
-                const clients = await res.json();
-                const body = document.getElementById('clients-body');
-                body.innerHTML = '';
-
-                clients.forEach(c => {
-                    const signalsActive = c.is_active;
-                    const dashboardActive = c.dashboard_access;
-                    const expiry = c.subscription_expiry ? new Date(c.subscription_expiry) : null;
-                    const now = new Date();
-                    const isExpired = expiry && expiry < now;
-                    const daysLeft = expiry ? Math.ceil((expiry - now) / (1000 * 60 * 60 * 24)) : null;
-
-                    let expiryDisplay = 'N/A';
-                    let expiryColor = 'var(--text-dim)';
-                    if (expiry) {
-                        expiryDisplay = expiry.toISOString().split('T')[0];
-                        if (daysLeft <= 3) expiryColor = '#ff4d4d';
-                        else if (daysLeft <= 7) expiryColor = 'var(--acc-gold)';
-                        else expiryColor = 'var(--acc-cyan)';
                     }
+                } catch (e) {
+                    console.error("Analytics error:", e);
+                }
+            }
 
-                    body.innerHTML += `
+            async function loadClients() {
+                try {
+                    const res = await apiFetch('/api/clients');
+                    if (res.status === 401) return logout();
+                    const clients = await res.json();
+                    const body = document.getElementById('clients-body');
+                    body.innerHTML = '';
+
+                    clients.forEach(c => {
+                        const signalsActive = c.is_active;
+                        const dashboardActive = c.dashboard_access;
+                        const expiry = c.subscription_expiry ? new Date(c.subscription_expiry) : null;
+                        const now = new Date();
+                        const isExpired = expiry && expiry < now;
+                        const daysLeft = expiry ? Math.ceil((expiry - now) / (1000 * 60 * 60 * 24)) : null;
+
+                        let expiryDisplay = 'N/A';
+                        let expiryColor = 'var(--text-dim)';
+                        if (expiry) {
+                            expiryDisplay = expiry.toISOString().split('T')[0];
+                            if (daysLeft <= 3) expiryColor = '#ff4d4d';
+                            else if (daysLeft <= 7) expiryColor = 'var(--acc-gold)';
+                            else expiryColor = 'var(--acc-cyan)';
+                        }
+
+                        body.innerHTML += `
                     <tr>
                         <td style="font-family: monospace">${c.telegram_chat_id}</td>
                         <td>$${c.account_balance.toFixed(2)}</td>
@@ -724,59 +706,59 @@
                         </td>
                     </tr>
                 `;
-                });
-            } catch (e) {
-                console.error("Load clients error:", e);
-                // logout if 401 isn't handled by apiFetch (apiFetch handles logic but returns res)
+                    });
+                } catch (e) {
+                    console.error("Load clients error:", e);
+                    // logout if 401 isn't handled by apiFetch (apiFetch handles logic but returns res)
+                }
             }
-        }
 
-        async function loadSignals() {
-            try {
-                // showToast("Loading signals...", "info"); // DEBUG
-                const res = await apiFetch('/api/signals');
-                if (res.status === 401) return logout();
+            async function loadSignals() {
+                try {
+                    // showToast("Loading signals...", "info"); // DEBUG
+                    const res = await apiFetch('/api/signals');
+                    if (res.status === 401) return logout();
 
-                const data = await res.json();
-                console.log("Signals loaded:", data); // DEBUG
+                    const data = await res.json();
+                    console.log("Signals loaded:", data); // DEBUG
 
-                if (Array.isArray(data)) {
-                    allSignals = data;
-                    renderSignals(allSignals);
-                    // showToast(`Loaded ${allSignals.length} signals`); // DEBUG
-                } else {
-                    console.error("Expected array but got:", data);
-                    showToast("Error: API returned invalid data format", "error");
+                    if (Array.isArray(data)) {
+                        allSignals = data;
+                        renderSignals(allSignals);
+                        // showToast(`Loaded ${allSignals.length} signals`); // DEBUG
+                    } else {
+                        console.error("Expected array but got:", data);
+                        showToast("Error: API returned invalid data format", "error");
+                        renderSignals([]);
+                    }
+                } catch (e) {
+                    console.error("Signal load error:", e);
+                    showToast("Failed to load signals: " + e.message, "error");
                     renderSignals([]);
                 }
-            } catch (e) {
-                console.error("Signal load error:", e);
-                showToast("Failed to load signals: " + e.message, "error");
-                renderSignals([]);
-            }
-        }
-
-        function renderSignals(signals) {
-            const tbody = document.getElementById('signal-table-body');
-            tbody.innerHTML = '';
-
-            if (signals.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="13" style="text-align:center; padding: 2rem;">No signals logged in database.</td></tr>';
-                return;
             }
 
-            signals.forEach((s, index) => {
-                const row = document.createElement('tr');
-                row.className = 'clickable-row';
-                row.style.cursor = 'pointer';
-                row.style.transition = 'background 0.2s';
-                row.onmouseover = () => row.style.background = 'rgba(255,255,255,0.05)';
-                row.onmouseout = () => row.style.background = 'transparent';
-                row.onclick = () => openSignalModal(index);
+            function renderSignals(signals) {
+                const tbody = document.getElementById('signal-table-body');
+                tbody.innerHTML = '';
 
-                const directionClass = s.direction === 'BUY' ? 'status-active' : 'status-expired';
+                if (signals.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="13" style="text-align:center; padding: 2rem;">No signals logged in database.</td></tr>';
+                    return;
+                }
 
-                row.innerHTML = `
+                signals.forEach((s, index) => {
+                    const row = document.createElement('tr');
+                    row.className = 'clickable-row';
+                    row.style.cursor = 'pointer';
+                    row.style.transition = 'background 0.2s';
+                    row.onmouseover = () => row.style.background = 'rgba(255,255,255,0.05)';
+                    row.onmouseout = () => row.style.background = 'transparent';
+                    row.onclick = () => openSignalModal(index);
+
+                    const directionClass = s.direction === 'BUY' ? 'status-active' : 'status-expired';
+
+                    row.innerHTML = `
                     <td style="font-size: 0.75rem; color: var(--text-dim); white-space: nowrap;">${new Date(s.timestamp).toLocaleTimeString()}</td>
                     <td style="font-weight:bold; color:var(--acc-cyan);">${s.symbol}</td>
                     <td><span class="status-badge" style="border: 1px solid var(--glass-border); font-size: 0.65rem;">${s.trade_type || 'SCALP'}</span></td>
@@ -791,24 +773,24 @@
                     <td style="font-weight: bold; color: ${s.result === 'SL' ? '#ff4d4d' : (s.result && s.result.startsWith('TP') ? '#00ff88' : '#b0b0b0')}">${s.result || '-'}</td>
                     <td style="max-width: 250px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="Click to view full reasoning">${s.reasoning || '-'}</td>
                 `;
-                tbody.appendChild(row);
-            });
-        }
+                    tbody.appendChild(row);
+                });
+            }
 
-        function openSignalModal(index) {
-            const sig = allSignals[index];
-            const content = document.getElementById('signal-details-body');
+            function openSignalModal(index) {
+                const sig = allSignals[index];
+                const content = document.getElementById('signal-details-body');
 
-            const directionColor = sig.direction === 'BUY' ? '#00ff64' : '#ff3232';
-            let reasoningText = sig.reasoning || 'No reasoning available.';
+                const directionColor = sig.direction === 'BUY' ? '#00ff64' : '#ff3232';
+                let reasoningText = sig.reasoning || 'No reasoning available.';
 
-            // Parse JSON fields safely
-            let risk = {};
-            let score = {};
-            try { risk = JSON.parse(sig.risk_details || '{}'); } catch (e) { }
-            try { score = JSON.parse(sig.score_details || '{}'); } catch (e) { }
+                // Parse JSON fields safely
+                let risk = {};
+                let score = {};
+                try { risk = JSON.parse(sig.risk_details || '{}'); } catch (e) { }
+                try { score = JSON.parse(sig.score_details || '{}'); } catch (e) { }
 
-            content.innerHTML = `
+                content.innerHTML = `
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2rem;">
                     <div>
                         <div class="detail-row"><span class="detail-label">STRATEGY</span> <span class="detail-value" style="color:var(--acc-cyan)">${sig.trade_type || 'SCALP'} (${sig.timeframe || 'M5'})</span></div>
@@ -852,165 +834,165 @@
                 <div class="reasoning-box">${reasoningText}</div>
             `;
 
-            document.getElementById('signal-modal').style.display = 'flex';
-        }
-
-        function closeSignalModal() {
-            document.getElementById('signal-modal').style.display = 'none';
-        }
-
-        function showView(view) {
-            currentView = view;
-
-            // Hide all views
-            ['clients-view', 'signals-view', 'performance-view', 'settings-view', 'monitor-view'].forEach(v => setStyle(v, 'display', 'none'));
-
-            // Show selected view
-            setStyle(view + '-view', 'display', 'block');
-
-            // Update title
-            const titles = {
-                'clients': 'User Management',
-                'signals': 'Signal History',
-                'performance': 'Daily Performance Analysis',
-                'settings': 'Server Configuration'
-            };
-            setText('view-title', titles[view] || 'Dashboard');
-
-            // Sidebar Highlight
-            document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
-            const activeNav = Array.from(document.querySelectorAll('.nav-item')).find(item => {
-                const clickAttr = item.getAttribute('onclick');
-                return clickAttr && clickAttr.includes(`'${view}'`);
-            });
-            if (activeNav) activeNav.classList.add('active');
-
-            if (view === 'signals') loadSignals();
-            if (view === 'clients') loadClients();
-            if (view === 'performance') loadAnalytics();
-            if (view === 'monitor') loadLogs();
-        }
-
-        async function loadLogs() {
-            const service = document.getElementById('log-service-select').value;
-            const terminal = document.getElementById('log-terminal');
-            terminal.innerHTML = `[SYSTEM] Fetching logs for ${service}...`;
-
-            try {
-                const res = await apiFetch(`/api/logs/${service}`);
-                const data = await res.json();
-
-                if (data.logs) {
-                    // XSS protection and auto-coloring
-                    const coloredLogs = data.logs
-                        .replace(/[<>]/g, '')
-                        .replace(/ERROR/g, '<span style="color: #ff4d4d; font-weight: bold;">ERROR</span>')
-                        .replace(/WARNING/g, '<span style="color: var(--acc-gold); font-weight: bold;">WARNING</span>')
-                        .replace(/🎯 UPDATING/g, '<span style="color: #00ff88; font-weight: bold;">🎯 UPDATING</span>')
-                        .replace(/📊/g, '<span style="color: var(--acc-cyan);">📊</span>');
-
-                    terminal.innerHTML = coloredLogs || "[SYSTEM] No log entries found for this service.";
-                    terminal.scrollTop = terminal.scrollHeight;
-                }
-            } catch (e) {
-                terminal.innerHTML = `[SYSTEM ERROR] Failed to load logs: ${e.message}`;
+                document.getElementById('signal-modal').style.display = 'flex';
             }
-        }
 
-        function openEdit(chatId, balance, tier) {
-            document.getElementById('edit-chat-id').value = chatId;
-            document.getElementById('edit-balance').value = balance;
-            document.getElementById('edit-tier').value = tier;
-            document.getElementById('edit-modal').style.display = 'flex';
-        }
+            function closeSignalModal() {
+                document.getElementById('signal-modal').style.display = 'none';
+            }
 
-        function closeModal() {
-            document.getElementById('edit-modal').style.display = 'none';
-        }
+            function showView(view) {
+                currentView = view;
 
-        async function saveClient() {
-            const chatId = document.getElementById('edit-chat-id').value;
-            const data = {
-                account_balance: parseFloat(document.getElementById('edit-balance').value),
-                subscription_days: parseInt(document.getElementById('edit-days').value) || null,
-                tier: document.getElementById('edit-tier').value
-            };
+                // Hide all views
+                ['clients-view', 'signals-view', 'performance-view', 'settings-view', 'monitor-view'].forEach(v => setStyle(v, 'display', 'none'));
 
-            await apiFetch(`/api/clients/${chatId}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data)
-            });
+                // Show selected view
+                setStyle(view + '-view', 'display', 'block');
 
-            alert('Changes saved!');
-            loadClients();
-        }
+                // Update title
+                const titles = {
+                    'clients': 'User Management',
+                    'signals': 'Signal History',
+                    'performance': 'Daily Performance Analysis',
+                    'settings': 'Server Configuration'
+                };
+                setText('view-title', titles[view] || 'Dashboard');
 
-        async function toggleSignals(chatId, checkbox) {
-            try {
-                const res = await apiFetch(`/api/clients/${chatId}/toggle-signals`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' }
+                // Sidebar Highlight
+                document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+                const activeNav = Array.from(document.querySelectorAll('.nav-item')).find(item => {
+                    const clickAttr = item.getAttribute('onclick');
+                    return clickAttr && clickAttr.includes(`'${view}'`);
                 });
-                const data = await res.json();
+                if (activeNav) activeNav.classList.add('active');
 
-                if (data.status === 'success') {
-                    // Show toast notification
-                    showToast(data.message);
-                    // Update stats
-                    await loadStats();
-                } else {
+                if (view === 'signals') loadSignals();
+                if (view === 'clients') loadClients();
+                if (view === 'performance') loadAnalytics();
+                if (view === 'monitor') loadLogs();
+            }
+
+            async function loadLogs() {
+                const service = document.getElementById('log-service-select').value;
+                const terminal = document.getElementById('log-terminal');
+                terminal.innerHTML = `[SYSTEM] Fetching logs for ${service}...`;
+
+                try {
+                    const res = await apiFetch(`/api/logs/${service}`);
+                    const data = await res.json();
+
+                    if (data.logs) {
+                        // XSS protection and auto-coloring
+                        const coloredLogs = data.logs
+                            .replace(/[<>]/g, '')
+                            .replace(/ERROR/g, '<span style="color: #ff4d4d; font-weight: bold;">ERROR</span>')
+                            .replace(/WARNING/g, '<span style="color: var(--acc-gold); font-weight: bold;">WARNING</span>')
+                            .replace(/🎯 UPDATING/g, '<span style="color: #00ff88; font-weight: bold;">🎯 UPDATING</span>')
+                            .replace(/📊/g, '<span style="color: var(--acc-cyan);">📊</span>');
+
+                        terminal.innerHTML = coloredLogs || "[SYSTEM] No log entries found for this service.";
+                        terminal.scrollTop = terminal.scrollHeight;
+                    }
+                } catch (e) {
+                    terminal.innerHTML = `[SYSTEM ERROR] Failed to load logs: ${e.message}`;
+                }
+            }
+
+            function openEdit(chatId, balance, tier) {
+                document.getElementById('edit-chat-id').value = chatId;
+                document.getElementById('edit-balance').value = balance;
+                document.getElementById('edit-tier').value = tier;
+                document.getElementById('edit-modal').style.display = 'flex';
+            }
+
+            function closeModal() {
+                document.getElementById('edit-modal').style.display = 'none';
+            }
+
+            async function saveClient() {
+                const chatId = document.getElementById('edit-chat-id').value;
+                const data = {
+                    account_balance: parseFloat(document.getElementById('edit-balance').value),
+                    subscription_days: parseInt(document.getElementById('edit-days').value) || null,
+                    tier: document.getElementById('edit-tier').value
+                };
+
+                await apiFetch(`/api/clients/${chatId}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+
+                alert('Changes saved!');
+                loadClients();
+            }
+
+            async function toggleSignals(chatId, checkbox) {
+                try {
+                    const res = await apiFetch(`/api/clients/${chatId}/toggle-signals`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' }
+                    });
+                    const data = await res.json();
+
+                    if (data.status === 'success') {
+                        // Show toast notification
+                        showToast(data.message);
+                        // Update stats
+                        await loadStats();
+                    } else {
+                        checkbox.checked = !checkbox.checked; // Revert on error
+                        showToast('Failed to update signals access', 'error');
+                    }
+                } catch (e) {
                     checkbox.checked = !checkbox.checked; // Revert on error
-                    showToast('Failed to update signals access', 'error');
+                    showToast('Network error', 'error');
                 }
-            } catch (e) {
-                checkbox.checked = !checkbox.checked; // Revert on error
-                showToast('Network error', 'error');
             }
-        }
 
-        async function toggleDashboard(chatId, checkbox) {
-            try {
-                const res = await apiFetch(`/api/clients/${chatId}/toggle-dashboard`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' }
-                });
-                const data = await res.json();
+            async function toggleDashboard(chatId, checkbox) {
+                try {
+                    const res = await apiFetch(`/api/clients/${chatId}/toggle-dashboard`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' }
+                    });
+                    const data = await res.json();
 
-                if (data.status === 'success') {
-                    showToast(data.message);
-                } else {
+                    if (data.status === 'success') {
+                        showToast(data.message);
+                    } else {
+                        checkbox.checked = !checkbox.checked; // Revert on error
+                        showToast('Failed to update dashboard access', 'error');
+                    }
+                } catch (e) {
                     checkbox.checked = !checkbox.checked; // Revert on error
-                    showToast('Failed to update dashboard access', 'error');
+                    showToast('Network error', 'error');
                 }
-            } catch (e) {
-                checkbox.checked = !checkbox.checked; // Revert on error
-                showToast('Network error', 'error');
             }
-        }
 
-        async function extendSubscription(chatId) {
-            try {
-                const res = await apiFetch(`/api/clients/${chatId}/extend?days=30`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' }
-                });
-                const data = await res.json();
+            async function extendSubscription(chatId) {
+                try {
+                    const res = await apiFetch(`/api/clients/${chatId}/extend?days=30`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' }
+                    });
+                    const data = await res.json();
 
-                if (data.status === 'success') {
-                    showToast(data.message);
-                    loadClients(); // Refresh to show new expiry
-                } else {
-                    showToast('Failed to extend subscription', 'error');
+                    if (data.status === 'success') {
+                        showToast(data.message);
+                        loadClients(); // Refresh to show new expiry
+                    } else {
+                        showToast('Failed to extend subscription', 'error');
+                    }
+                } catch (e) {
+                    showToast('Network error', 'error');
                 }
-            } catch (e) {
-                showToast('Network error', 'error');
             }
-        }
 
-        function showToast(message, type = 'success') {
-            const toast = document.createElement('div');
-            toast.style.cssText = `
+            function showToast(message, type = 'success') {
+                const toast = document.createElement('div');
+                toast.style.cssText = `
                 position: fixed;
                 bottom: 30px;
                 right: 30px;
@@ -1022,69 +1004,70 @@
                 z-index: 10000;
                 animation: slideIn 0.3s ease;
             `;
-            toast.textContent = message;
-            document.body.appendChild(toast);
+                toast.textContent = message;
+                document.body.appendChild(toast);
 
-            setTimeout(() => {
-                toast.style.animation = 'slideOut 0.3s ease';
-                setTimeout(() => toast.remove(), 300);
-            }, 3000);
-        }
-
-        // Auto-refresh clients every 30 seconds
-        setInterval(loadClients, 30000);
-
-        // NOTE: Data loading is handled by showDashboard() after auth verification.
-        // We do NOT call loadClients/Stats/Config here to avoid race conditions and 401s.
-
-        async function loadConfig() {
-            try {
-                const res = await apiFetch('/api/config');
-                if (res.status === 401) return logout();
-                const config = await res.json();
-
-                if (config.system_status) {
-                    const el = document.getElementById('cfg-system-status');
-                    if (el) el.checked = (config.system_status === 'ACTIVE');
-                }
-                if (config.risk_per_trade) document.getElementById('cfg-risk').value = config.risk_per_trade;
-                if (config.max_concurrent_trades) document.getElementById('cfg-max-trades').value = config.max_concurrent_trades;
-                if (config.min_quality_score) document.getElementById('cfg-min-quality').value = config.min_quality_score;
-                if (config.news_filter_minutes) document.getElementById('cfg-news-filter').value = config.news_filter_minutes;
-
-            } catch (e) {
-                console.error("Config load failed:", e);
-                // showToast("Failed to load config", "error");
+                setTimeout(() => {
+                    toast.style.animation = 'slideOut 0.3s ease';
+                    setTimeout(() => toast.remove(), 300);
+                }, 3000);
             }
-        }
 
-        async function saveConfig() {
-            const updates = [
-                { key: 'system_status', value: document.getElementById('cfg-system-status').checked ? 'ACTIVE' : 'PAUSED' },
-                { key: 'risk_per_trade', value: document.getElementById('cfg-risk').value },
-                { key: 'max_concurrent_trades', value: document.getElementById('cfg-max-trades').value },
-                { key: 'min_quality_score', value: document.getElementById('cfg-min-quality').value },
-                { key: 'news_filter_minutes', value: document.getElementById('cfg-news-filter').value }
-            ];
+            // Auto-refresh clients every 30 seconds
+            setInterval(loadClients, 30000);
 
-            let success = true;
-            for (const update of updates) {
+            // NOTE: Data loading is handled by showDashboard() after auth verification.
+            // We do NOT call loadClients/Stats/Config here to avoid race conditions and 401s.
+
+            async function loadConfig() {
                 try {
-                    await apiFetch('/api/config', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(update)
-                    });
+                    const res = await apiFetch('/api/config');
+                    if (res.status === 401) return logout();
+                    const config = await res.json();
+
+                    if (config.system_status) {
+                        const el = document.getElementById('cfg-system-status');
+                        if (el) el.checked = (config.system_status === 'ACTIVE');
+                    }
+                    if (config.risk_per_trade) document.getElementById('cfg-risk').value = config.risk_per_trade;
+                    if (config.max_concurrent_trades) document.getElementById('cfg-max-trades').value = config.max_concurrent_trades;
+                    if (config.min_quality_score) document.getElementById('cfg-min-quality').value = config.min_quality_score;
+                    if (config.news_filter_minutes) document.getElementById('cfg-news-filter').value = config.news_filter_minutes;
+
                 } catch (e) {
-                    console.error(e);
-                    success = false;
+                    console.error("Config load failed:", e);
+                    // showToast("Failed to load config", "error");
                 }
             }
 
-            if (success) showToast("Configuration Saved!");
-            else showToast("Some settings failed to save", "error");
-        }
-    </script>
+            async function saveConfig() {
+                const updates = [
+                    { key: 'system_status', value: document.getElementById('cfg-system-status').checked ? 'ACTIVE' : 'PAUSED' },
+                    { key: 'risk_per_trade', value: document.getElementById('cfg-risk').value },
+                    { key: 'max_concurrent_trades', value: document.getElementById('cfg-max-trades').value },
+                    { key: 'min_quality_score', value: document.getElementById('cfg-min-quality').value },
+                    { key: 'news_filter_minutes', value: document.getElementById('cfg-news-filter').value }
+                ];
+
+                let success = true;
+                for (const update of updates) {
+                    try {
+                        await apiFetch('/api/config', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(update)
+                        });
+                    } catch (e) {
+                        console.error(e);
+                        success = false;
+                    }
+                }
+
+                if (success) showToast("Configuration Saved!");
+                else showToast("Some settings failed to save", "error");
+            }
+        </script>
+    </div>
 </body>
 
 </html>

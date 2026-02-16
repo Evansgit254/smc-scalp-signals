@@ -602,8 +602,8 @@ async def get_basic_stats(current_user: User = Depends(get_current_user)):
         today = datetime.now().strftime('%Y-%m-%d')
         signals_count = conn.execute("SELECT COUNT(*) FROM signals WHERE DATE(timestamp) = ?", (today,)).fetchone()[0]
         
-        cm = ClientManager(DB_CLIENTS) # Initialize ClientManager with DB path
-        active_clients = len([c for c in cm.clients.values() if c.is_active])
+        cm = ClientManager(DB_CLIENTS)
+        active_clients = cm.get_client_count()
         
         # V19.2: Market Context
         mctx = await get_market_context()
