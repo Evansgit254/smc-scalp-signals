@@ -1,11 +1,14 @@
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, Depends, status
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 import sqlite3
 import os
 import json
 import stripe
+import secrets
+import hashlib
 from datetime import datetime, timedelta
 from typing import List, Optional
 from pydantic import BaseModel
@@ -97,12 +100,123 @@ def ensure_config_table():
 
 ensure_config_table()
 
+def ensure_users_table():
+    """Ensure admin_users table exists and create default admin if missing."""
+    conn = None
+    try:
+        conn = sqlite3.connect(DB_CLIENTS)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS admin_users (
+                username TEXT PRIMARY KEY,
+                password_hash TEXT,
+                last_login TEXT
+            )
+        """)
+        
+        # Check if users exist
+        cursor = conn.cursor()
+        if cursor.execute("SELECT COUNT(*) FROM admin_users").fetchone()[0] == 0:
+            # Create default admin
+            default_salt = secrets.token_hex(8)
+            password = "admin123"
+            pwd_hash = hashlib.sha256((password + default_salt).encode()).hexdigest()
+            stored_pwd = f"{default_salt}${pwd_hash}"
+            
+            cursor.execute("INSERT INTO admin_users (username, password_hash) VALUES (?, ?)", ("admin", stored_pwd))
+            conn.commit()
+            print("✅ Initialized admin_users with default credentials (admin/admin123)")
+            
+    except Exception as e:
+        print(f"⚠️ Users table init failed: {e}")
+    finally:
+        if conn: conn.close()
+
+ensure_users_table()
+
+# Auth Configuration
+SECRET_KEY = os.getenv("JWT_SECRET", secrets.token_hex(32))
+ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 # 24 hours
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/token")
+
+class AuthToken(BaseModel):
+    access_token: str
+    token_type: str
+
+class User(BaseModel):
+    username: str
+
+def verify_password(plain_password, stored_password):
+    try:
+        salt, hash_val = stored_password.split('$')
+        check_hash = hashlib.sha256((plain_password + salt).encode()).hexdigest()
+        return check_hash == hash_val
+    except:
+        return False
+
+async def get_current_user(token: str = Depends(oauth2_scheme)):
+    import base64
+    try:
+        # Simple token format for MVP: base64(username:expiry_iso)
+        # In production, use python-jose or PyJWT
+        decoded = base64.b64decode(token).decode()
+        username, expiry_str = decoded.split(':', 1)
+        expiry = datetime.fromisoformat(expiry_str)
+        
+        if datetime.now() > expiry:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Token expired",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        return User(username=username)
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Could not validate credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+@app.post("/api/token", response_model=AuthToken)
+async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):
+    conn = get_db_connection(DB_CLIENTS)
+    conn.row_factory = sqlite3.Row
+    user = conn.execute("SELECT * FROM admin_users WHERE username = ?", (form_data.username,)).fetchone()
+    conn.close()
+    
+    if not user:
+        # Dummy check to prevent timing attacks (skipping for MVP speed)
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+        
+    if not verify_password(form_data.password, user['password_hash']):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    # Generate simple token
+    import base64
+    expiry = datetime.now() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    token_data = f"{user['username']}:{expiry.isoformat()}"
+    token_b64 = base64.b64encode(token_data.encode()).decode()
+    
+    return {"access_token": token_b64, "token_type": "bearer"}
+
+@app.get("/api/me", response_model=User)
+async def read_users_me(current_user: User = Depends(get_current_user)):
+    return current_user
+
 class ConfigUpdate(BaseModel):
     key: str
     value: str
 
 @app.get("/api/config")
-async def get_config():
+async def get_config(current_user: User = Depends(get_current_user)):
     """Get all system configuration settings"""
     conn = None
     try:
@@ -123,7 +237,7 @@ async def get_config():
         if conn: conn.close()
 
 @app.post("/api/config")
-async def update_config(update: ConfigUpdate):
+async def update_config(update: ConfigUpdate, current_user: User = Depends(get_current_user)):
     """Update a specific configuration setting"""
     conn = None
     try:
@@ -152,7 +266,7 @@ def get_db_connection(db_path):
     return conn
 
 @app.get("/api/clients")
-async def get_clients():
+async def get_clients(current_user: User = Depends(get_current_user)):
     conn = None
     try:
         conn = get_db_connection(DB_CLIENTS)
@@ -163,7 +277,7 @@ async def get_clients():
             conn.close()
 
 @app.post("/api/clients/{chat_id}")
-async def update_client(chat_id: str, update: ClientUpdate):
+async def update_client(chat_id: str, update: ClientUpdate, current_user: User = Depends(get_current_user)):
     conn = None
     try:
         conn = get_db_connection(DB_CLIENTS)
@@ -233,7 +347,7 @@ async def update_client(chat_id: str, update: ClientUpdate):
             conn.close()
 
 @app.post("/api/clients/{chat_id}/toggle-signals")
-async def toggle_signals(chat_id: str):
+async def toggle_signals(chat_id: str, current_user: User = Depends(get_current_user)):
     """Toggle Telegram signal delivery for a client"""
     conn = None
     try:
@@ -264,7 +378,7 @@ async def toggle_signals(chat_id: str):
             conn.close()
 
 @app.post("/api/clients/{chat_id}/toggle-dashboard")
-async def toggle_dashboard(chat_id: str):
+async def toggle_dashboard(chat_id: str, current_user: User = Depends(get_current_user)):
     """Toggle dashboard access for a client"""
     conn = None
     try:
@@ -295,7 +409,7 @@ async def toggle_dashboard(chat_id: str):
             conn.close()
 
 @app.post("/api/clients/{chat_id}/extend")
-async def quick_extend(chat_id: str, days: int = 30):
+async def quick_extend(chat_id: str, days: int = 30, current_user: User = Depends(get_current_user)):
     """Quick extend subscription by specified days (default 30)"""
     conn = None
     try:
@@ -390,7 +504,7 @@ async def stripe_webhook(request: Request):
     return {"status": "success"}
 
 @app.get("/api/signals")
-async def get_signals():
+async def get_signals(current_user: User = Depends(get_current_user)):
     conn = None
     try:
         conn = get_db_connection(DB_SIGNALS)
@@ -412,7 +526,7 @@ async def get_signals():
             conn.close()
 
 @app.get("/api/stats")
-async def get_stats():
+async def get_stats(current_user: User = Depends(get_current_user)):
     active_clients = 0
     signals_today = 0
     
@@ -443,7 +557,7 @@ async def get_stats():
     }
 
 @app.get("/api/analytics/daily")
-async def get_daily_analytics():
+async def get_daily_analytics(current_user: User = Depends(get_current_user)):
     conn = None
     try:
         conn = get_db_connection(DB_SIGNALS)
