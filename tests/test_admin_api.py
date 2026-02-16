@@ -170,13 +170,16 @@ def test_daily_analytics(tmp_path):
             timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             symbol TEXT,
             direction TEXT,
-            quality_score REAL
+            quality_score REAL,
+            trade_type TEXT DEFAULT 'SCALP',
+            result TEXT DEFAULT 'OPEN',
+            max_tp_reached INTEGER DEFAULT 0
         )
     """)
     today = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    conn.execute("INSERT INTO signals (timestamp, symbol, direction, quality_score) VALUES (?, ?, ?, ?)", (today, 'EURUSD', 'BUY', 8.5))
-    conn.execute("INSERT INTO signals (timestamp, symbol, direction, quality_score) VALUES (?, ?, ?, ?)", (today, 'EURUSD', 'BUY', 7.5))
-    conn.execute("INSERT INTO signals (timestamp, symbol, direction, quality_score) VALUES (?, ?, ?, ?)", (today, 'GBPUSD', 'SELL', 6.0))
+    conn.execute("INSERT INTO signals (timestamp, symbol, direction, quality_score, trade_type) VALUES (?, ?, ?, ?, ?)", (today, 'EURUSD', 'BUY', 8.5, 'SCALP'))
+    conn.execute("INSERT INTO signals (timestamp, symbol, direction, quality_score, trade_type) VALUES (?, ?, ?, ?, ?)", (today, 'EURUSD', 'BUY', 7.5, 'SCALP'))
+    conn.execute("INSERT INTO signals (timestamp, symbol, direction, quality_score, trade_type) VALUES (?, ?, ?, ?, ?)", (today, 'GBPUSD', 'SELL', 6.0, 'SWING'))
     conn.commit()
     conn.close()
 
@@ -191,3 +194,4 @@ def test_daily_analytics(tmp_path):
         assert data['bias']['SELL'] == 1
         assert data['top_assets'][0]['symbol'] == 'EURUSD'
         assert data['top_assets'][0]['count'] == 2
+
