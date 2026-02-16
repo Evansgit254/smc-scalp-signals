@@ -47,7 +47,7 @@
             </div>
             <div class="stat-card">
                 <div class="stat-label">System Status</div>
-                <div class="stat-val" style="color: #00ff64;">ONLINE</div>
+                <div class="stat-val" id="system-status" style="color: var(--acc-gold);">CONNECTING...</div>
             </div>
         </div>
 
@@ -227,15 +227,27 @@
         let currentView = 'clients';
         let allSignals = [];
 
-        async function fetchStats() {
+        async function loadStats() {
+            const statusEl = document.getElementById('system-status');
             try {
                 const res = await fetch('/api/stats');
+                if (!res.ok) throw new Error("API Unreachable");
                 const data = await res.json();
+
                 document.getElementById('stat-active').innerText = data.active_clients;
                 document.getElementById('stat-signals').innerText = data.signals_today;
                 document.getElementById('server-time').innerText = data.server_time;
+
+                if (statusEl) {
+                    statusEl.innerText = "ONLINE";
+                    statusEl.style.color = "#00ff64";
+                }
             } catch (e) {
                 console.error("Stats fetch failed:", e);
+                if (statusEl) {
+                    statusEl.innerText = "OFFLINE";
+                    statusEl.style.color = "#ff4d4d";
+                }
             }
         }
 
