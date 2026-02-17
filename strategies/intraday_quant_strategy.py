@@ -45,12 +45,13 @@ class IntradayQuantStrategy(BaseStrategy):
             quality_score = AlphaCombiner.calculate_quality_score(factors, alpha_signal)
             
             # Adaptive thresholds
+            # V13.0 Hardened Scalp Thresholds
             thresholds = {
-                "TRENDING": 0.6,
-                "RANGING": 0.8,
+                "TRENDING": 0.7, # Increased from 0.6
+                "RANGING": 0.85, # Increased from 0.8
                 "CHOPPY": 1.0
             }
-            threshold = thresholds.get(regime, 0.7)
+            threshold = thresholds.get(regime, 0.75)
             
             # Quality filter
             if quality_score < MIN_QUALITY_SCORE_INTRADAY:
@@ -68,11 +69,12 @@ class IntradayQuantStrategy(BaseStrategy):
             
             # Macro filter check - advisory for high quality signals
             # Only block if there's a conflict AND quality is below 8.0
+            # Macro filter check - V13.0 Hardened: No direct contradictions allowed
             macro_bias = MacroFilter.get_macro_bias(market_context)
             macro_safe = MacroFilter.is_macro_safe(symbol, direction, macro_bias)
             
-            # High quality signals can override macro concerns
-            if not macro_safe and quality_score < 8.0:
+            # Reject if direct conflict (e.g., BUYing when macro is BEARISH on that asset class)
+            if not macro_safe:
                 return None
             
             # News filter check
@@ -85,7 +87,7 @@ class IntradayQuantStrategy(BaseStrategy):
             
             # Optimal R:R calculation based on quality and regime
             optimal_rr = RiskManager.calculate_optimal_rr(quality_score, regime)
-            sl_distance = atr * 1.5
+            sl_distance = atr * 1.8 # Increased from 1.5
             
             # Dynamic TP levels based on optimal R:R
             if direction == "BUY":
