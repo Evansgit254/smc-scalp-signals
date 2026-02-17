@@ -128,7 +128,7 @@ def ensure_config_table():
 ensure_config_table()
 
 def ensure_users_table():
-    """Ensure admin_users table exists and create default admin if missing."""
+    """V18.2: Authoritative Credential Sync - Ensures .env credentials match the DB."""
     conn = None
     try:
         conn = sqlite3.connect(DB_CLIENTS)
@@ -140,22 +140,33 @@ def ensure_users_table():
             )
         """)
         
-        # Check if users exist
-        cursor = conn.cursor()
-        if cursor.execute("SELECT COUNT(*) FROM admin_users").fetchone()[0] == 0:
-            # Create default admin
-            default_salt = secrets.token_hex(8)
-            password = "admin123"
-            pwd_hash = hashlib.sha256((password + default_salt).encode()).hexdigest()
-            stored_pwd = f"{default_salt}${pwd_hash}"
+        # V18.2 Sync Logic: Always favor .env if provided
+        if ADMIN_PASS:
+            salt = secrets.token_hex(8)
+            pwd_hash = hashlib.sha256((ADMIN_PASS + salt).encode()).hexdigest()
+            stored_pwd = f"{salt}${pwd_hash}"
             
-            cursor.execute("INSERT INTO admin_users (username, password_hash) VALUES (?, ?)", ("admin", stored_pwd))
+            # This will either insert or replace the existing admin credentials
+            conn.execute("""
+                INSERT OR REPLACE INTO admin_users (username, password_hash) 
+                VALUES (?, ?)
+            """, (ADMIN_USER, stored_pwd))
             conn.commit()
-            print("✅ Initialized admin_users with standard credentials (admin/admin123)")
-            print("⚠️ ACTION REQUIRED: Change the admin password immediately via database or API.")
+            print(f"✅ Synchronized admin credentials for user: {ADMIN_USER}")
+        else:
+            # Fallback only if no pass provided and table is empty
+            cursor = conn.cursor()
+            if cursor.execute("SELECT COUNT(*) FROM admin_users").fetchone()[0] == 0:
+                default_salt = secrets.token_hex(8)
+                password = "admin123"
+                pwd_hash = hashlib.sha256((password + default_salt).encode()).hexdigest()
+                stored_pwd = f"{default_salt}${pwd_hash}"
+                cursor.execute("INSERT INTO admin_users (username, password_hash) VALUES (?, ?)", ("admin", stored_pwd))
+                conn.commit()
+                print("✅ Initialized admin_users with standard credentials (admin/admin123)")
             
     except Exception as e:
-        print(f"⚠️ Users table init failed: {e}")
+        print(f"⚠️ Users table sync failed: {e}")
     finally:
         if conn: conn.close()
 
