@@ -4,6 +4,7 @@ import os
 import sys
 from datetime import datetime
 from fastapi.testclient import TestClient
+from unittest.mock import patch
 
 # Add project root to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -28,6 +29,21 @@ def setup_test_db():
             closed_at TIMESTAMP
         )
     """)
+
+    conn.execute("""
+        CREATE TABLE admin_users (
+            username TEXT PRIMARY KEY,
+            password_hash TEXT,
+            last_login TEXT
+        )
+    """)
+
+    # admin/admin123
+    import hashlib
+    salt = "static_test_salt"
+    pwd_hash = hashlib.sha256(("admin123" + salt).encode()).hexdigest()
+    stored_val = f"{salt}${pwd_hash}"
+    conn.execute("INSERT INTO admin_users (username, password_hash) VALUES (?, ?)", ("admin", stored_val))
     
     today = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     
@@ -55,34 +71,41 @@ def setup_test_db():
 def test_analytics_api():
     setup_test_db()
     
-    # Patch admin_server to use test DB
-    import admin_server
-    admin_server.DB_SIGNALS = DB_PATH
+    with patch('admin_server.DB_SIGNALS', DB_PATH), \
+         patch('admin_server.DB_CLIENTS', DB_PATH), \
+         patch('config.config.DB_SIGNALS', DB_PATH), \
+         patch('config.config.DB_CLIENTS', DB_PATH):
+        
+        client = TestClient(app)
+        
+        # Authenticate to get token (Standard Admin Credentials)
+        auth_res = client.post("/api/token", data={"username": "admin", "password": "admin123"})
+        token = auth_res.json()["access_token"]
+        headers = {"Authorization": f"Bearer {token}"}
     
-    client = TestClient(app)
-    response = client.get("/api/analytics/daily")
-    
-    assert response.status_code == 200
-    data = response.json()
-    
-    print("\n📊 API RESPONSE VERIFICATION:")
-    print(json.dumps(data, indent=2))
-    
-    # Verify Scalp Stats
-    scalp = data['stats_by_type']['SCALP']
-    assert scalp['total'] == 2
-    assert scalp['wins'] == 1
-    assert scalp['losses'] == 1
-    
-    # Verify Swing Stats
-    swing = data['stats_by_type']['SWING']
-    assert swing['total'] == 2
-    assert swing['wins'] == 1 # NZDUSD Win
-    
-    # Verify Top Performer
-    assert data['top_performer'] is not None
-    
-    print("\n✅ Analytics API Integration Test Passed!")
+        response = client.get("/api/analytics/daily", headers=headers)
+        
+        assert response.status_code == 200
+        data = response.json()
+        
+        print("\n📊 API RESPONSE VERIFICATION:")
+        print(json.dumps(data, indent=2))
+        
+        # Verify Scalp Stats
+        scalp = data['stats_by_type']['SCALP']
+        assert scalp['total'] == 2
+        assert scalp['wins'] == 1
+        assert scalp['losses'] == 1
+        
+        # Verify Swing Stats
+        swing = data['stats_by_type']['SWING']
+        assert swing['total'] == 2
+        assert swing['wins'] == 1 # NZDUSD Win
+        
+        # Verify Top Performer
+        assert data['top_performer'] is not None
+        
+        print("\n✅ Analytics API Integration Test Passed!")
     
     if os.path.exists(DB_PATH): os.remove(DB_PATH)
 

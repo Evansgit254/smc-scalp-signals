@@ -4,6 +4,7 @@ import os
 import sys
 from datetime import datetime
 from fastapi.testclient import TestClient
+from unittest.mock import patch
 
 # Add project root to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -40,49 +41,48 @@ def setup_test_db():
 def test_stripe_webhook_activation():
     setup_test_db()
     
-    # Patch admin_server to use test DB and bypass signature for test
-    import admin_server
-    admin_server.DB_CLIENTS = DB_CLIENTS
-    admin_server.STRIPE_WEBHOOK_SECRET = None # Bypass signature check
+    with patch('admin_server.DB_CLIENTS', DB_CLIENTS), \
+         patch('admin_server.STRIPE_WEBHOOK_SECRET', None), \
+         patch('config.config.DB_CLIENTS', DB_CLIENTS):
+        
+        client = TestClient(app)
     
-    client = TestClient(app)
-    
-    # Mock Stripe Payload
-    webhook_payload = {
-        "type": "checkout.session.completed",
-        "data": {
-            "object": {
-                "id": "cs_test_123",
-                "metadata": {
-                    "telegram_chat_id": "TEST_USER_123",
-                    "subscription_days": "30",
-                    "tier": "GOLD"
+        # Mock Stripe Payload
+        webhook_payload = {
+            "type": "checkout.session.completed",
+            "data": {
+                "object": {
+                    "id": "cs_test_123",
+                    "metadata": {
+                        "telegram_chat_id": "TEST_USER_123",
+                        "subscription_days": "30",
+                        "tier": "GOLD"
+                    }
                 }
             }
         }
-    }
     
-    print("🚀 Sending Mock Stripe Webhook...")
-    response = client.post("/api/stripe/webhook", json=webhook_payload)
+        print("🚀 Sending Mock Stripe Webhook...")
+        response = client.post("/api/stripe/webhook", json=webhook_payload)
     
-    assert response.status_code == 200
-    assert response.json() == {"status": "success"}
+        assert response.status_code == 200
+        assert response.json() == {"status": "success"}
     
-    # Verify DB update
-    conn = sqlite3.connect(DB_CLIENTS)
-    conn.row_factory = sqlite3.Row
-    res = conn.execute("SELECT * FROM clients WHERE telegram_chat_id = 'TEST_USER_123'").fetchone()
+        # Verify DB update
+        conn = sqlite3.connect(DB_CLIENTS)
+        conn.row_factory = sqlite3.Row
+        res = conn.execute("SELECT * FROM clients WHERE telegram_chat_id = 'TEST_USER_123'").fetchone()
     
-    print(f"📊 VERIFICATION RESULTS:")
-    print(f"Status: {'✅ ACTIVE' if res['is_active'] else '❌ INACTIVE'}")
-    print(f"Tier: {res['subscription_tier']}")
-    print(f"Expiry: {res['subscription_expiry']}")
-    
-    assert res['is_active'] == 1
-    assert res['subscription_tier'] == 'GOLD'
-    assert res['subscription_expiry'] is not None
-    
-    print("\n✅ Stripe Webhook Activation Test Passed!")
+        print(f"📊 VERIFICATION RESULTS:")
+        print(f"Status: {'✅ ACTIVE' if res['is_active'] else '❌ INACTIVE'}")
+        print(f"Tier: {res['subscription_tier']}")
+        print(f"Expiry: {res['subscription_expiry']}")
+        
+        assert res['is_active'] == 1
+        assert res['subscription_tier'] == 'GOLD'
+        assert res['subscription_expiry'] is not None
+        
+        print("\n✅ Stripe Webhook Activation Test Passed!")
     
     if os.path.exists(DB_CLIENTS): os.remove(DB_CLIENTS)
 

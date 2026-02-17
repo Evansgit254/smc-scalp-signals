@@ -19,7 +19,7 @@ from data.fetcher import DataFetcher
 from data.news_fetcher import NewsFetcher
 from indicators.calculations import IndicatorCalculator
 from core.filters.macro_filter import MacroFilter
-from config.config import DXY_SYMBOL, TNX_SYMBOL, SYMBOLS
+from config.config import DXY_SYMBOL, TNX_SYMBOL, SYMBOLS, DB_CLIENTS, DB_SIGNALS
 from core.client_manager import ClientManager
 
 # Stripe Configuration
@@ -50,9 +50,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-DB_BASE = os.path.dirname(os.path.abspath(__file__))
-DB_CLIENTS = os.path.join(DB_BASE, "database/clients.db")
-DB_SIGNALS = os.path.join(DB_BASE, "database/signals.db")
+# DATABASE PATHS MOVED TO config/config.py
 
 def ensure_db_schema():
     """V18.1: Automatic Schema Migration - Ensures all required columns exist."""

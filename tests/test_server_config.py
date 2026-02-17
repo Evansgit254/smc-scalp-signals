@@ -3,6 +3,8 @@ import os
 import unittest
 import sqlite3
 from fastapi.testclient import TestClient
+from unittest.mock import patch
+import shutil
 
 # Add project root to path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -13,31 +15,51 @@ import config.config as cfg
 
 class TestServerConfig(unittest.TestCase):
     def setUp(self):
+        self.test_dir = "tests/tmp_config"
+        os.makedirs(self.test_dir, exist_ok=True)
+        self.db_path = os.path.join(self.test_dir, "clients_test.db")
+        
+        # Initialize test database tables
+        conn = sqlite3.connect(self.db_path)
+        conn.execute("CREATE TABLE system_config (key TEXT PRIMARY KEY, value TEXT, type TEXT)")
+        conn.execute("CREATE TABLE admin_users (username TEXT PRIMARY KEY, password_hash TEXT, last_login TEXT)")
+        
+        # Add default config
+        defaults = [
+            ("system_status", "ACTIVE", "str"),
+            ("risk_per_trade", "2.0", "float")
+        ]
+        conn.executemany("INSERT INTO system_config (key, value, type) VALUES (?, ?, ?)", defaults)
+        
+        # Add admin user (admin/admin123)
+        import hashlib
+        salt = "test_salt"
+        pwd_hash = hashlib.sha256(("admin123" + salt).encode()).hexdigest()
+        conn.execute("INSERT INTO admin_users (username, password_hash) VALUES (?, ?)", ("admin", f"{salt}${pwd_hash}"))
+        conn.commit()
+        conn.close()
+
+        # Patch DB_CLIENTS in config.config and admin_server
+        self.patcher1 = patch('config.config.DB_CLIENTS', self.db_path)
+        self.patcher2 = patch('admin_server.DB_CLIENTS', self.db_path)
+        self.patcher1.start()
+        self.patcher2.start()
+        
         self.client = TestClient(app)
-        self.db_path = DB_CLIENTS
         
         # Authenticate
         auth_res = self.client.post("/api/token", data={"username": "admin", "password": "admin123"})
         self.token = auth_res.json()["access_token"]
         self.headers = {"Authorization": f"Bearer {self.token}"}
         
-        # Backup original risk value
         self.original_risk = 2.0
-        try:
-            conn = sqlite3.connect(self.db_path)
-            row = conn.execute("SELECT value FROM system_config WHERE key='risk_per_trade'").fetchone()
-            if row:
-                self.original_risk = float(row[0])
-            conn.close()
-        except:
-            pass
 
     def tearDown(self):
-        # Restore original risk value
-        conn = sqlite3.connect(self.db_path)
-        conn.execute("UPDATE system_config SET value = ? WHERE key='risk_per_trade'", (str(self.original_risk),))
-        conn.commit()
-        conn.close()
+        self.patcher1.stop()
+        self.patcher2.stop()
+        if os.path.exists(self.test_dir):
+            shutil.rmtree(self.test_dir)
+        
         # Reset in memory config
         import config.config as cfg
         cfg.RISK_PER_TRADE_PERCENT = self.original_risk

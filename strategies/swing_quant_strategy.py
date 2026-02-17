@@ -46,16 +46,32 @@ class SwingQuantStrategy(BaseStrategy):
             
             # Adaptive thresholds - extra permissive for swing (higher timeframe)
             # We want to ensure H1 does generate trades over a month.
-            thresholds = {
-                "TRENDING": 0.3,   # Very permissive in trends
-                "RANGING": 0.4,    # Moderate in ranges
-                "CHOPPY": 0.5      # Still selective in choppy
-            }
-            threshold = thresholds.get(regime, 0.4)
+            # --- JPY-Specific Volatility Handling (V22.4) ---
+            is_jpy = "JPY" in symbol
             
-            # Looser quality filter for swing: allow more setups
-            # MIN_QUALITY_SCORE is typically 5.0 – we accept anything >= 3.0 here.
-            if quality_score < 3.0:
+            latest = df.iloc[-1] # Moved up to calculate atr earlier
+            atr = latest['atr'] # Moved up to calculate atr earlier
+
+            if is_jpy:
+                # JPY pairs require extreme selectivity to avoid fakeouts
+                threshold = 0.85
+                # Tighter stops for better R:R on high-volatility entries
+                sl_distance = atr * 2.0 
+                # Very conservative targets (1:1.5 - 1:2 effective)
+                swing_rr_multiplier = 1.0
+            else:
+                # Standard Hardened Swing (V22.2)
+                thresholds = {
+                    "TRENDING": 0.6,
+                    "RANGING": 0.7,
+                    "CHOPPY": 0.8
+                }
+                threshold = thresholds.get(regime, 0.7)
+                sl_distance = atr * 2.5
+                swing_rr_multiplier = 1.5 
+            
+            # Tightened quality filter for swing
+            if quality_score < 5.0:
                 return None
             
             # Direction determination
@@ -68,24 +84,22 @@ class SwingQuantStrategy(BaseStrategy):
             if not direction:
                 return None
             
-            # Macro filter: advisory only for swing (H1). Alpha/quality drive the signal.
+            # Macro filter: MANDATORY for swing (H1). 
             macro_bias = MacroFilter.get_macro_bias(market_context)
+            macro_safe = MacroFilter.is_macro_safe(symbol, direction, macro_bias)
+            
+            if not macro_safe and quality_score < 8.0: 
+                return None
             
             # News filter check
             if news_events:
                 if not NewsFilter.is_safe_to_trade(news_events, symbol):
                     return None
             
-            latest = df.iloc[-1]
-            atr = latest['atr']
-            
-            # Optimal R:R for swing (wider targets)
+            # Optimal R:R for swing
             optimal_rr = RiskManager.calculate_optimal_rr(quality_score, regime)
-            # Swing uses wider stops
-            sl_distance = atr * 2.5
             
-            # Dynamic TP levels with swing-appropriate multipliers
-            swing_rr_multiplier = 2.0  # Swing targets are wider
+            # Dynamic TP levels
             if direction == "BUY":
                 sl = latest['close'] - sl_distance
                 tp0 = latest['close'] + (sl_distance * optimal_rr['tp1_rr'] * swing_rr_multiplier)

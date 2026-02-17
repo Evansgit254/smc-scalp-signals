@@ -77,6 +77,7 @@ class SignalService:
         """Load configuration overrides from database"""
         import sqlite3
         import config.config as cfg
+        from config.config import DB_CLIENTS
         
         # Mapping for keys that don't match config variable names exactly
         key_mapping = {
@@ -85,7 +86,7 @@ class SignalService:
         }
         
         try:
-            conn = sqlite3.connect("database/clients.db")
+            conn = sqlite3.connect(DB_CLIENTS)
             conn.row_factory = sqlite3.Row
             rows = conn.execute("SELECT key, value, type FROM system_config").fetchall()
             conn.close()

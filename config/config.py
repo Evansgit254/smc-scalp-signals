@@ -79,3 +79,8 @@ MIN_QUALITY_SCORE_INTRADAY = float(os.getenv("MIN_QUALITY_SCORE_INTRADAY", "5.0"
 # EXECUTION REALISM (V18.1 Audit)
 SPREAD_PIPS = 0.8 # Average Retail Spread
 SLIPPAGE_PIPS = 0.2 # Expected Scalp Slippage
+
+# DATABASE PATHS (V22.7.5)
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+DB_CLIENTS = os.path.join(BASE_DIR, "database/clients.db")
+DB_SIGNALS = os.path.join(BASE_DIR, "database/signals.db")
