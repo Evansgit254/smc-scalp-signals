@@ -5,7 +5,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Trading Expert Dashboard</title>
-    <link rel="stylesheet" href="index.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="index.css?v=22.7.3">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
@@ -18,6 +21,48 @@
 
         .mctx-item span {
             font-variant-numeric: tabular-nums;
+        }
+
+        /* V22.5 Asset Performance Terminal Styles */
+        .asset-row {
+            padding: 18px 25px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            display: grid;
+            grid-template-columns: 1fr 1fr 1.5fr;
+            align-items: center;
+        }
+
+        .asset-row:last-child {
+            border-bottom: none;
+        }
+
+        .session-badge {
+            font-size: 0.65rem;
+            padding: 2px 6px;
+            border-radius: 4px;
+            margin-right: 4px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+        }
+
+        .session-london {
+            background: rgba(0, 234, 144, 0.1);
+            color: #00ea90;
+        }
+
+        .session-newyork {
+            background: rgba(0, 212, 255, 0.1);
+            color: #00d4ff;
+        }
+
+        .session-tokyo {
+            background: rgba(255, 51, 102, 0.1);
+            color: #ff3366;
+        }
+
+        .session-sydney {
+            background: rgba(255, 215, 0, 0.1);
+            color: #ffd700;
         }
     </style>
 </head>
@@ -145,106 +190,97 @@
         </div>
 
         <div id="performance-view" style="display: none;">
-            <div class="analytics-grid">
-                <!-- Daily Volume & Strategy Stats -->
+            <!-- Row 1: Key Performance Indicators -->
+            <div style="display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 1.5rem; margin-bottom: 1.5rem;">
+                <!-- Strategy Breakdown -->
                 <div class="chart-card">
                     <div class="chart-header">
                         <div class="chart-title">Strategy breakdown</div>
                     </div>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; padding: 1.25rem;">
-                        <div
-                            style="padding: 15px; background: linear-gradient(135deg, rgba(0,234,144,0.08), rgba(0,234,144,0.03)); border: 1px solid rgba(0,234,144,0.1); border-radius: 12px; text-align: center;">
-                            <div
-                                style="font-size: 0.75rem; font-weight: 600; color: var(--text-dim); text-transform: uppercase;">
-                                SCALP</div>
-                            <div class="stat-val" id="ana-scalp-sum"
-                                style="font-size: 1.5rem; font-weight: 700; color: #fff; margin-bottom: 4px;">0/0</div>
-                            <div id="ana-scalp-wr"
-                                style="display: inline-block; padding: 2px 8px; background: rgba(0,234,144,0.1); border-radius: 4px; font-size: 0.75rem; color: var(--acc-cyan);">
-                                0% WR</div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; padding: 0.5rem 1rem;">
+                        <div class="bento-metric scalp-box">
+                            <div class="metric-label">SCALP</div>
+                            <div class="stat-val" id="ana-scalp-sum" style="font-size: 1.8rem;">0/0</div>
+                            <div id="ana-scalp-wr" class="badge">0% WR</div>
                         </div>
-                        <div
-                            style="padding: 15px; background: linear-gradient(135deg, rgba(255,215,0,0.08), rgba(255,215,0,0.03)); border: 1px solid rgba(255,215,0,0.1); border-radius: 12px; text-align: center;">
-                            <div
-                                style="font-size: 0.75rem; font-weight: 600; color: var(--text-dim); text-transform: uppercase;">
-                                SWING</div>
-                            <div class="stat-val" id="ana-swing-sum"
-                                style="font-size: 1.5rem; font-weight: 700; color: #fff; margin-bottom: 4px;">0/0</div>
-                            <div id="ana-swing-wr"
-                                style="display: inline-block; padding: 2px 8px; background: rgba(255,215,0,0.1); border-radius: 4px; font-size: 0.75rem; color: var(--acc-gold);">
-                                0% WR</div>
+                        <div class="bento-metric swing-box">
+                            <div class="metric-label">SWING</div>
+                            <div class="stat-val" id="ana-swing-sum" style="font-size: 1.8rem;">0/0</div>
+                            <div id="ana-swing-wr" class="badge">0% WR</div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Equity Curve Chart -->
+                <!-- Market Bias -->
                 <div class="chart-card">
                     <div class="chart-header">
-                        <div class="chart-title">7D Performance Curve</div>
+                        <div class="chart-title">Market bias</div>
                     </div>
-                    <div style="padding: 1rem; height: 140px;">
-                        <canvas id="equity-chart"></canvas>
-                    </div>
-                </div>
-
-                <!-- Market Bias (Donut Chart) -->
-                <div class="chart-card">
-                    <div class="chart-header">
-                        <div class="chart-title">Market bias (BUY vs SELL)</div>
-                    </div>
-                    <div class="donut-container">
+                    <div class="donut-container" style="width: 140px; height: 140px;">
                         <svg viewBox="0 0 36 36" style="width: 100%; height: 100%; transform: rotate(-90deg);">
                             <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
                                 fill="none" stroke="#ff4d4d" stroke-width="3" />
                             <circle cx="18" cy="18" r="15.9155" fill="none" stroke="var(--acc-cyan)" stroke-width="3"
                                 stroke-dasharray="0, 100" id="bias-stroke" />
                         </svg>
-                        <div class="donut-label" style="text-align: center;">
-                            <div class="donut-val" id="bias-pct"
-                                style="font-size: 1.2rem; font-weight: bold; color: #fff;">0%</div>
-                            <div class="donut-sub" style="font-size: 0.6rem; color: var(--text-dim);">NEUTRAL</div>
+                        <div class="donut-label">
+                            <div class="donut-val" id="bias-value">0%</div>
+                            <div class="bias-status">NEUTRAL</div>
                         </div>
                     </div>
                 </div>
+            </div>
 
-                <!-- Asset Performance -->
+            <!-- Row 2: Performance Curves & Profitability -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem;">
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <div class="chart-title">7D Performance Curve</div>
+                    </div>
+                    <div style="height: 220px; padding: 0.5rem;">
+                        <canvas id="equity-chart"></canvas>
+                    </div>
+                </div>
                 <div class="chart-card">
                     <div class="chart-header">
                         <div class="chart-title">Top Asset Profitability</div>
                     </div>
-                    <div style="padding: 1rem; height: 140px;">
+                    <div style="height: 220px; padding: 0.5rem;">
                         <canvas id="asset-chart"></canvas>
                     </div>
                 </div>
+            </div>
 
-                <!-- Top Assets -->
+            <!-- Row 3: Champion & Terminal -->
+            <div style="display: grid; grid-template-columns: 0.35fr 0.65fr; gap: 1.5rem;">
                 <div class="chart-card">
                     <div class="chart-header">
-                        <div class="chart-title">Top performer</div>
+                        <div class="chart-title">Top Performer</div>
                     </div>
-                    <div id="top-performer-content"
-                        style="padding: 1.5rem; text-align: center; background: radial-gradient(circle at center, rgba(255,215,0,0.05), transparent);">
-                        <div style="font-size: 2.2rem; font-weight: 800; color: var(--acc-gold); margin-bottom: 0.25rem; text-shadow: 0 0 20px rgba(255,215,0,0.2);"
-                            id="top-symbol">---</div>
-                        <div
-                            style="font-size: 0.75rem; font-weight: 600; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 1rem;">
-                            Daily Champion</div>
-                        <div style="display: inline-block; padding: 6px 12px; background: rgba(255,215,0,0.1); border-radius: 20px; font-size: 0.8rem; color: #fff; font-weight: 500;"
-                            id="top-stats">0 wins / 0 signals</div>
+                    <div id="top-performer-content" class="champion-box" style="padding: 2rem 1rem;">
+                        <div class="champion-symbol" id="top-symbol" style="font-size: 2.5rem;">---</div>
+                        <div class="champion-stats" id="top-stats" style="font-size: 1rem;">0 wins / 0 signals</div>
                     </div>
                 </div>
 
-                <!-- Activity Heatmap -->
                 <div class="chart-card">
                     <div class="chart-header">
-                        <div class="chart-title">Daily Activity (24h)</div>
+                        <div class="chart-title">Individual Performance</div>
                     </div>
-                    <div class="heatmap" id="hourly-heatmap">
-                        <!-- 24 cells -->
+                    <div id="asset-performance-terminal" style="max-height: 240px; overflow-y: auto;">
+                        <div class="asset-row header-row">
+                            <div style="padding-left: 15px;">Asset</div>
+                            <div style="text-align: center;">24h Result</div>
+                            <div>Best session</div>
+                        </div>
+                        <div id="asset-performance-rows">
+                            <!-- Populated by JS -->
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
+
         <div id="monitor-view" style="display: none;">
             <div class="chart-card"
                 style="padding: 1.5rem; height: calc(100vh - 200px); display: flex; flex-direction: column;">
@@ -526,8 +562,8 @@
                 const ctxAsset = document.getElementById('asset-chart').getContext('2d');
 
                 // 1. Equity Curve Chart
-                const equityLabels = data.equity_curve.map(p => p.day);
-                const equityData = data.equity_curve.map(p => p.profit);
+                const equityLabels = (data.equity_curve || []).map(p => p.day);
+                const equityData = (data.equity_curve || []).map(p => p.profit);
 
                 if (equityChart) equityChart.destroy();
                 equityChart = new Chart(ctxEquity, {
@@ -556,10 +592,11 @@
                     }
                 });
 
-                // 2. Asset Profitability (Bar Chart)
-                const assetLabels = data.top_assets.map(a => a.symbol);
-                const assetWins = data.top_assets.map(a => a.wins);
-                const assetLosses = data.top_assets.map(a => a.count - a.wins);
+                // 2. Asset Profitability (Bar Chart) - Resilient for V22.5
+                const relevantAssets = data.assets || data.top_assets || [];
+                const assetLabels = relevantAssets.map(a => a.symbol);
+                const assetWins = relevantAssets.map(a => a.wins);
+                const assetLosses = relevantAssets.map(a => a.count - a.wins);
 
                 if (assetChart) assetChart.destroy();
                 assetChart = new Chart(ctxAsset, {
@@ -609,10 +646,13 @@
                     const total = buys + sells;
                     const buyPct = total > 0 ? Math.round((buys / total) * 100) : 50;
 
-                    document.getElementById('bias-stroke').setAttribute('stroke-dasharray', `${buyPct}, 100`);
-                    document.getElementById('bias-pct').innerText = `${buyPct}%`;
+                    // Show the percentage of the DOMINANT bias for clarity
+                    const displayPct = buyPct >= 50 ? buyPct : (100 - buyPct);
 
-                    const sub = document.getElementById('bias-pct').nextElementSibling;
+                    document.getElementById('bias-stroke').setAttribute('stroke-dasharray', `${buyPct}, 100`);
+                    document.getElementById('bias-value').innerText = `${displayPct}%`;
+
+                    const sub = document.getElementById('bias-value').nextElementSibling;
                     if (buyPct > 55) {
                         sub.innerText = 'BULLISH';
                         sub.style.color = 'var(--acc-cyan)';
@@ -630,22 +670,50 @@
                         document.getElementById('top-stats').innerText = `${data.top_performer.wins} wins / ${data.top_performer.count} signals`;
                     }
 
-                    // 4. Heatmap
-                    const heatmap = document.getElementById('hourly-heatmap');
-                    heatmap.innerHTML = '';
-                    const counts = Object.values(data.hourly_heatmap);
-                    const maxH = counts.length > 0 ? Math.max(...counts) : 1;
+                    // 4. Individual Symbol Performance Terminal (V22.5)
+                    const assetRows = document.getElementById('asset-performance-rows');
+                    assetRows.innerHTML = '';
 
-                    for (let i = 0; i < 24; i++) {
-                        const hStr = i.toString().padStart(2, '0');
-                        const count = data.hourly_heatmap[hStr] || 0;
-                        const opacity = count > 0 ? 0.1 + (count / maxH) * 0.8 : 0.05;
-                        heatmap.innerHTML += `
-                        <div class="heat-cell" 
-                             style="background: rgba(0, 234, 144, ${opacity})"
-                             data-time="${hStr}:00 - ${count} signals">
-                        </div>
-                    `;
+                    if (data.assets) {
+                        data.assets.forEach(asset => {
+                            const sym = asset.symbol;
+                            const total = asset.count;
+                            const wins = asset.wins;
+                            const losses = asset.losses;
+                            const wr = total > 0 ? Math.round((wins / (wins + losses)) * 100) : 0;
+
+                            // Find best session
+                            let bestSession = "N/A";
+                            let bestWR = -1;
+                            if (data.session_insights[sym]) {
+                                Object.entries(data.session_insights[sym]).forEach(([sName, sData]) => {
+                                    const sWR = sData.total > 0 ? (sData.wins / sData.total) : 0;
+                                    if (sWR > bestWR) {
+                                        bestWR = sWR;
+                                        bestSession = sName;
+                                    }
+                                });
+                            }
+
+                            const sClass = `session-${bestSession.toLowerCase()}`;
+
+                            assetRows.innerHTML += `
+                            <div class="asset-row">
+                                <div style="padding-left: 15px;">
+                                    <div style="font-weight: 800; color: var(--acc-cyan);">${sym}</div>
+                                    <div style="font-size: 0.65rem; color: var(--text-dim);">${asset.avg_quality.toFixed(1)} Avg Quality</div>
+                                </div>
+                                <div style="text-align: center;">
+                                    <div style="font-weight: 700;">${wins}/${total}</div>
+                                    <div style="font-size: 0.75rem; color: ${wr > 40 ? '#00ea90' : '#ff4d4d'}">${wr}% WR</div>
+                                </div>
+                                <div>
+                                    <span class="session-badge ${sClass}">${bestSession}</span>
+                                    <span style="font-size: 0.7rem; color: var(--text-dim);">${Math.round(bestWR * 100)}% Match</span>
+                                </div>
+                            </div>
+                        `;
+                        });
                     }
                 } catch (e) {
                     console.error("Analytics error:", e);
@@ -758,6 +826,22 @@
 
                     const directionClass = s.direction === 'BUY' ? 'status-active' : 'status-expired';
 
+                    let resultDisplay = s.result || '-';
+                    // Check if result is SL (string 'SL' or numeric price that isn't a TP string)
+                    const isSL = s.result === 'SL' || (s.result && !String(s.result).startsWith('TP') && s.result !== 'OPEN' && !isNaN(parseFloat(s.result)));
+
+                    if (isSL) {
+                        if (s.max_tp_reached > 0) {
+                            resultDisplay = `SL <span style="font-size: 0.7em; color: var(--acc-gold); margin-left: 2px;">(Hit TP${s.max_tp_reached})</span>`;
+                        }
+                    }
+
+                    // Determine color
+                    let resultColor = '#b0b0b0';
+                    if (isSL) resultColor = '#ff4d4d'; // Red for SL
+                    else if (String(s.result).startsWith('TP')) resultColor = '#00ff88'; // Green for TP
+                    else if (s.result === 'OPEN') resultColor = 'var(--text-main)';
+
                     row.innerHTML = `
                     <td style="font-size: 0.75rem; color: var(--text-dim); white-space: nowrap;">${new Date(s.timestamp).toLocaleTimeString()}</td>
                     <td style="font-weight:bold; color:var(--acc-cyan);">${s.symbol}</td>
@@ -770,7 +854,7 @@
                     <td style="color: #00ea90; font-family: monospace">${s.tp2 ? s.tp2.toFixed(5) : '-'}</td>
                     <td>${Math.round((s.confidence || 0) * 100)}%</td>
                     <td style="color: #FFD700; font-weight: bold;">${(s.quality_score || 0).toFixed(2)}</td>
-                    <td style="font-weight: bold; color: ${s.result === 'SL' ? '#ff4d4d' : (s.result && s.result.startsWith('TP') ? '#00ff88' : '#b0b0b0')}">${s.result || '-'}</td>
+                    <td style="font-weight: bold; color: ${resultColor};">${resultDisplay}</td>
                     <td style="max-width: 250px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="Click to view full reasoning">${s.reasoning || '-'}</td>
                 `;
                     tbody.appendChild(row);

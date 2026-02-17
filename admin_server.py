@@ -6,9 +6,10 @@ from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 import sqlite3
 import os
 import json
-import stripe
 import secrets
+import stripe
 import hashlib
+import jwt
 from datetime import datetime, timedelta
 from typing import List, Optional
 from pydantic import BaseModel
@@ -25,9 +26,11 @@ from core.client_manager import ClientManager
 stripe.api_key = os.getenv("STRIPE_API_KEY")
 STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET")
 
-# Admin Password
+# Admin Credentials (CRITICAL: Required in Production)
 ADMIN_USER = os.getenv("ADMIN_USER", "admin")
-ADMIN_PASS = os.getenv("ADMIN_PASS", "Admin@1736")
+ADMIN_PASS = os.getenv("ADMIN_PASS")
+if not ADMIN_PASS:
+    print("⚠️ WARNING: ADMIN_PASS not set. Backend will be inaccessible.")
 
 # Market Context Cache
 market_context_cache = {
@@ -38,11 +41,12 @@ market_context_cache = {
 
 app = FastAPI(title="Trading Expert Admin Dashboard")
 
-# Enable CORS for local development
+# Restricted CORS for Security
+ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "http://localhost:5000,http://127.0.0.1:5000").split(",")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
+    allow_origins=ALLOWED_ORIGINS,
+    allow_methods=["GET", "POST"],
     allow_headers=["*"],
 )
 
@@ -149,7 +153,8 @@ def ensure_users_table():
             
             cursor.execute("INSERT INTO admin_users (username, password_hash) VALUES (?, ?)", ("admin", stored_pwd))
             conn.commit()
-            print("✅ Initialized admin_users with default credentials (admin/admin123)")
+            print("✅ Initialized admin_users with standard credentials (admin/admin123)")
+            print("⚠️ ACTION REQUIRED: Change the admin password immediately via database or API.")
             
     except Exception as e:
         print(f"⚠️ Users table init failed: {e}")
@@ -159,7 +164,12 @@ def ensure_users_table():
 ensure_users_table()
 
 # Auth Configuration
-SECRET_KEY = os.getenv("JWT_SECRET", secrets.token_hex(32))
+JWT_SECRET = os.getenv("JWT_SECRET")
+if not JWT_SECRET:
+    print("⚠️ WARNING: JWT_SECRET not set. Using ephemeral secret (sessions will reset on restart).")
+    JWT_SECRET = secrets.token_hex(32)
+
+ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 # 24 hours
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/token")
@@ -180,22 +190,23 @@ def verify_password(plain_password, stored_password):
         return False
 
 async def get_current_user(token: str = Depends(oauth2_scheme)):
-    import base64
     try:
-        # Simple token format for MVP: base64(username:expiry_iso)
-        # In production, use python-jose or PyJWT
-        decoded = base64.b64decode(token).decode()
-        username, expiry_str = decoded.split(':', 1)
-        expiry = datetime.fromisoformat(expiry_str)
-        
-        if datetime.now() > expiry:
+        payload = jwt.decode(token, JWT_SECRET, algorithms=[ALGORITHM])
+        username: str = payload.get("sub")
+        if username is None:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Token expired",
+                detail="Could not validate credentials",
                 headers={"WWW-Authenticate": "Bearer"},
             )
         return User(username=username)
-    except Exception:
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token expired",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    except jwt.PyJWTError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Could not validate credentials",
@@ -224,13 +235,12 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
             headers={"WWW-Authenticate": "Bearer"},
         )
     
-    # Generate simple token
-    import base64
-    expiry = datetime.now() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    token_data = f"{user['username']}:{expiry.isoformat()}"
-    token_b64 = base64.b64encode(token_data.encode()).decode()
+    # Generate Secure JWT Token
+    expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    to_encode = {"sub": user['username'], "exp": expire}
+    encoded_jwt = jwt.encode(to_encode, JWT_SECRET, algorithm=ALGORITHM)
     
-    return {"access_token": token_b64, "token_type": "bearer"}
+    return {"access_token": encoded_jwt, "token_type": "bearer"}
 
 @app.get("/api/me", response_model=User)
 async def read_users_me(current_user: User = Depends(get_current_user)):
@@ -537,7 +547,7 @@ async def get_signals(current_user: User = Depends(get_current_user)):
         cursor = conn.execute("""
             SELECT 
                 timestamp, symbol, direction, entry_price, sl, tp1, tp2, 
-                reasoning, timeframe, confidence,
+                reasoning, timeframe, confidence, result, closed_at, max_tp_reached,
                 trade_type, quality_score, regime, expected_hold, risk_details, score_details
             FROM signals 
             ORDER BY timestamp DESC LIMIT 50
@@ -662,23 +672,54 @@ async def get_daily_analytics(current_user: User = Depends(get_current_user)):
         
         bias = {row['direction']: row['count'] for row in bias_rows}
         
-        # 4. Top Assets (by volume and quality)
-        asset_rows = conn.execute("""
+        # 4. Detailed Asset Stats (Enhanced for V22.5)
+        asset_stats_rows = conn.execute("""
             SELECT 
                 symbol, 
                 COUNT(*) as count,
-                AVG(quality_score) as avg_quality,
-                SUM(CASE WHEN result IN ('TP1', 'TP2', 'TP3') OR max_tp_reached > 0 THEN 1 ELSE 0 END) as wins
+                SUM(CASE WHEN result IN ('TP1', 'TP2', 'TP3') OR max_tp_reached > 0 THEN 1 ELSE 0 END) as wins,
+                SUM(CASE WHEN result = 'SL' THEN 1 ELSE 0 END) as losses,
+                SUM(CASE WHEN result = 'OPEN' THEN 1 ELSE 0 END) as open,
+                AVG(quality_score) as avg_quality
             FROM signals 
             WHERE timestamp >= ?
             GROUP BY symbol
             ORDER BY count DESC
-            LIMIT 5
         """, (last_24h,)).fetchall()
         
-        assets = [dict(row) for row in asset_rows]
+        all_assets = [dict(row) for row in asset_stats_rows]
         
-        # 5. Hourly Heatmap
+        # 5. Session Analytics (Sydney, Tokyo, London, NY)
+        session_rows = conn.execute("""
+            SELECT 
+                symbol,
+                CAST(STRFTIME('%H', timestamp) as INTEGER) as hour,
+                COUNT(*) as total,
+                SUM(CASE WHEN result IN ('TP1', 'TP2', 'TP3') OR max_tp_reached > 0 THEN 1 ELSE 0 END) as wins
+            FROM signals
+            WHERE timestamp >= ?
+            GROUP BY symbol, hour
+        """, (last_24h,)).fetchall()
+
+        session_insights = {}
+        for row in session_rows:
+            sym = row['symbol']
+            hour = row['hour']
+            
+            # Define Session Mapping (UTC)
+            sessions = []
+            if hour >= 22 or hour < 7: sessions.append("SYDNEY")
+            if hour >= 0 and hour < 9: sessions.append("TOKYO")
+            if hour >= 8 and hour < 17: sessions.append("LONDON")
+            if hour >= 13 and hour < 22: sessions.append("NEWYORK")
+            
+            if sym not in session_insights: session_insights[sym] = {}
+            for s in sessions:
+                if s not in session_insights[sym]: session_insights[sym][s] = {"total": 0, "wins": 0}
+                session_insights[sym][s]["total"] += row['total']
+                session_insights[sym][s]["wins"] += row['wins']
+
+        # 6. Hourly Heatmap
         hourly_rows = conn.execute("""
             SELECT STRFTIME('%H', timestamp) as hour, COUNT(*) as count
             FROM signals
@@ -688,7 +729,7 @@ async def get_daily_analytics(current_user: User = Depends(get_current_user)):
         
         hourly = {row['hour']: row['count'] for row in hourly_rows}
         
-        # 6. Best Performing Symbol
+        # 7. Best Performing Symbol
         best_symbol = conn.execute("""
             SELECT symbol, COUNT(*) as count, SUM(CASE WHEN result IN ('TP1', 'TP2', 'TP3') OR max_tp_reached > 0 THEN 1 ELSE 0 END) as wins
             FROM signals 
@@ -698,7 +739,7 @@ async def get_daily_analytics(current_user: User = Depends(get_current_user)):
             LIMIT 1
         """, (last_24h,)).fetchone()
 
-        # 7. Equity Curve (Last 7 Days)
+        # 8. Equity Curve (Last 7 Days)
         seven_days_ago = (datetime.utcnow() - timedelta(days=7)).isoformat()
         equity_rows = conn.execute("""
             SELECT 
@@ -726,7 +767,8 @@ async def get_daily_analytics(current_user: User = Depends(get_current_user)):
             "avg_quality": round(summary['avg_quality'] or 0, 1),
             "stats_by_type": stats_by_type,
             "bias": bias,
-            "top_assets": assets,
+            "assets": all_assets,
+            "session_insights": session_insights,
             "hourly_heatmap": hourly,
             "top_performer": dict(best_symbol) if best_symbol else None,
             "equity_curve": equity_curve,
