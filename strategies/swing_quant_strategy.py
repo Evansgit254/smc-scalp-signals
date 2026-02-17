@@ -54,20 +54,20 @@ class SwingQuantStrategy(BaseStrategy):
 
             if is_jpy:
                 # JPY pairs require extreme selectivity to avoid fakeouts
-                threshold = 0.85
+                threshold = 0.90 # Increased from 0.85
                 # Tighter stops for better R:R on high-volatility entries
-                sl_distance = atr * 2.0 
+                sl_distance = atr * 2.5 # Increased from 2.0
                 # Very conservative targets (1:1.5 - 1:2 effective)
                 swing_rr_multiplier = 1.0
             else:
-                # Standard Hardened Swing (V22.2)
+                # V12.0: Restrictive Swing Thresholds (Alpha Recovery)
                 thresholds = {
-                    "TRENDING": 0.6,
-                    "RANGING": 0.7,
-                    "CHOPPY": 0.8
+                    "TRENDING": 0.8,
+                    "RANGING": 0.85,
+                    "CHOPPY": 0.95 # Effectively disabled
                 }
-                threshold = thresholds.get(regime, 0.7)
-                sl_distance = atr * 2.5
+                threshold = thresholds.get(regime, 0.85)
+                sl_distance = atr * 3.0 # Increased from 2.5
                 swing_rr_multiplier = 1.5 
             
             # Tightened quality filter for swing
@@ -84,11 +84,11 @@ class SwingQuantStrategy(BaseStrategy):
             if not direction:
                 return None
             
-            # Macro filter: MANDATORY for swing (H1). 
+            # Macro filter: MANDATORY for swing (H1). V12.0 Mandatory Enforcement.
             macro_bias = MacroFilter.get_macro_bias(market_context)
             macro_safe = MacroFilter.is_macro_safe(symbol, direction, macro_bias)
             
-            if not macro_safe and quality_score < 8.0: 
+            if not macro_safe: 
                 return None
             
             # News filter check

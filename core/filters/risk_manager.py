@@ -66,8 +66,12 @@ class RiskManager:
                         elif status == 'LOSS': loss_streak += 1
                         else: break # Break on breakeven
                     
-                    if win_streak >= 3: multiplier = 1.25 # Reward 3+ wins
-                    elif loss_streak >= 2: multiplier = 0.75 # Protect after 2 losses
+                    if win_streak >= 3: 
+                        multiplier = 1.25 # Reward 3+ wins
+                    elif loss_streak >= 3:
+                        multiplier = 0.50 # V12.0 Circuit Breaker: 50% Reduction after 3 losses
+                    elif loss_streak >= 2: 
+                        multiplier = 0.75 # Protect after 2 losses
             except:
                 pass
 
