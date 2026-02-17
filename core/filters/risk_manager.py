@@ -256,8 +256,8 @@ class RiskManager:
         elif "CL" in symbol or "GC" in symbol: friction_dist = friction_pips / 10.0
         else: friction_dist = friction_pips / 10000.0
         
-        # Vol-Floor: If friction consumes > 30% of ATR, it's a "low-margin" death trap
-        is_friction_heavy = friction_dist > (current_atr * 0.3)
+        # Vol-Floor: If friction consumes > 35% of ATR, it's a "low-margin" death trap (V15.0)
+        is_friction_heavy = friction_dist > (current_atr * 0.35)
         
         if is_friction_heavy:
             # Force skip by returning zero RR

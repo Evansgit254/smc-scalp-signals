@@ -49,13 +49,13 @@ class IntradayQuantStrategy(BaseStrategy):
             quality_score = AlphaCombiner.calculate_quality_score(factors, alpha_signal)
             
             # Adaptive thresholds
-            # V13.0 Hardened Scalp Thresholds
+            # V15.0 Balanced Scalp Thresholds
             thresholds = {
-                "TRENDING": 0.7, # Increased from 0.6
-                "RANGING": 0.85, # Increased from 0.8
+                "TRENDING": 0.65, # Relaxed from 0.7
+                "RANGING": 0.80, # Relaxed from 0.85
                 "CHOPPY": 1.0
             }
-            threshold = thresholds.get(regime, 0.75)
+            threshold = thresholds.get(regime, 0.72)
             
             # Quality filter
             if quality_score < MIN_QUALITY_SCORE_INTRADAY:
@@ -95,7 +95,7 @@ class IntradayQuantStrategy(BaseStrategy):
             if optimal_rr.get('is_friction_heavy'):
                 return None
                 
-            sl_distance = atr * 1.8 # Increased from 1.5
+            sl_distance = atr * 1.6 # Reduced from 1.8 for V15.0 (Restoring Win Rate)
             
             # Dynamic TP levels based on optimal R:R
             if direction == "BUY":

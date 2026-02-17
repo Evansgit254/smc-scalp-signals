@@ -60,15 +60,15 @@ class SwingQuantStrategy(BaseStrategy):
                 # Very conservative targets (1:1.5 - 1:2 effective)
                 swing_rr_multiplier = 1.0
             else:
-                # V12.0: Restrictive Swing Thresholds (Alpha Recovery)
+                # V15.0: Balanced Swing Thresholds
                 thresholds = {
-                    "TRENDING": 0.8,
-                    "RANGING": 0.85,
-                    "CHOPPY": 0.95 # Effectively disabled
+                    "TRENDING": 0.75, # Relaxed from 0.8
+                    "RANGING": 0.80, # Relaxed from 0.85
+                    "CHOPPY": 0.90  # Relaxed from 0.95
                 }
-                threshold = thresholds.get(regime, 0.85)
-                sl_distance = atr * 3.0 # Increased from 2.5
-                swing_rr_multiplier = 1.5 
+                threshold = thresholds.get(regime, 0.80)
+                sl_distance = atr * 3.0
+                swing_rr_multiplier = 1.5
             
             # Tightened quality filter for swing
             if quality_score < 5.0:
