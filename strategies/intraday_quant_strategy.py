@@ -6,6 +6,7 @@ from core.alpha_combiner import AlphaCombiner
 from core.filters.risk_manager import RiskManager
 from core.filters.macro_filter import MacroFilter
 from core.filters.news_filter import NewsFilter
+from core.filters.session_filter import SessionFilter
 from indicators.calculations import IndicatorCalculator
 from config.config import ATR_MULTIPLIER, MIN_QUALITY_SCORE_INTRADAY
 
@@ -27,7 +28,10 @@ class IntradayQuantStrategy(BaseStrategy):
             if df is None or len(df) < 100: 
                 return None
             
-            # Detect market regime for adaptive thresholds
+            # V14.1 Session Hardening: Only trade during London/NY Open
+            latest_time = df.index[-1]
+            if not SessionFilter.is_valid_session(check_time=latest_time):
+                return None
             regime = IndicatorCalculator.get_market_regime(df)
             
             # Enhanced Alpha Factors (added momentum and volatility)
@@ -85,8 +89,12 @@ class IntradayQuantStrategy(BaseStrategy):
             latest = df.iloc[-1]
             atr = latest['atr']
             
-            # Optimal R:R calculation based on quality and regime
-            optimal_rr = RiskManager.calculate_optimal_rr(quality_score, regime)
+            # Optimal R:R calculation based on quality, regime, and friction (SATP)
+            optimal_rr = RiskManager.calculate_optimal_rr(symbol, quality_score, regime, atr)
+            
+            if optimal_rr.get('is_friction_heavy'):
+                return None
+                
             sl_distance = atr * 1.8 # Increased from 1.5
             
             # Dynamic TP levels based on optimal R:R

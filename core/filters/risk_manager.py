@@ -227,11 +227,13 @@ class RiskManager:
             return 0.0
     
     @staticmethod
-    def calculate_optimal_rr(quality_score: float, regime: str) -> dict:
+    def calculate_optimal_rr(symbol: str, quality_score: float, regime: str, current_atr: float) -> dict:
         """
         Calculates optimal Risk:Reward ratio based on signal quality and market regime.
-        Higher quality = wider targets, trending = wider targets.
+        V14.1 Friction-Hardened Update (SATP)
         """
+        from config.config import SPREAD_PIPS, SLIPPAGE_PIPS
+        
         base_rr = 1.5  # Base R:R for intraday
         
         # Quality adjustment: higher quality = better R:R potential
@@ -239,15 +241,31 @@ class RiskManager:
         
         # Regime adjustment
         regime_multiplier = {
-            "TRENDING": 1.3,  # Wider targets in trends
+            "TRENDING": 1.3,
             "RANGING": 1.0,
-            "CHOPPY": 0.8     # Tighter targets in choppy markets
+            "CHOPPY": 0.8
         }.get(regime, 1.0)
         
         optimal_rr = base_rr * quality_multiplier * regime_multiplier
         
+        # --- SATP: Spread-Adjusted Terminal Profit (V14.1) ---
+        # Convert pips to price distance (Simplified normalization)
+        friction_pips = SPREAD_PIPS + SLIPPAGE_PIPS
+        if "JPY" in symbol: friction_dist = friction_pips / 100.0
+        elif "BTC" in symbol: friction_dist = friction_pips # $1 = 1 pip
+        elif "CL" in symbol or "GC" in symbol: friction_dist = friction_pips / 10.0
+        else: friction_dist = friction_pips / 10000.0
+        
+        # Vol-Floor: If friction consumes > 30% of ATR, it's a "low-margin" death trap
+        is_friction_heavy = friction_dist > (current_atr * 0.3)
+        
+        if is_friction_heavy:
+            # Force skip by returning zero RR
+            return {'tp1_rr': 0, 'tp2_rr': 0, 'tp3_rr': 0, 'is_friction_heavy': True}
+        
         return {
             'tp1_rr': round(optimal_rr, 2),
             'tp2_rr': round(optimal_rr * 2.0, 2),
-            'tp3_rr': round(optimal_rr * 3.5, 2)
+            'tp3_rr': round(optimal_rr * 3.5, 2),
+            'is_friction_heavy': False
         }

@@ -96,8 +96,11 @@ class SwingQuantStrategy(BaseStrategy):
                 if not NewsFilter.is_safe_to_trade(news_events, symbol):
                     return None
             
-            # Optimal R:R for swing
-            optimal_rr = RiskManager.calculate_optimal_rr(quality_score, regime)
+            # Optimal R:R calculation based on quality, regime, and friction (SATP)
+            optimal_rr = RiskManager.calculate_optimal_rr(symbol, quality_score, regime, atr)
+            
+            if optimal_rr.get('is_friction_heavy'):
+                return None
             
             # Dynamic TP levels
             if direction == "BUY":
