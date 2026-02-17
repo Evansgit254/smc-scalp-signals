@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="index.css?v=22.7.3">
+    <link rel="stylesheet" href="index.css?v=22.7.4">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
@@ -833,6 +833,11 @@
                     if (isSL) {
                         if (s.max_tp_reached > 0) {
                             resultDisplay = `SL <span style="font-size: 0.7em; color: var(--acc-gold); margin-left: 2px;">(Hit TP${s.max_tp_reached})</span>`;
+                        }
+                    } else if (s.result === 'OPEN') {
+                        // Show TP hit status for open trades
+                        if (s.max_tp_reached > 0) {
+                            resultDisplay = `OPEN <span style="font-size: 0.7em; color: var(--acc-gold); margin-left: 2px;">(TP${s.max_tp_reached} Hit)</span>`;
                         }
                     }
 
