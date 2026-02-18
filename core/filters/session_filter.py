@@ -29,6 +29,26 @@ class SessionFilter:
         return london_early or overlap
 
     @staticmethod
+    def is_peak_session(check_time=None) -> bool:
+        """
+        Stricter version of session validation for V22.3 Hardening.
+        London Early: 08:00 - 10:00 UTC
+        Peak NY Overlap: 13:00 - 16:00 UTC
+        """
+        if check_time:
+            if hasattr(check_time, 'time'):
+                now_utc = check_time.time()
+            else:
+                now_utc = check_time
+        else:
+            now_utc = datetime.now(pytz.UTC).time()
+        
+        london_early = (now_utc >= time(LONDON_OPEN, 0)) and (now_utc <= time(LONDON_OPEN + 2, 0))
+        peak_overlap = (now_utc >= time(NY_OPEN, 0)) and (now_utc <= time(NY_OPEN + 3, 0))
+        
+        return london_early or peak_overlap
+
+    @staticmethod
     def get_session_name() -> str:
         now_utc = datetime.now(pytz.UTC).time()
         if (now_utc >= time(LONDON_OPEN, 0)) and (now_utc <= time(LONDON_OPEN + 2, 0)):

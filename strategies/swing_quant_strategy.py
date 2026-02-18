@@ -38,7 +38,7 @@ class SwingQuantStrategy(BaseStrategy):
                 'volatility': AlphaFactors.volatility_regime_alpha(df, period=100)
             }
             
-            # Regime-adaptive combination
+            # Regime-adaptive combination (global weights — per-symbol hurts swing quality)
             alpha_signal = AlphaCombiner.combine(factors, regime=regime)
             
             # Calculate quality score

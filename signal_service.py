@@ -32,6 +32,7 @@ class SignalService:
         self.telegram = TelegramService()
         self.sent_signals: dict[str, datetime] = {}  # hash -> timestamp
         self.running = True
+        self.is_paused = False
         self.cycle_count = 0
         
         # Set up signal handlers for graceful shutdown
@@ -111,10 +112,7 @@ class SignalService:
                 
                 # Special handling for system status
                 if key == 'system_status':
-                    if val != 'ACTIVE':
-                        self.running = False # This pauses the NEXT cycle, need to handle current
-                    else:
-                        self.running = True
+                    self.is_paused = (val != 'ACTIVE')
                         
         except Exception as e:
             print(f"⚠️  Failed to load dynamic config: {e}")
@@ -132,7 +130,7 @@ class SignalService:
         print(f"🔄 CYCLE #{self.cycle_count} - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
         print(f"{'='*60}")
         
-        if not self.running:
+        if self.is_paused:
             print("⏸️  System is PAUSED via Server Config. Skipping cycle.")
             return 0, 0
             

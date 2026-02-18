@@ -626,12 +626,19 @@ async def get_basic_stats(current_user: User = Depends(get_current_user)):
         
         # V19.2: Market Context
         mctx = await get_market_context()
+
+        # V23.1: System Status Switch
+        conn_config = get_db_connection(DB_CLIENTS)
+        status_row = conn_config.execute("SELECT value FROM system_config WHERE key = 'system_status'").fetchone()
+        system_status = status_row['value'] if status_row else "UNKNOWN"
+        conn_config.close()
         
         return {
             "active_clients": active_clients,
             "signals_today": signals_count,
             "server_time": datetime.now().strftime("%H:%M:%S"),
-            "market_context": mctx
+            "market_context": mctx,
+            "system_status": system_status
         }
     except Exception as e:
         print(f"Error fetching stats: {e}")

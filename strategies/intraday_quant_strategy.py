@@ -28,11 +28,15 @@ class IntradayQuantStrategy(BaseStrategy):
             if df is None or len(df) < 100: 
                 return None
             
-            # V14.1 Session Hardening: Only trade during London/NY Open
+            # V22.3 Session Hardening: Only trade during Peak London/NY windows
             latest_time = df.index[-1]
-            if not SessionFilter.is_valid_session(check_time=latest_time):
+            if not SessionFilter.is_peak_session(check_time=latest_time):
                 return None
             regime = IndicatorCalculator.get_market_regime(df)
+            
+            # V22.1 HARD BLOCK: Do not trade in Choppy regimes (Negative Edge)
+            if regime == "CHOPPY":
+                return None
             
             # Enhanced Alpha Factors (added momentum and volatility)
             factors = {
@@ -42,8 +46,8 @@ class IntradayQuantStrategy(BaseStrategy):
                 'volatility': AlphaFactors.volatility_regime_alpha(df, period=50)
             }
             
-            # Regime-adaptive signal combination
-            alpha_signal = AlphaCombiner.combine(factors, regime=regime)
+            # Regime-adaptive signal combination (V22.2: per-symbol weights)
+            alpha_signal = AlphaCombiner.combine(factors, regime=regime, symbol=symbol)
             
             # Calculate quality score
             quality_score = AlphaCombiner.calculate_quality_score(factors, alpha_signal)

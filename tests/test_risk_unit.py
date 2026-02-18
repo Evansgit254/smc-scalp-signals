@@ -110,8 +110,17 @@ def test_calculate_kelly_fraction(mock_db):
     assert fraction > 0
 
 def test_calculate_optimal_rr():
-    res = RiskManager.calculate_optimal_rr(8.5, "TRENDING")
-    assert res['tp1_rr'] > 1.5 # Should be boosted
+    # Test boosted R:R for Trending
+    res = RiskManager.calculate_optimal_rr("EURUSD=X", 8.5, "TRENDING", 0.0010)
+    assert res['tp1_rr'] > 1.5
+    assert not res['is_friction_heavy']
     
-    res_choppy = RiskManager.calculate_optimal_rr(5.0, "CHOPPY")
-    assert res_choppy['tp1_rr'] < 1.5 # Should be reduced
+    # Test reduced R:R for Choppy
+    res_choppy = RiskManager.calculate_optimal_rr("EURUSD=X", 5.0, "CHOPPY", 0.0010)
+    assert res_choppy['tp1_rr'] < 1.5
+    
+    # Test Friction-Heavy detection (Friction > 35% of ATR)
+    # Friction = 1.0 pip (0.0001). ATR = 0.0002 -> Friction is 50% of ATR.
+    res_friction = RiskManager.calculate_optimal_rr("EURUSD=X", 5.0, "RANGING", 0.0002)
+    assert res_friction['is_friction_heavy']
+    assert res_friction['tp1_rr'] == 0

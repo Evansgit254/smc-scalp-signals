@@ -5,6 +5,8 @@ from data.fetcher import DataFetcher
 from indicators.calculations import IndicatorCalculator
 from strategies.intraday_quant_strategy import IntradayQuantStrategy
 from strategies.swing_quant_strategy import SwingQuantStrategy
+from strategies.session_clock_strategy import SessionClockStrategy
+from strategies.advanced_pattern_strategy import AdvancedPatternStrategy
 from core.signal_formatter import SignalFormatter
 from core.market_status import MarketStatus
 
@@ -28,6 +30,8 @@ async def generate_signals():
     client_manager = ClientManager()
     intraday_strategy = IntradayQuantStrategy()
     swing_strategy = SwingQuantStrategy()
+    clock_strategy = SessionClockStrategy()
+    advanced_strategy = AdvancedPatternStrategy()
     
     # Fetch macro context (DXY, TNX) for all symbols
     print("📊 Fetching macro context...")
@@ -89,6 +93,16 @@ async def generate_signals():
             swing_signal = await swing_strategy.analyze(symbol, data_bundle, news_events, market_context)
             if swing_signal:
                 all_signals.append(('SWING', swing_signal))
+
+            # V22.4: Session Clock Strategy (Time-Based Edge)
+            clock_signal = await clock_strategy.analyze(symbol, data_bundle, news_events, market_context)
+            if clock_signal:
+                all_signals.append(('SESSION_CLOCK', clock_signal))
+
+            # V23: Advanced Patterns (DOW + PA)
+            advanced_signal = await advanced_strategy.analyze(symbol, data_bundle, news_events, market_context)
+            if advanced_signal:
+                all_signals.append(('ADVANCED', advanced_signal))
                 
         except Exception as e:
             print(f"⚠️  Error processing {symbol}: {str(e)}")

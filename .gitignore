@@ -22,3 +22,4 @@ coverage_html*/
 
 # Backtest
 .venv_backtest/
+.venv_audit/

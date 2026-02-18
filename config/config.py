@@ -90,3 +90,19 @@ SLIPPAGE_PIPS = 0.2 # Expected Scalp Slippage
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DB_CLIENTS = os.path.join(BASE_DIR, "database/clients.db")
 DB_SIGNALS = os.path.join(BASE_DIR, "database/signals.db")
+
+# V22.2 PER-SYMBOL ALPHA WEIGHTS (IC-Derived from 60-day analysis)
+# Format: { symbol: { regime: { factor: weight } } }
+# Only TRENDING regime is customized — RANGING/CHOPPY use global defaults.
+SYMBOL_ALPHA_WEIGHTS = {
+    "EURUSD=X": {"TRENDING": {"velocity": 0.1, "zscore": 0.1, "momentum": 0.7, "volatility": 0.1}},
+    "GBPUSD=X": {"TRENDING": {"velocity": 0.2, "zscore": 0.5, "momentum": 0.2, "volatility": 0.1}},
+    "USDJPY=X": {"TRENDING": {"velocity": 0.1, "zscore": 0.1, "momentum": 0.7, "volatility": 0.1}},
+    "NZDUSD=X": {"TRENDING": {"velocity": 0.3, "zscore": 0.3, "momentum": 0.3, "volatility": 0.1}},  # No IC data — balanced
+    "AUDUSD=X": {"TRENDING": {"velocity": 0.1, "zscore": 0.7, "momentum": 0.1, "volatility": 0.1}},  # Z-Score IC=0.36
+    "GBPJPY=X": {"TRENDING": {"velocity": 0.1, "zscore": 0.1, "momentum": 0.7, "volatility": 0.1}},
+    "GC=F":     {"TRENDING": {"velocity": 0.1, "zscore": 0.1, "momentum": 0.1, "volatility": 0.7}},  # Mom-Inv (contrarian)
+    "CL=F":     {"TRENDING": {"velocity": 0.1, "zscore": 0.1, "momentum": 0.7, "volatility": 0.1}},
+    "BTC-USD":  {"TRENDING": {"velocity": 0.1, "zscore": 0.6, "momentum": 0.2, "volatility": 0.1}},
+}
+

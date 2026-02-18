@@ -157,20 +157,26 @@ class IndicatorCalculator:
         
         if atr_now is None or atr_avg is None: return "CHOPPY"
         
-        vol_ratio = atr_now / atr_avg if atr_avg != 0 else 1
+        vol_ratio = atr_now / atr_avg if atr_avg != 0 else 1.0
+        
+        # V22.1 HARDENED REGIME: Check ADX if available (Stronger Trend Filter)
+        adx = df.iloc[-1].get('adx', 0) # Default to 0 if not calculated yet
         
         # 2. Trendiness check (EMA Slope)
         slope = IndicatorCalculator.calculate_ema_slope(df, f'ema_{EMA_TREND}')
         
-        # 3. Decision Logic
-        # Highly volatile + slanted EMA = Trending
-        if vol_ratio > 1.2 and abs(slope) > 0.05:
-            return "TRENDING"
-        # Normal volatility + flat EMA = Ranging
-        elif 0.8 <= vol_ratio <= 1.5 and abs(slope) <= 0.05:
-            return "RANGING"
-        # Low volatility or extremely flat = Choppy (Avoid)
-        elif vol_ratio < 0.8:
+        # 3. Decision Logic (Strict Filters)
+        
+        # CHOPPY: Low Volatility OR Very Low ADX
+        # We actively block these in strategy now
+        if vol_ratio < 0.9 or (adx > 0 and adx < 20):
             return "CHOPPY"
-            
-        return "RANGING" # Default to Ranging
+
+        # TRENDING: High Volatility + Slope + ADX Confirmation
+        # Must have "Expansion" (vol_ratio > 1.2) and "Direction" (slope)
+        if vol_ratio > 1.2 and abs(slope) > 0.05:
+            if adx == 0 or adx > 25: # Use ADX confirmation if available
+                return "TRENDING"
+        
+        # RANGING: Everything else (Standard Volatility, No strong trend)
+        return "RANGING"

@@ -169,7 +169,7 @@ async def test_signal_service_load_dynamic_config_paused(mock_telegram):
         
         service = SignalService()
         service._load_dynamic_config()
-        assert service.running == False
+        assert service.is_paused == True
         
         # Test run_cycle skips when paused
         total, sent = await service.run_cycle()

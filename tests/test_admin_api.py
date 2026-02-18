@@ -28,6 +28,11 @@ def setup_test_dbs(tmp_path):
         )
     """)
     conn.execute("INSERT INTO clients (telegram_chat_id, account_balance) VALUES ('123', 1000.0)")
+    
+    # Initialize system_config for Master Switch (V23.1)
+    conn.execute("CREATE TABLE IF NOT EXISTS system_config (key TEXT PRIMARY KEY, value TEXT, type TEXT)")
+    conn.execute("INSERT OR IGNORE INTO system_config VALUES ('system_status', 'ACTIVE', 'str')")
+    
     conn.commit()
     conn.close()
     

@@ -545,8 +545,9 @@
                     }
 
                     if (statusEl) {
-                        statusEl.innerText = "ONLINE";
-                        statusEl.style.color = "#00ff64";
+                        const sysStatus = data.system_status || "ACTIVE";
+                        statusEl.innerText = sysStatus;
+                        statusEl.style.color = sysStatus === "ACTIVE" ? "#00ff64" : "var(--acc-gold)";
                     }
                 } catch (e) {
                     console.error("Stats fetch failed:", e);

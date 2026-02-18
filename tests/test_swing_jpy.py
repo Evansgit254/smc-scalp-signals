@@ -32,8 +32,8 @@ async def test_swing_strategy_jpy_selectivity(jpy_data):
         # Verify it uses JPY logic (tighter threshold/multiplier)
         assert res is not None
         assert res['direction'] == 'BUY'
-        # sl_distance = atr * 2.0 = 0.5 * 2.0 = 1.0. sl = 150 - 1.0 = 149.0
-        assert res['sl'] == 149.0
+        # sl_distance = atr * 2.5 = 0.5 * 2.5 = 1.25. sl = 150 - 1.25 = 148.75
+        assert res['sl'] == 148.75
 
 @pytest.mark.asyncio
 async def test_swing_strategy_news_unsafe(jpy_data):

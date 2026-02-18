@@ -1,45 +1,54 @@
-from typing import Dict
+from typing import Dict, Optional
 from .alpha_factors import AlphaFactors
 
 class AlphaCombiner:
     @staticmethod
-    def combine(factors: Dict[str, float], regime: str = "NORMAL") -> float:
+    def combine(factors: Dict[str, float], regime: str = "NORMAL", symbol: Optional[str] = None) -> float:
         """
-        Pure Mathematical Aggregator with Regime Adaptation.
-        Weighted sum of normalized alpha factors.
+        Pure Mathematical Aggregator with Regime + Symbol Adaptation.
+        Uses per-symbol IC-derived weights when available (V22.2).
+        Falls back to global regime weights otherwise.
         """
-        # Base weights optimized via Forensic Audit (v20.1)
-        # Regime-adaptive weights for better performance
-        if regime == "TRENDING":
-            weights = {
-                'velocity': 0.5,      # Higher weight in trends
-                'zscore': 0.3,
-                'momentum': 0.2,      # Momentum matters in trends
-                'volatility': 0.0
-            }
-        elif regime == "RANGING":
-            weights = {
-                'velocity': 0.3,
-                'zscore': 0.5,        # Mean reversion matters more
-                'momentum': 0.1,
-                'volatility': 0.1
-            }
-        else:  # NORMAL/CHOPPY
-            weights = {
-                'velocity': 0.4,
-                'zscore': 0.5,
-                'momentum': 0.05,
-                'volatility': 0.05
-            }
-        
+        from config.config import SYMBOL_ALPHA_WEIGHTS
+
+        # 1. Try per-symbol weights for this regime
+        sym_weights = SYMBOL_ALPHA_WEIGHTS.get(symbol, {}).get(regime) if symbol else None
+
+        if sym_weights:
+            weights = sym_weights
+        else:
+            # Global regime-adaptive weights (fallback)
+            if regime == "TRENDING":
+                weights = {
+                    'velocity': 0.7,      # V22.1: Increased from 0.5 (Strongest Factor)
+                    'zscore': 0.1,        # V22.1: Decreased from 0.3 (Negative Edge in Trends)
+                    'momentum': 0.2,      # Momentum matters in trends
+                    'volatility': 0.0
+                }
+            elif regime == "RANGING":
+                weights = {
+                    'velocity': 0.3,
+                    'zscore': 0.5,        # Mean reversion matters more
+                    'momentum': 0.1,
+                    'volatility': 0.1
+                }
+            else:  # NORMAL/CHOPPY
+                weights = {
+                    'velocity': 0.4,
+                    'zscore': 0.5,
+                    'momentum': 0.05,
+                    'volatility': 0.05
+                }
+
         total_signal = 0.0
         for name, value in factors.items():
             weight = weights.get(name, 0.0)
             # Standardizing input: clip factors at 4.0 std devs
             clipped_value = max(min(value, 4.0), -4.0)
             total_signal += clipped_value * weight
-            
+
         return round(total_signal, 4)
+
     
     @staticmethod
     def calculate_quality_score(factors: Dict[str, float], signal: float) -> float:

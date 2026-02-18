@@ -19,8 +19,10 @@ async def test_intraday_strategy_sell_logic():
         'atr': [1.0] * 100,
     })
     data = {'m5': df}
-    # Mock AlphaCombiner to return a strong SELL signal
-    with patch('strategies.intraday_quant_strategy.AlphaCombiner.combine', return_value=-1.2), \
+    # Mock SessionFilter and AlphaCombiner to return a strong SELL signal
+    with patch('strategies.intraday_quant_strategy.SessionFilter.is_peak_session', return_value=True), \
+         patch('strategies.intraday_quant_strategy.MacroFilter.is_macro_safe', return_value=True), \
+         patch('strategies.intraday_quant_strategy.AlphaCombiner.combine', return_value=-1.2), \
          patch('strategies.intraday_quant_strategy.AlphaCombiner.calculate_quality_score', return_value=9.0):
         res = await strat.analyze("EURUSD", data, [], {'regime': 'TRENDING'})
         assert res['direction'] == "SELL"
