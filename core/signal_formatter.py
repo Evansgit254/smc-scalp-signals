@@ -159,7 +159,7 @@ class SignalFormatter:
 {bullet} <b>Dollar Risk:</b>      ${risk_details.get('risk_cash', risk_details.get('risk_amount', 0)):.2f}
 {bullet} <b>Expected Hold:</b>   ~{hold_time}
 
-⚙️ <b>V17.0 ENGINE DETAILS</b>
+⚙️ <b>V23.0 ENGINE DETAILS</b>
 {bullet} <b>Quality Score:</b> {quality_score:.1f}/10.0 {"🏆 INSTITUTIONAL QUALITY" if is_high_prob else "✅ QUANT VERIFIED"}
 {border}
 """
