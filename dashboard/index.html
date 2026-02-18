@@ -545,7 +545,10 @@
                     }
 
                     if (statusEl) {
-                        const sysStatus = data.system_status || "ACTIVE";
+                        // Normalize status (Handle "ONLINE" legacy or "ACTIVE" current)
+                        let sysStatus = data.system_status ? data.system_status.toUpperCase() : "ACTIVE";
+                        if (sysStatus === "ONLINE") sysStatus = "ACTIVE";
+
                         statusEl.innerText = sysStatus;
                         statusEl.style.color = sysStatus === "ACTIVE" ? "#00ff64" : "var(--acc-gold)";
                     }
@@ -848,11 +851,17 @@
                     else if (String(s.result).startsWith('TP')) resultColor = '#00ff88'; // Green for TP
                     else if (s.result === 'OPEN') resultColor = 'var(--text-main)';
 
+                    let displayType = s.trade_type || 'SCALP';
+                    // V23.1: Defensive check for concatenated strings
+                    if (displayType.includes('SESSION_CLOCK') && displayType.length > 13) {
+                        displayType = 'SESSION_CLOCK';
+                    }
+
                     row.innerHTML = `
                     <td style="font-size: 0.75rem; color: var(--text-dim); white-space: nowrap;">${new Date(s.timestamp).toLocaleTimeString()}</td>
                     <td style="font-weight:bold; color:var(--acc-cyan);">${s.symbol}</td>
-                    <td><span class="status-badge" style="border: 1px solid var(--glass-border); font-size: 0.65rem;">${s.trade_type || 'SCALP'}</span></td>
-                    <td style="font-size: 0.75rem;">${s.timeframe || 'M5'}</td>
+                    <td><span class="status-badge" style="border: 1px solid var(--glass-border); font-size: 0.65rem; background: rgba(0,234,144,0.05);">${displayType}</span></td>
+                    <td style="font-size: 0.75rem; color: var(--acc-gold); font-weight: bold;">${s.timeframe || 'M5'}</td>
                     <td><span class="${directionClass}" style="padding: 2px 8px; border-radius: 4px;">${s.direction}</span></td>
                     <td style="font-family: monospace">${s.entry_price ? s.entry_price.toFixed(5) : '-'}</td>
                     <td style="color: #ff4d4d; font-family: monospace">${s.sl ? s.sl.toFixed(5) : '-'}</td>
