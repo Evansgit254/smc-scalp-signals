@@ -401,7 +401,7 @@ input:checked+.toggle-slider:hover {
 
 /* Force table to be WIDE so it overflows on laptops */
 #signals-view .glass-table {
-    min-width: 1400px;
+    min-width: 1500px;
     table-layout: fixed;
 }
 
@@ -424,12 +424,12 @@ input:checked+.toggle-slider:hover {
 
 #signals-view .glass-table th:nth-child(3),
 #signals-view .glass-table td:nth-child(3) {
-    width: 90px;
+    width: 150px;
 }
 
 #signals-view .glass-table th:nth-child(4),
 #signals-view .glass-table td:nth-child(4) {
-    width: 60px;
+    width: 80px;
 }
 
 #signals-view .glass-table th:nth-child(5),
