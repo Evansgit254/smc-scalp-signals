@@ -197,7 +197,7 @@
                     <div class="chart-header">
                         <div class="chart-title">Strategy breakdown</div>
                     </div>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; padding: 0.5rem 1rem;">
+                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; padding: 0.5rem 1rem;">
                         <div class="bento-metric scalp-box">
                             <div class="metric-label">SCALP</div>
                             <div class="stat-val" id="ana-scalp-sum" style="font-size: 1.8rem;">0/0</div>
@@ -207,6 +207,16 @@
                             <div class="metric-label">SWING</div>
                             <div class="stat-val" id="ana-swing-sum" style="font-size: 1.8rem;">0/0</div>
                             <div id="ana-swing-wr" class="badge">0% WR</div>
+                        </div>
+                        <div class="bento-metric clock-box" style="border-left: 4px solid var(--acc-gold);">
+                            <div class="metric-label">SESSION CLOCK</div>
+                            <div class="stat-val" id="ana-clock-sum" style="font-size: 1.8rem;">0/0</div>
+                            <div id="ana-clock-wr" class="badge">0% WR</div>
+                        </div>
+                        <div class="bento-metric pattern-box" style="border-left: 4px solid var(--acc-cyan);">
+                            <div class="metric-label">ADV_PATTERN</div>
+                            <div class="stat-val" id="ana-pattern-sum" style="font-size: 1.8rem;">0/0</div>
+                            <div id="ana-pattern-wr" class="badge">0% WR</div>
                         </div>
                     </div>
                 </div>
@@ -657,18 +667,28 @@
 
                     updateCharts(data);
 
-                    // 1. Scalp vs Swing Stats
+                    // 1. Scalp vs Swing vs Clock vs Pattern Stats
                     const scalp = data.stats_by_type['SCALP'] || { wins: 0, losses: 0, total: 0, open: 0 };
                     const swing = data.stats_by_type['SWING'] || { wins: 0, losses: 0, total: 0, open: 0 };
+                    const clock = data.stats_by_type['SESSION_CLOCK'] || { wins: 0, losses: 0, total: 0, open: 0 };
+                    const pattern = data.stats_by_type['ADVANCED_PATTERN'] || { wins: 0, losses: 0, total: 0, open: 0 };
 
                     const closedScalp = scalp.wins + scalp.losses;
                     const closedSwing = swing.wins + swing.losses;
+                    const closedClock = clock.wins + clock.losses;
+                    const closedPattern = pattern.wins + pattern.losses;
 
                     setText('ana-scalp-sum', `${scalp.wins}/${scalp.total}`);
                     setText('ana-scalp-wr', `${closedScalp > 0 ? Math.round((scalp.wins / closedScalp) * 100) : 0}% WR (${scalp.open} Open)`);
 
                     setText('ana-swing-sum', `${swing.wins}/${swing.total}`);
                     setText('ana-swing-wr', `${closedSwing > 0 ? Math.round((swing.wins / closedSwing) * 100) : 0}% WR (${swing.open} Open)`);
+
+                    setText('ana-clock-sum', `${clock.wins}/${clock.total}`);
+                    setText('ana-clock-wr', `${closedClock > 0 ? Math.round((clock.wins / closedClock) * 100) : 0}% WR`);
+
+                    setText('ana-pattern-sum', `${pattern.wins}/${pattern.total}`);
+                    setText('ana-pattern-wr', `${closedPattern > 0 ? Math.round((pattern.wins / closedPattern) * 100) : 0}% WR`);
 
                     // 2. Bias (Donut)
                     const buys = data.bias['BUY'] || 0;
