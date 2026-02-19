@@ -477,36 +477,6 @@ input:checked+.toggle-slider:hover {
     min-width: 200px;
 }
 
-/* Matrix Table Specific Styling (V23.1.2) */
-.matrix-table {
-    table-layout: fixed;
-    min-width: 900px !important;
-}
-
-.matrix-table th {
-    text-align: center;
-    padding: 1.25rem 0.5rem;
-}
-
-.matrix-table th:first-child {
-    text-align: left;
-    padding-left: 2rem;
-    width: 200px;
-}
-
-.matrix-table td {
-    text-align: center;
-    vertical-align: middle;
-    padding: 1.5rem 0.5rem;
-}
-
-.matrix-table td:first-child {
-    text-align: left;
-    padding-left: 2rem;
-}
-
-/* Reasoning */
-
 .glass-table th {
     background: rgba(255, 255, 255, 0.1);
     text-align: left;
@@ -519,6 +489,38 @@ input:checked+.toggle-slider:hover {
 .glass-table td {
     padding: 1rem;
     border-bottom: 1px solid var(--glass-border);
+}
+
+/* Matrix Table Specific Styling (V23.1.2) - Higher Specificity */
+.matrix-table {
+    table-layout: fixed;
+    min-width: 900px !important;
+    border-collapse: separate;
+    /* Prevents some styling overlaps */
+    border-spacing: 0;
+}
+
+.matrix-table th {
+    text-align: center !important;
+    padding: 1.25rem 0.5rem !important;
+}
+
+.matrix-table th:first-child {
+    text-align: left !important;
+    padding-left: 2rem !important;
+    width: 220px;
+}
+
+.matrix-table td {
+    text-align: center !important;
+    vertical-align: middle;
+    padding: 1.5rem 0.5rem !important;
+}
+
+.matrix-table td:first-child {
+    text-align: left !important;
+    padding-left: 2rem !important;
+    font-weight: 800;
 }
 
 .status-badge {
