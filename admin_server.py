@@ -778,6 +778,24 @@ async def get_daily_analytics(current_user: User = Depends(get_current_user)):
             cumulative += row['profit']
             equity_curve.append({"day": row['day'], "profit": round(cumulative, 2)})
 
+        # 9. Strategy Performance per Symbol (V23.1.2)
+        strategy_symbol_rows = conn.execute("""
+            SELECT 
+                symbol,
+                UPPER(TRIM(trade_type)) as trade_type,
+                COUNT(*) as total,
+                SUM(CASE WHEN result IN ('TP1', 'TP2', 'TP3') OR max_tp_reached > 0 THEN 1 ELSE 0 END) as wins,
+                SUM(CASE WHEN result = 'SL' THEN 1 ELSE 0 END) as losses,
+                SUM(CASE WHEN result = 'OPEN' THEN 1 ELSE 0 END) as open,
+                AVG(quality_score) as avg_quality
+            FROM signals 
+            WHERE timestamp >= ?
+            GROUP BY symbol, UPPER(TRIM(trade_type))
+            ORDER BY symbol ASC, total DESC
+        """, (last_24h,)).fetchall()
+        
+        strategy_symbol_breakdown = [dict(row) for row in strategy_symbol_rows]
+
         return {
             "total_signals": summary['total'] or 0,
             "avg_quality": round(summary['avg_quality'] or 0, 1),
@@ -788,6 +806,7 @@ async def get_daily_analytics(current_user: User = Depends(get_current_user)):
             "hourly_heatmap": hourly,
             "top_performer": dict(best_symbol) if best_symbol else None,
             "equity_curve": equity_curve,
+            "strategy_symbol_breakdown": strategy_symbol_breakdown,
             "debug": {
                 "server_time": datetime.now().isoformat(),
                 "lookback_from": last_24h,
