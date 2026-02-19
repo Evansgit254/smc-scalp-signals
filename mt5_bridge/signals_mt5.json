@@ -1,0 +1,13 @@
+[
+    {
+        "symbol": "GBPUSD=X",
+        "direction": "SELL",
+        "entry": 1.265,
+        "sl": 1.268,
+        "tp1": 1.26,
+        "lots": 0.1,
+        "quality": "A",
+        "executed": true,
+        "exported_at": "2026-02-18T01:50:00"
+    }
+]

@@ -1,0 +1,57 @@
+Symbol,Pattern,N,HitRate,PF,AvgR
+EURUSD,London Open Breakout,59,0.271,0.744,-0.186
+EURUSD,NY Open Reversal,79,0.316,0.926,-0.051
+EURUSD,Asian Sweep & Reverse,71,0.268,0.731,-0.197
+EURUSD,3-Bar Momentum,976,0.248,0.659,-0.256
+EURUSD,RSI Exhaustion Reversal,110,0.191,0.472,-0.427
+EURUSD,ATR Squeeze Breakout,1,0.0,0.0,-1.0
+EURUSD,EOD Mean Reversion,35,0.143,0.333,-0.571
+GBPUSD,London Open Breakout,80,0.188,0.462,-0.438
+GBPUSD,NY Open Reversal,78,0.218,0.557,-0.346
+GBPUSD,Asian Sweep & Reverse,93,0.237,0.62,-0.29
+GBPUSD,3-Bar Momentum,1110,0.249,0.662,-0.254
+GBPUSD,RSI Exhaustion Reversal,130,0.269,0.737,-0.192
+GBPUSD,ATR Squeeze Breakout,6,0.333,1.0,0.0
+GBPUSD,EOD Mean Reversion,26,0.192,0.476,-0.423
+USDJPY,London Open Breakout,37,0.27,0.741,-0.189
+USDJPY,NY Open Reversal,50,0.22,0.564,-0.34
+USDJPY,Asian Sweep & Reverse,40,0.25,0.667,-0.25
+USDJPY,3-Bar Momentum,1045,0.258,0.697,-0.225
+USDJPY,RSI Exhaustion Reversal,102,0.186,0.458,-0.441
+USDJPY,ATR Squeeze Breakout,4,0.5,2.0,0.5
+USDJPY,EOD Mean Reversion,63,0.175,0.423,-0.476
+AUDUSD,London Open Breakout,57,0.211,0.533,-0.368
+AUDUSD,NY Open Reversal,75,0.253,0.679,-0.24
+AUDUSD,Asian Sweep & Reverse,45,0.2,0.5,-0.4
+AUDUSD,3-Bar Momentum,1032,0.245,0.65,-0.265
+AUDUSD,RSI Exhaustion Reversal,110,0.173,0.418,-0.482
+AUDUSD,ATR Squeeze Breakout,1,1.0,inf,2.0
+AUDUSD,EOD Mean Reversion,45,0.2,0.5,-0.4
+GBPJPY,London Open Breakout,51,0.255,0.684,-0.235
+GBPJPY,NY Open Reversal,46,0.174,0.421,-0.478
+GBPJPY,Asian Sweep & Reverse,73,0.26,0.704,-0.219
+GBPJPY,3-Bar Momentum,1079,0.205,0.515,-0.386
+GBPJPY,RSI Exhaustion Reversal,95,0.211,0.533,-0.368
+GBPJPY,ATR Squeeze Breakout,1,0.0,0.0,-1.0
+GBPJPY,EOD Mean Reversion,48,0.188,0.462,-0.438
+GOLD,London Open Breakout,34,0.118,0.267,-0.647
+GOLD,NY Open Reversal,64,0.266,0.723,-0.203
+GOLD,Asian Sweep & Reverse,23,0.0,0.0,-1.0
+GOLD,3-Bar Momentum,789,0.238,0.626,-0.285
+GOLD,RSI Exhaustion Reversal,81,0.259,0.7,-0.222
+GOLD,ATR Squeeze Breakout,2,0.5,2.0,0.5
+GOLD,EOD Mean Reversion,45,0.2,0.5,-0.4
+OIL,London Open Breakout,66,0.303,0.87,-0.091
+OIL,NY Open Reversal,69,0.333,1.0,0.0
+OIL,Asian Sweep & Reverse,82,0.207,0.523,-0.378
+OIL,3-Bar Momentum,779,0.268,0.733,-0.195
+OIL,RSI Exhaustion Reversal,99,0.182,0.444,-0.455
+OIL,ATR Squeeze Breakout,4,0.25,0.667,-0.25
+OIL,EOD Mean Reversion,17,0.235,0.615,-0.294
+BTC,London Open Breakout,41,0.293,0.828,-0.122
+BTC,NY Open Reversal,72,0.319,0.939,-0.042
+BTC,Asian Sweep & Reverse,23,0.261,0.706,-0.217
+BTC,3-Bar Momentum,1193,0.274,0.755,-0.178
+BTC,RSI Exhaustion Reversal,100,0.27,0.74,-0.19
+BTC,ATR Squeeze Breakout,3,0.667,4.0,1.0
+BTC,EOD Mean Reversion,62,0.242,0.638,-0.274
