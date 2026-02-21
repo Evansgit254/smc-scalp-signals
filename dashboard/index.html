@@ -396,9 +396,15 @@
 
                         <div class="setting-row">
                             <label style="display: block; font-size: 0.9rem; margin-bottom: 8px;">Min Quality
-                                Score</label>
-                            <input type="number" step="0.1" id="cfg-min-quality" class="dark-input"
-                                style="width: 100%; padding: 10px; background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); color: #fff; border-radius: 6px;">
+                                Score (Dynamic V23.2)</label>
+                            <div
+                                style="width: 100%; padding: 12px; background: rgba(0,255,100,0.05); border: 1px solid var(--acc-cyan); color: var(--acc-cyan); border-radius: 6px; display: flex; justify-content: space-between; align-items: center;">
+                                <span style="font-weight: 600; font-size: 1.1rem;" id="display-min-quality">...</span>
+                                <span
+                                    style="font-size: 0.8rem; background: rgba(0,0,0,0.4); padding: 4px 8px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.1);">Auto-Adjusted
+                                    by ADX Regime Filter</span>
+                            </div>
+                            <input type="hidden" id="cfg-min-quality">
                         </div>
                     </div>
                 </div>
@@ -1212,8 +1218,12 @@
                     }
                     if (config.risk_per_trade) document.getElementById('cfg-risk').value = config.risk_per_trade;
                     if (config.max_concurrent_trades) document.getElementById('cfg-max-trades').value = config.max_concurrent_trades;
-                    if (config.min_quality_score) document.getElementById('cfg-min-quality').value = config.min_quality_score;
                     if (config.news_filter_minutes) document.getElementById('cfg-news-filter').value = config.news_filter_minutes;
+
+                    // V23.2 Dynamic Score Display
+                    if (config.min_quality_score) {
+                        document.getElementById('display-min-quality').innerText = parseFloat(config.min_quality_score).toFixed(1);
+                    }
 
                 } catch (e) {
                     console.error("Config load failed:", e);
@@ -1226,7 +1236,6 @@
                     { key: 'system_status', value: document.getElementById('cfg-system-status').checked ? 'ACTIVE' : 'PAUSED' },
                     { key: 'risk_per_trade', value: document.getElementById('cfg-risk').value },
                     { key: 'max_concurrent_trades', value: document.getElementById('cfg-max-trades').value },
-                    { key: 'min_quality_score', value: document.getElementById('cfg-min-quality').value },
                     { key: 'news_filter_minutes', value: document.getElementById('cfg-news-filter').value }
                 ];
 
