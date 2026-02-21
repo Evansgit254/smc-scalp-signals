@@ -17,6 +17,7 @@ from typing import Set, Tuple
 from app.generate_signals import generate_signals
 from alerts.service import TelegramService
 from core.signal_formatter import SignalFormatter
+from core.market_regime import detect_regime, apply_regime_filter
 
 # Configuration
 SIGNAL_INTERVAL = 300  # 5 minutes in seconds
@@ -122,13 +123,34 @@ class SignalService:
         Run one signal generation cycle.
         Returns: (total_signals, sent_count)
         """
-        # V19.0: Dynamic Configuration Loading
-        self._load_dynamic_config()
-        
         self.cycle_count += 1
         print(f"\n{'='*60}")
         print(f"🔄 CYCLE #{self.cycle_count} - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
         print(f"{'='*60}")
+
+        # V23.2: Dynamic Market Regime Detection (before config load)
+        try:
+            from data.fetcher import DataFetcher
+            from indicators.calculations import IndicatorCalculator
+            from config.config import SYMBOLS, DB_CLIENTS
+            import asyncio as _aio
+            fetcher = DataFetcher()
+            h1_map = {}
+            # Sample first 4 symbols for speed (representative)
+            for sym in list(SYMBOLS)[:4]:
+                try:
+                    raw = await fetcher.fetch_data_async(sym, "1h", period="5d")
+                    if raw is not None and not raw.empty:
+                        h1_map[sym] = IndicatorCalculator.add_indicators(raw, "1h")
+                except Exception:
+                    pass
+            regime_result = detect_regime(h1_map)
+            apply_regime_filter(regime_result, DB_CLIENTS)
+        except Exception as e:
+            print(f"⚠️  Regime detection skipped: {e}")
+
+        # V19.0: Dynamic Configuration Loading (after regime sets threshold)
+        self._load_dynamic_config()
         
         if self.is_paused:
             print("⏸️  System is PAUSED via Server Config. Skipping cycle.")
