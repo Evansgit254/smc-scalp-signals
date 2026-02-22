@@ -259,6 +259,20 @@ class ConfigUpdate(BaseModel):
     key: str
     value: str
 
+from fastapi.responses import FileResponse
+import os
+
+@app.get("/api/backup/{db_name}")
+async def download_db(db_name: str, current_user: User = Depends(get_current_user)):
+    """Securely download database files for forensic analysis and backup"""
+    if db_name not in ["signals", "clients"]:
+        raise HTTPException(status_code=400, detail="Invalid database requested")
+    
+    file_path = f"database/{db_name}.db"
+    if os.path.exists(file_path):
+        return FileResponse(file_path, media_type="application/octet-stream", filename=f"{db_name}.db")
+    raise HTTPException(status_code=404, detail="Database file not found")
+
 @app.get("/api/config")
 async def get_config(current_user: User = Depends(get_current_user)):
     """Get all system configuration settings"""
