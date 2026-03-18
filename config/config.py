@@ -79,8 +79,8 @@ MAX_CONCURRENT_TRADES = int(os.getenv("MAX_CONCURRENT_TRADES", "4"))  # Increase
 MAX_CURRENCY_EXPOSURE = int(os.getenv("MAX_CURRENCY_EXPOSURE", "2"))  # Increased from 1
 MIN_LOT_SIZE = 0.01
 USE_KELLY_SIZING = os.getenv("USE_KELLY_SIZING", "false").lower() == "true"  # Dynamic sizing
-MIN_QUALITY_SCORE = float(os.getenv("MIN_QUALITY_SCORE", "5.0"))  # Signal quality threshold
-MIN_QUALITY_SCORE_INTRADAY = float(os.getenv("MIN_QUALITY_SCORE_INTRADAY", "5.0"))  # Same as global; 5.5 was tested, hurt PF
+MIN_QUALITY_SCORE = float(os.getenv("MIN_QUALITY_SCORE", "7.0"))  # V25.0 Hedge: Raised from 5.0 (backtest: +0.120R)
+MIN_QUALITY_SCORE_INTRADAY = float(os.getenv("MIN_QUALITY_SCORE_INTRADAY", "7.0"))  # Match global for consistency
 
 # EXECUTION REALISM (V18.1 Audit)
 SPREAD_PIPS = 0.8 # Average Retail Spread
@@ -103,6 +103,6 @@ SYMBOL_ALPHA_WEIGHTS = {
     "GBPJPY=X": {"TRENDING": {"velocity": 0.1, "zscore": 0.1, "momentum": 0.7, "volatility": 0.1}},
     "GC=F":     {"TRENDING": {"velocity": 0.1, "zscore": 0.1, "momentum": 0.1, "volatility": 0.7}},  # Mom-Inv (contrarian)
     "CL=F":     {"TRENDING": {"velocity": 0.1, "zscore": 0.1, "momentum": 0.7, "volatility": 0.1}},
-    "BTC-USD":  {"TRENDING": {"velocity": 0.1, "zscore": 0.6, "momentum": 0.2, "volatility": 0.1}},
+    "BTC-USD":  {"TRENDING": {"velocity": 0.1, "zscore": 0.1, "momentum": 0.7, "volatility": 0.1}},  # V25.0: Momentum-first (was zscore 0.6)
 }
 

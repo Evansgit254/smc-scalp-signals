@@ -74,10 +74,15 @@ class SignalTracker:
                 new_result = 'OPEN'
                 new_max_tp = max_tp
                 closed_at = None
+                new_sl = sl
 
                 if direction == 'BUY':
                     if current_price <= sl:
-                        new_result = 'SL'
+                        if max_tp >= 1 and sl >= entry:
+                            # It was secured at breakeven, so it's a win (partial)
+                            new_result = f'TP{max_tp}'
+                        else:
+                            new_result = 'SL'
                         closed_at = datetime.now().isoformat()
                     elif current_price >= tp2:
                         new_result = 'TP3'
@@ -85,14 +90,17 @@ class SignalTracker:
                         closed_at = datetime.now().isoformat()
                     elif current_price >= tp1:
                         new_max_tp = max(new_max_tp, 2)
-                        # We don't close here, we wait for a terminal state (SL or Max TP)
-                        # OR if the user wants partial close tracking, we could mark it.
-                        # For now, let's keep it SIMPLE: result remains OPEN until SL or TP3.
+                        new_sl = max(sl, entry) # V25.0 Secure at TP1
                     elif current_price >= tp0:
                         new_max_tp = max(new_max_tp, 1)
+                        new_sl = max(sl, entry) # V25.0 Secure at TP1
                 else: # SELL
                     if current_price >= sl:
-                        new_result = 'SL'
+                        if max_tp >= 1 and sl <= entry:
+                            # It was secured at breakeven, so it's a win (partial)
+                            new_result = f'TP{max_tp}'
+                        else:
+                            new_result = 'SL'
                         closed_at = datetime.now().isoformat()
                     elif current_price <= tp2:
                         new_result = 'TP3'
@@ -100,16 +108,23 @@ class SignalTracker:
                         closed_at = datetime.now().isoformat()
                     elif current_price <= tp1:
                         new_max_tp = max(new_max_tp, 2)
+                        new_sl = min(sl, entry) # V25.0 Secure at TP1
                     elif current_price <= tp0:
                         new_max_tp = max(new_max_tp, 1)
+                        new_sl = min(sl, entry) # V25.0 Secure at TP1
 
-                if new_result != 'OPEN' or new_max_tp != max_tp:
-                    print(f"🎯 UPDATING {symbol} {direction}: {new_result} (TP {new_max_tp}) at {current_price:.5f}")
+                if new_result != 'OPEN' or new_max_tp != max_tp or new_sl != sl:
+                    if new_result != 'OPEN':
+                        status_str = new_result
+                    else:
+                        status_str = f"OPEN (Hit TP{new_max_tp}, SL moved to {new_sl:.5f})"
+                        
+                    print(f"🎯 UPDATING {symbol} {direction}: {status_str} at {current_price:.5f}")
                     conn.execute("""
                         UPDATE signals 
-                        SET result = ?, max_tp_reached = ?, closed_at = ?
+                        SET result = ?, max_tp_reached = ?, closed_at = ?, sl = ?
                         WHERE id = ?
-                    """, (new_result, new_max_tp, closed_at, sig['id']))
+                    """, (new_result, new_max_tp, closed_at, new_sl, sig['id']))
                     conn.commit()
 
         except Exception as e:

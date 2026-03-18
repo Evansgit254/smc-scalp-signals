@@ -34,8 +34,9 @@ class IntradayQuantStrategy(BaseStrategy):
                 return None
             regime = IndicatorCalculator.get_market_regime(df)
             
-            # V22.1 HARD BLOCK: Do not trade in Choppy regimes (Negative Edge)
-            if regime == "CHOPPY":
+            # V25.0 FORENSIC HEDGE: Hard block low-edge regimes
+            # CHOPPY: 1.9% WR (103 trades), UNKNOWN: 5.3% WR (19 trades)
+            if regime in ["CHOPPY", "UNKNOWN"]:
                 return None
             
             # Enhanced Alpha Factors (added momentum and volatility)
@@ -52,18 +53,24 @@ class IntradayQuantStrategy(BaseStrategy):
             # Calculate quality score
             quality_score = AlphaCombiner.calculate_quality_score(factors, alpha_signal)
             
-            # Adaptive thresholds
-            # V15.0 Balanced Scalp Thresholds
-            thresholds = {
-                "TRENDING": 0.65, # Relaxed from 0.7
-                "RANGING": 0.80, # Relaxed from 0.85
-                "CHOPPY": 1.0
-            }
-            threshold = thresholds.get(regime, 0.72)
+            # V25.0 FORENSIC HEDGE: Regime-specific quality thresholds
+            # RANGING: 12.3% WR — needs massive quality bar
+            # TRENDING: reliable at lower quality
+            min_quality_needed = MIN_QUALITY_SCORE_INTRADAY
+            if regime == "RANGING":
+                min_quality_needed = max(min_quality_needed, 7.5)
+            elif regime == "TRENDING":
+                min_quality_needed = min(min_quality_needed, 6.5)
             
-            # Quality filter
-            if quality_score < MIN_QUALITY_SCORE_INTRADAY:
+            if quality_score < min_quality_needed:
                 return None
+            
+            # Adaptive thresholds for alpha signal strength
+            thresholds = {
+                "TRENDING": 0.65,
+                "RANGING": 0.82  # Tightened from 0.80
+            }
+            threshold = thresholds.get(regime, 0.75)
             
             # Direction determination with adaptive threshold
             direction = None
@@ -98,22 +105,36 @@ class IntradayQuantStrategy(BaseStrategy):
             
             if optimal_rr.get('is_friction_heavy'):
                 return None
-                
-            sl_distance = atr * 1.6 # Reduced from 1.8 for V15.0 (Restoring Win Rate)
-            
-            # Dynamic TP levels based on optimal R:R
-            if direction == "BUY":
-                sl = latest['close'] - sl_distance
-                tp0 = latest['close'] + (sl_distance * optimal_rr['tp1_rr'])
-                tp1 = latest['close'] + (sl_distance * optimal_rr['tp2_rr'])
-                tp2 = latest['close'] + (sl_distance * optimal_rr['tp3_rr'])
+            # V25.0 FORENSIC HEDGE: Pillar 3 — Wider SL for Crypto (avoid manipulation wicks)
+            if "BTC" in symbol or "ETH" in symbol:
+                sl_distance = atr * 2.2
             else:
-                sl = latest['close'] + sl_distance
-                tp0 = latest['close'] - (sl_distance * optimal_rr['tp1_rr'])
-                tp1 = latest['close'] - (sl_distance * optimal_rr['tp2_rr'])
-                tp2 = latest['close'] - (sl_distance * optimal_rr['tp3_rr'])
+                sl_distance = atr * 1.6 # Standard intraday
+                
+            # V25.0 FORENSIC HEDGE: Pillar 1 — Pullback Entries (38.2% Fib)
+            # Avoid reactive market orders at the extreme
+            candle_range = max(latest['high'] - latest['low'], atr * 0.5)
             
-            risk_details = RiskManager.calculate_lot_size(symbol, latest['close'], sl)
+            if direction == "BUY":
+                # Limit entry: 38.2% retracement from the candle high
+                entry_price = latest['high'] - (candle_range * 0.382)
+                entry_price = min(entry_price, latest['close']) # Don't enter worse than close
+                
+                sl = entry_price - sl_distance
+                tp0 = entry_price + (sl_distance * optimal_rr['tp1_rr'])
+                tp1 = entry_price + (sl_distance * optimal_rr['tp2_rr'])
+                tp2 = entry_price + (sl_distance * optimal_rr['tp3_rr'])
+            else:
+                # Limit entry: 38.2% retracement from the candle low
+                entry_price = latest['low'] + (candle_range * 0.382)
+                entry_price = max(entry_price, latest['close']) # Don't enter worse than close
+                
+                sl = entry_price + sl_distance
+                tp0 = entry_price - (sl_distance * optimal_rr['tp1_rr'])
+                tp1 = entry_price - (sl_distance * optimal_rr['tp2_rr'])
+                tp2 = entry_price - (sl_distance * optimal_rr['tp3_rr'])
+            
+            risk_details = RiskManager.calculate_lot_size(symbol, entry_price, sl)
             
             # V11.0 Guidance-Based Risk (Signals are always sent with warnings)
             
@@ -124,7 +145,8 @@ class IntradayQuantStrategy(BaseStrategy):
                 'direction': direction,
                 'timeframe': 'M5',
                 'trade_type': 'SCALP',
-                'entry_price': latest['close'],
+                'entry_price': entry_price,
+                'is_limit_order': True,
                 'sl': sl,
                 'tp0': tp0,
                 'tp1': tp1,

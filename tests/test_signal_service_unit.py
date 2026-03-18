@@ -45,13 +45,13 @@ async def test_signal_service_run(mock_strategy, mock_telegram):
 
 @pytest.mark.asyncio
 async def test_signal_service_duplicate_skipped(mock_strategy, mock_telegram):
-    service = SignalService()
-    sig_data = mock_strategy.generate_signals.return_value[0][1]
-    service._mark_sent(sig_data)
-    
     with patch('signal_service.generate_signals', new=mock_strategy.generate_signals), \
          patch('signal_service.TelegramService', return_value=mock_telegram), \
          patch('builtins.print') as mock_print:
+         
+        service = SignalService()
+        sig_data = mock_strategy.generate_signals.return_value[0][1]
+        service._mark_sent(sig_data)
         
         await service.run(test_mode=True)
         assert not mock_telegram.broadcast_personalized_signal.called
@@ -59,11 +59,11 @@ async def test_signal_service_duplicate_skipped(mock_strategy, mock_telegram):
 
 @pytest.mark.asyncio
 async def test_signal_service_no_signals_cycle(mock_telegram):
-    service = SignalService()
     with patch('signal_service.generate_signals', new=AsyncMock(return_value=[])), \
          patch('signal_service.TelegramService', return_value=mock_telegram), \
          patch('builtins.print') as mock_print:
         
+        service = SignalService()
         await service.run(test_mode=True)
         assert any("No signals generated this cycle" in str(call) for call in mock_print.call_args_list)
 
@@ -113,11 +113,11 @@ async def test_signal_service_infinite_run_loop(mock_strategy, mock_telegram):
 
 @pytest.mark.asyncio
 async def test_signal_service_cycle_retry(mock_telegram):
-    service = SignalService()
     with patch('signal_service.TelegramService', return_value=mock_telegram), \
          patch('builtins.print') as mock_print, \
          patch('signal_service.asyncio.sleep', side_effect=[asyncio.CancelledError()]):
         
+        service = SignalService()
         with patch.object(service, 'run_cycle', side_effect=Exception("Cycle Fail")):
             try:
                 await service.run(test_mode=False)
@@ -139,11 +139,11 @@ async def test_signal_service_fatal_config():
 
 @pytest.mark.asyncio
 async def test_signal_service_graceful_shutdown_loop(mock_strategy, mock_telegram):
-    service = SignalService()
     with patch('signal_service.TelegramService', return_value=mock_telegram), \
          patch('signal_service.generate_signals', new=mock_strategy.generate_signals), \
          patch('signal_service.SignalFormatter.format_personalized_signal', return_value="Test"):
         
+        service = SignalService()
         def toggle_running(*args, **kwargs):
             service.running = False
             return None

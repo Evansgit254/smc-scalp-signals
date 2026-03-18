@@ -32,6 +32,7 @@ async def test_alert_service_send_alert(mock_monitor):
         service = AlertService()
         service.monitor = mock_monitor
         service.bot = mock_bot.return_value
+        service.chat_id = "test_chat_id"
         
         # Test successful send
         mock_bot.return_value.send_message = MagicMock()
@@ -122,6 +123,7 @@ async def test_daily_report_send(mock_monitor):
         generator = DailyReportGenerator()
         generator.monitor = mock_monitor
         generator.bot = mock_bot.return_value
+        generator.chat_id = "test_chat_id"
         
         mock_bot.return_value.send_message = MagicMock()
         fut = asyncio.Future()

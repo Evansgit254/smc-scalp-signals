@@ -77,6 +77,8 @@ def test_alert_service_triggers(mock_bot_cls):
     
     service = AlertService()
     service.monitor = Mock()
+    service.bot = mock_bot
+    service.chat_id = "12345"
     
     # Test Signal Drought Alert
     # Mock last signal being 3 hours ago

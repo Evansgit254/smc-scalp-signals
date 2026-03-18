@@ -29,7 +29,8 @@ async def generate_signals():
     fetcher = DataFetcher()
     client_manager = ClientManager()
     intraday_strategy = IntradayQuantStrategy()
-    swing_strategy = SwingQuantStrategy()
+    # V25.0: SWING disabled — 6.9% WR, 93% SL rate in backtest. Re-enable after Pillar 1 (entry fix).
+    # swing_strategy = SwingQuantStrategy()
     clock_strategy = SessionClockStrategy()
     advanced_strategy = AdvancedPatternStrategy()
     
@@ -89,10 +90,10 @@ async def generate_signals():
             if intraday_signal:
                 all_signals.append(('INTRADAY', intraday_signal))
             
-            # Generate swing signal with context
-            swing_signal = await swing_strategy.analyze(symbol, data_bundle, news_events, market_context)
-            if swing_signal:
-                all_signals.append(('SWING', swing_signal))
+            # V25.0: SWING disabled — re-enable after Pillar 1 (entry fix)
+            # swing_signal = await swing_strategy.analyze(symbol, data_bundle, news_events, market_context)
+            # if swing_signal:
+            #     all_signals.append(('SWING', swing_signal))
 
             # V22.4: Session Clock Strategy (Time-Based Edge)
             clock_signal = await clock_strategy.analyze(symbol, data_bundle, news_events, market_context)

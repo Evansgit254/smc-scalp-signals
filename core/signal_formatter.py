@@ -142,7 +142,7 @@ class SignalFormatter:
 {bullet} <b>Symbol:</b>       {symbol}
 {bullet} <b>Direction:</b>    {direction} ({trade_type})
 {bullet} <b>Timeframe:</b>    {signal.get('timeframe', 'N/A')}
-{bullet} <b>Entry Price:</b>  {entry:.5f}
+{bullet} <b>Entry Price:</b>  {entry:.5f} {'(Limit Order)' if signal.get('is_limit_order') else '(Market Order)'}
 {bullet} <b>Stop Loss:</b>    {sl:.5f} ({sl_pips:.1f} pips risk)
 
 🎯 <b>PROFIT TARGETS</b>
