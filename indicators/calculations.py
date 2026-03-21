@@ -42,6 +42,11 @@ class IndicatorCalculator:
             df['h4_high'] = h4_lvls['h4_high']
             df['h4_low'] = h4_lvls['h4_low']
             
+        # Z-Score (20-period) for Statistical Arbitrage strategy
+        rolling_mean = df['close'].rolling(20).mean()
+        rolling_std = df['close'].rolling(20).std()
+        df['zscore_20'] = (df['close'] - rolling_mean) / rolling_std.replace(0, float('nan'))
+
         # Regime Detection
         ema_trend_col = f'ema_{EMA_TREND}'
         df['ema_slope'] = ((df[ema_trend_col] - df[ema_trend_col].shift(3)) / df[ema_trend_col].shift(3)) * 100

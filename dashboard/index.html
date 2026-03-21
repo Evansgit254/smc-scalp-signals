@@ -304,6 +304,9 @@
                                 <th>SWING</th>
                                 <th>SESSION CLOCK</th>
                                 <th>ADVANCED PATTERN</th>
+                                <th>STAT ARB</th>
+                                <th>SMC SWEEP</th>
+                                <th>POC EDGE</th>
                             </tr>
                         </thead>
                         <tbody id="strategy-matrix-body">
@@ -778,7 +781,7 @@
                         matrixBody.innerHTML = '';
                         if (data.strategy_symbol_breakdown) {
                             const symbols = [...new Set(data.strategy_symbol_breakdown.map(r => r.symbol))];
-                            const strategies = ["SCALP", "SWING", "SESSION_CLOCK", "ADVANCED_PATTERN"];
+                            const strategies = ["SCALP", "SWING", "SESSION_CLOCK", "ADVANCED_PATTERN", "STAT_ARB", "SMC_SWEEP", "POC_EDGE"];
 
                             symbols.forEach(sym => {
                                 const row = document.createElement('tr');

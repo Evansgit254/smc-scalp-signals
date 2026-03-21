@@ -26,6 +26,8 @@ from typing import Optional, Dict
 import pandas as pd
 import pytz
 from core.filters.risk_manager import RiskManager
+from indicators.calculations import IndicatorCalculator
+from core.filters.macro_filter import MacroFilter
 
 # ── Signal Map ────────────────────────────────────────────────────────────────
 # Format: { symbol: [ (utc_hour, direction, rr_multiplier), ... ] }
@@ -127,6 +129,15 @@ class SessionClockStrategy(BaseStrategy):
             # Entry logic: These patterns happen DURING the sig_hour.
             # We trigger at the start of the hour.
             direction, rr_mult = matched
+
+            # V25.0 FORENSIC HEDGE: Apply Regime & Macro filters to Session Clock
+            regime = IndicatorCalculator.get_market_regime(df)
+            if regime in ["CHOPPY", "UNKNOWN"]:
+                return None
+                
+            macro_bias = MacroFilter.get_macro_bias(market_context)
+            if not MacroFilter.is_macro_safe(symbol, direction, macro_bias):
+                return None
 
             # ATR for SL/TP
             atr = latest.get('atr', latest.get('ATR', None))

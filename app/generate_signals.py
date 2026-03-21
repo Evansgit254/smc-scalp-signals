@@ -7,6 +7,10 @@ from strategies.intraday_quant_strategy import IntradayQuantStrategy
 from strategies.swing_quant_strategy import SwingQuantStrategy
 from strategies.session_clock_strategy import SessionClockStrategy
 from strategies.advanced_pattern_strategy import AdvancedPatternStrategy
+from strategies.gold_quant_strategy import GoldQuantStrategy
+from strategies.statistical_arbitrage_strategy import StatisticalArbitrageStrategy
+from strategies.smc_liquidity_sweep import SMCLiquiditySweepStrategy
+from strategies.anchored_poc_strategy import AnchoredPOCStrategy
 from core.signal_formatter import SignalFormatter
 from core.market_status import MarketStatus
 
@@ -33,6 +37,10 @@ async def generate_signals():
     # swing_strategy = SwingQuantStrategy()
     clock_strategy = SessionClockStrategy()
     advanced_strategy = AdvancedPatternStrategy()
+    gold_strategy = GoldQuantStrategy()
+    stat_arb_strategy = StatisticalArbitrageStrategy()
+    smc_sweep_strategy = SMCLiquiditySweepStrategy()
+    poc_edge_strategy = AnchoredPOCStrategy()
     
     # Fetch macro context (DXY, TNX) for all symbols
     print("📊 Fetching macro context...")
@@ -85,6 +93,13 @@ async def generate_signals():
                 'h1': h1_df
             }
             
+            # V25.1: Gold-Specific Specialized Engine Bypass
+            if symbol == "GC=F":
+                gold_signal = await gold_strategy.analyze(symbol, data_bundle, news_events, market_context)
+                if gold_signal:
+                    all_signals.append(('GOLD_QUANT', gold_signal))
+                continue  # Skip all forex strategies for GC=F
+            
             # Generate intraday signal with context
             intraday_signal = await intraday_strategy.analyze(symbol, data_bundle, news_events, market_context)
             if intraday_signal:
@@ -104,6 +119,19 @@ async def generate_signals():
             advanced_signal = await advanced_strategy.analyze(symbol, data_bundle, news_events, market_context)
             if advanced_signal:
                 all_signals.append(('ADVANCED', advanced_signal))
+                
+            # Triple-Edge Suite
+            stat_arb_signal = await stat_arb_strategy.analyze(symbol, data_bundle, news_events, market_context)
+            if stat_arb_signal:
+                all_signals.append(('STAT_ARB', stat_arb_signal))
+                
+            smc_signal = await smc_sweep_strategy.analyze(symbol, data_bundle, news_events, market_context)
+            if smc_signal:
+                all_signals.append(('SMC_SWEEP', smc_signal))
+                
+            poc_signal = await poc_edge_strategy.analyze(symbol, data_bundle, news_events, market_context)
+            if poc_signal:
+                all_signals.append(('POC_EDGE', poc_signal))
                 
         except Exception as e:
             print(f"⚠️  Error processing {symbol}: {str(e)}")

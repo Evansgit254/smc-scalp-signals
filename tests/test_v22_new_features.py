@@ -43,11 +43,13 @@ async def test_session_clock_oil_buy():
     }, index=[bt])
     data = {'h1': df}
     
-    res = await strat.analyze("CL=F", data, [], {})
-    assert res is not None
-    assert res['direction'] == "BUY"
-    assert res['symbol'] == "CL=F"
-    assert res['entry_price'] == 100.0
+    with patch('strategies.session_clock_strategy.IndicatorCalculator.get_market_regime', return_value="TRENDING"), \
+         patch('strategies.session_clock_strategy.MacroFilter.is_macro_safe', return_value=True):
+        res = await strat.analyze("CL=F", data, [], {})
+        assert res is not None
+        assert res['direction'] == "BUY"
+        assert res['symbol'] == "CL=F"
+        assert res['entry_price'] == 100.0
 
 @pytest.mark.asyncio
 async def test_session_clock_gold_buy():
@@ -64,7 +66,9 @@ async def test_session_clock_gold_buy():
     data = {'h1': df}
     
     # We should also mock RiskManager to avoid issues with environment variables
-    with patch('strategies.session_clock_strategy.RiskManager.calculate_lot_size', return_value={'lots': 0.1}):
+    with patch('strategies.session_clock_strategy.RiskManager.calculate_lot_size', return_value={'lots': 0.1}), \
+         patch('strategies.session_clock_strategy.IndicatorCalculator.get_market_regime', return_value="TRENDING"), \
+         patch('strategies.session_clock_strategy.MacroFilter.is_macro_safe', return_value=True):
         res = await strat.analyze("GC=F", data, [], {})
         assert res is not None
         assert res['direction'] == "BUY"
@@ -80,5 +84,7 @@ async def test_session_clock_friday_skip():
     }, index=[bt])
     data = {'h1': df}
     
-    res = await strat.analyze("CL=F", data, [], {})
-    assert res is None # Friday should be skipped
+    with patch('strategies.session_clock_strategy.IndicatorCalculator.get_market_regime', return_value="TRENDING"), \
+         patch('strategies.session_clock_strategy.MacroFilter.is_macro_safe', return_value=True):
+        res = await strat.analyze("CL=F", data, [], {})
+        assert res is None # Friday should be skipped

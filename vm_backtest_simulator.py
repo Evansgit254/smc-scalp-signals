@@ -161,6 +161,24 @@ def main():
         "hybrid": hybrid_filter
     })
 
+    # ──────────────────────────────────────────────────────────
+    # SCENARIO 7: Hyper-Optimized V25.1
+    # ──────────────────────────────────────────────────────────
+    def hyper_optimized_filter(d):
+        toxic_symbols = ['GBPUSD=X', 'NZDUSD=X', 'GC=F']
+        not_toxic = ~d['symbol'].isin(toxic_symbols)
+        
+        is_time_based = d['trade_type'].isin(['SESSION_CLOCK', 'ADVANCED_PATTERN'])
+        quant_ok = (
+            (d['quality_score'] >= 8.0) & 
+            (~d['regime'].isin(['CHOPPY', 'UNKNOWN'])) &
+            (~((d['regime'] == 'RANGING') & (d['quality_score'] < 8.5)))
+        )
+        return not_toxic & (is_time_based | quant_ok)
+    
+    simulate(df, "HYPER-OPTIMIZED: Ban Toxic Symbols + Strict Quality", {
+        "hyper_optimized": hyper_optimized_filter
+    })
 
 if __name__ == "__main__":
     main()

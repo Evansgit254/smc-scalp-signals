@@ -2,13 +2,20 @@ import asyncio
 import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
-from config.config import SYMBOLS, SPREAD_PIPS
+from config.config import SYMBOLS, SPREAD_PIPS, DXY_SYMBOL, TNX_SYMBOL
 from data.fetcher import DataFetcher
 from indicators.calculations import IndicatorCalculator
 from strategies.intraday_quant_strategy import IntradayQuantStrategy
 from strategies.swing_quant_strategy import SwingQuantStrategy
 from strategies.session_clock_strategy import SessionClockStrategy
 from strategies.advanced_pattern_strategy import AdvancedPatternStrategy
+from strategies.gold_quant_strategy import GoldQuantStrategy
+from strategies.statistical_arbitrage_strategy import StatisticalArbitrageStrategy
+from strategies.smc_liquidity_sweep import SMCLiquiditySweepStrategy
+from strategies.anchored_poc_strategy import AnchoredPOCStrategy
+
+# Disable warnings for clean output
+import warnings
 
 async def run_master_backtest(days=30):
     print(f"🚀 MASTER BACKTEST V23 (Last {days} days)")
@@ -19,7 +26,11 @@ async def run_master_backtest(days=30):
         'INTRADAY': IntradayQuantStrategy(),
         'SWING':    SwingQuantStrategy(),
         'CLOCK':    SessionClockStrategy(),
-        'ADVANCED': AdvancedPatternStrategy()
+        'ADVANCED': AdvancedPatternStrategy(),
+        'GOLD_Q':   GoldQuantStrategy(),
+        'STAT_ARB': StatisticalArbitrageStrategy(),
+        'SMC_SWEEP': SMCLiquiditySweepStrategy(),
+        'POC_EDGE': AnchoredPOCStrategy()
     }
     
     start_date = (datetime.now() - timedelta(days=days + 15)).strftime("%Y-%m-%d")
@@ -43,6 +54,19 @@ async def run_master_backtest(days=30):
         print("❌ No data loaded.")
         return
 
+    # Load macro context for Stat Arb and Gold strategies
+    market_context = {}
+    try:
+        dxy_df = fetcher.fetch_range(DXY_SYMBOL, "1h", start_date, end_date)
+        if dxy_df is not None and not dxy_df.empty:
+            market_context['DXY'] = IndicatorCalculator.add_indicators(dxy_df, "1h")
+            print(f"  ✅ DXY loaded: {len(market_context['DXY'])} bars")
+        tnx_df = fetcher.fetch_range(TNX_SYMBOL, "1h", start_date, end_date)
+        if tnx_df is not None and not tnx_df.empty:
+            market_context['^TNX'] = IndicatorCalculator.add_indicators(tnx_df, "1h")
+    except Exception as e:
+        print(f"  ⚠️ DXY fetch: {e}")
+
     trades = []
 
     for symbol, data in all_data.items():
@@ -59,7 +83,12 @@ async def run_master_backtest(days=30):
             data_bundle = {'h1': h1_state, 'm5': m5_state}
             
             for name, strat in strategies.items():
-                signal = await strat.analyze(symbol, data_bundle, [], {})
+                if symbol == "GC=F" and name != "GOLD_Q":
+                    continue
+                if symbol != "GC=F" and name == "GOLD_Q":
+                    continue
+                    
+                signal = await strat.analyze(symbol, data_bundle, [], market_context)
                 
                 if signal:
                     entry = signal['entry_price']
