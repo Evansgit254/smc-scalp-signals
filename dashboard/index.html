@@ -197,7 +197,7 @@
                     <div class="chart-header">
                         <div class="chart-title">Strategy breakdown</div>
                     </div>
-                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; padding: 0.5rem 1rem;">
+                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; padding: 0.5rem 1rem;">
                         <div class="bento-metric scalp-box">
                             <div class="metric-label">SCALP</div>
                             <div class="stat-val" id="ana-scalp-sum" style="font-size: 1.8rem;">0/0</div>
@@ -217,6 +217,21 @@
                             <div class="metric-label">ADV_PATTERN</div>
                             <div class="stat-val" id="ana-pattern-sum" style="font-size: 1.8rem;">0/0</div>
                             <div id="ana-pattern-wr" class="badge">0% WR</div>
+                        </div>
+                        <div class="bento-metric statarb-box" style="border-left: 4px solid #a855f7;">
+                            <div class="metric-label">STAT ARB</div>
+                            <div class="stat-val" id="ana-statarb-sum" style="font-size: 1.8rem;">0/0</div>
+                            <div id="ana-statarb-wr" class="badge">0% WR</div>
+                        </div>
+                        <div class="bento-metric smcsweep-box" style="border-left: 4px solid #ec4899;">
+                            <div class="metric-label">SMC SWEEP</div>
+                            <div class="stat-val" id="ana-smcsweep-sum" style="font-size: 1.8rem;">0/0</div>
+                            <div id="ana-smcsweep-wr" class="badge">0% WR</div>
+                        </div>
+                        <div class="bento-metric pocedge-box" style="border-left: 4px solid #eab308;">
+                            <div class="metric-label">POC EDGE</div>
+                            <div class="stat-val" id="ana-pocedge-sum" style="font-size: 1.8rem;">0/0</div>
+                            <div id="ana-pocedge-wr" class="badge">0% WR</div>
                         </div>
                     </div>
                 </div>
@@ -681,11 +696,17 @@
                     const swing = data.stats_by_type['SWING'] || { wins: 0, losses: 0, total: 0, open: 0 };
                     const clock = data.stats_by_type['SESSION_CLOCK'] || { wins: 0, losses: 0, total: 0, open: 0 };
                     const pattern = data.stats_by_type['ADVANCED_PATTERN'] || { wins: 0, losses: 0, total: 0, open: 0 };
+                    const statarb = data.stats_by_type['STAT_ARB'] || { wins: 0, losses: 0, total: 0, open: 0 };
+                    const smcsweep = data.stats_by_type['SMC_SWEEP'] || { wins: 0, losses: 0, total: 0, open: 0 };
+                    const pocedge = data.stats_by_type['POC_EDGE'] || { wins: 0, losses: 0, total: 0, open: 0 };
 
                     const closedScalp = scalp.wins + scalp.losses;
                     const closedSwing = swing.wins + swing.losses;
                     const closedClock = clock.wins + clock.losses;
                     const closedPattern = pattern.wins + pattern.losses;
+                    const closedStatArb = statarb.wins + statarb.losses;
+                    const closedSmcSweep = smcsweep.wins + smcsweep.losses;
+                    const closedPocEdge = pocedge.wins + pocedge.losses;
 
                     setText('ana-scalp-sum', `${scalp.wins}/${scalp.total}`);
                     setText('ana-scalp-wr', `${closedScalp > 0 ? Math.round((scalp.wins / closedScalp) * 100) : 0}% WR (${scalp.open} Open)`);
@@ -698,6 +719,15 @@
 
                     setText('ana-pattern-sum', `${pattern.wins}/${pattern.total}`);
                     setText('ana-pattern-wr', `${closedPattern > 0 ? Math.round((pattern.wins / closedPattern) * 100) : 0}% WR`);
+
+                    setText('ana-statarb-sum', `${statarb.wins}/${statarb.total}`);
+                    setText('ana-statarb-wr', `${closedStatArb > 0 ? Math.round((statarb.wins / closedStatArb) * 100) : 0}% WR`);
+
+                    setText('ana-smcsweep-sum', `${smcsweep.wins}/${smcsweep.total}`);
+                    setText('ana-smcsweep-wr', `${closedSmcSweep > 0 ? Math.round((smcsweep.wins / closedSmcSweep) * 100) : 0}% WR`);
+
+                    setText('ana-pocedge-sum', `${pocedge.wins}/${pocedge.total}`);
+                    setText('ana-pocedge-wr', `${closedPocEdge > 0 ? Math.round((pocedge.wins / closedPocEdge) * 100) : 0}% WR`);
 
                     // 2. Bias (Donut)
                     const buys = data.bias['BUY'] || 0;
