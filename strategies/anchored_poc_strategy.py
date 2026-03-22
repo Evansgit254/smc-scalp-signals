@@ -3,6 +3,7 @@ from typing import Optional, Dict
 import pandas as pd
 import numpy as np
 from core.filters.risk_manager import RiskManager
+from indicators.calculations import IndicatorCalculator
 
 class AnchoredPOCStrategy(BaseStrategy):
     """
@@ -53,7 +54,7 @@ class AnchoredPOCStrategy(BaseStrategy):
                 return None
 
             # Regime filter: don't mean-revert in a trending market
-            regime = df.iloc[-1].get('regime', 'RANGING')
+            regime = IndicatorCalculator.get_market_regime(df)
             if regime == 'TRENDING':
                 return None
 
