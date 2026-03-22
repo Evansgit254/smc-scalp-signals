@@ -110,10 +110,15 @@ class SessionClockStrategy(BaseStrategy):
                 ts_utc = ts.tz_localize('UTC') if ts.tzinfo is None else ts
 
             current_hour = ts_utc.hour
+            current_minute = ts_utc.minute
             current_dow  = ts_utc.dayofweek  # 0=Mon, 4=Fri
 
             # Day-of-week filter: skip Friday
             if current_dow == 4:
+                return None
+                
+            # Prevent multiple signals: Only trigger on the first execution of the hour
+            if current_minute >= 5:
                 return None
 
             # Find matching signal for this hour
