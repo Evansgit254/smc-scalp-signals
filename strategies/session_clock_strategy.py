@@ -64,8 +64,11 @@ CLOCK_SIGNALS = {
 }
 
 # ATR multipliers for SL/TP
-SL_ATR = 2.0   # Wide disaster stop (these are time-based exits)
-BASE_RR = 1.0  # Not used for time-based exit but kept for signaling
+# V26.2 FIX: Tightened from 2.0 to 1.5 ATR.
+# The old 2.0 ATR unit made time-exit wins too small relative to SL losses.
+# At 1.5 ATR, a half-candle move in our favour = +0.33R instead of +0.25R.
+SL_ATR = 1.5
+BASE_RR = 1.0  # 1:1 visual TP (trade managed by time exit, not TP hit)
 
 
 class SessionClockStrategy(BaseStrategy):
@@ -153,8 +156,8 @@ class SessionClockStrategy(BaseStrategy):
             sl_dist = atr * SL_ATR
             
             # Time-based targets (will be closed by the bot after 1h)
-            # But we set a visual TP for the user at 1:1
-            tp_dist = sl_dist  
+            # V26.2: TP set at 1.5:1 to incentivize moves past 1.0 ATR
+            tp_dist = sl_dist * 1.5
 
             if direction == "BUY":
                 sl = entry - sl_dist

@@ -98,42 +98,23 @@ async def run_master_backtest(days=30):
                     sl_dist = abs(entry - sl)
                     if sl_dist == 0: continue
                     
+                    # V26.2: SESSION_CLOCK now uses TP/SL simulation like all strategies.
+                    # Time-exit was masking the fact that TPs were never being hit.
+                    # With tighter 1.5 ATR SL and 1.5:1 TP, we now test if the TP is reachable.
                     hit = None
                     pnl_r = 0.0
+                    lookahead = 200  # ~16 hours of M5 bars max hold
+                    for j in range(m5_i+1, min(m5_i+lookahead, len(m5_df))):
+                        fut = m5_df.iloc[j]
+                        if signal['direction'] == "BUY":
+                            if fut['low'] <= sl: hit = "LOSS"; pnl_r = -1.0; break
+                            if fut['high'] >= tp: hit = "WIN"; pnl_r = (tp - entry) / sl_dist; break
+                        else:
+                            if fut['high'] >= sl: hit = "LOSS"; pnl_r = -1.0; break
+                            if fut['low'] <= tp: hit = "WIN"; pnl_r = (entry - tp) / sl_dist; break
                     
-                    if trade_type in ['SESSION_CLOCK', 'ADVANCED_PATTERN'] and 'expected_hold' in signal and '1 hour' in signal['expected_hold']:
-                        if i+1 < len(h1_df):
-                            next_bar = h1_df.iloc[i+1]
-                            exit_p = next_bar['close']
-                            dist_hit = False
-                            if signal['direction'] == "BUY":
-                                if next_bar['low'] <= sl: dist_hit = True
-                            else:
-                                if next_bar['high'] >= sl: dist_hit = True
-                                
-                            if dist_hit:
-                                hit = "LOSS"; pnl_r = -1.0
-                            else:
-                                if signal['direction'] == "BUY":
-                                    pnl_r = (exit_p - entry) / sl_dist
-                                else:
-                                    pnl_r = (entry - exit_p) / sl_dist
-                                hit = "WIN" if pnl_r > 0 else "LOSS"
-                                
-                            trades.append({'t': ts, 'symbol': symbol, 'strategy': name, 'res': hit, 'r': pnl_r})
-                    else:
-                        lookahead = 576 
-                        for j in range(m5_i+1, min(m5_i+lookahead, len(m5_df))):
-                            fut = m5_df.iloc[j]
-                            if signal['direction'] == "BUY":
-                                if fut['low'] <= sl: hit = "LOSS"; pnl_r = -1.0; break
-                                if fut['high'] >= tp: hit = "WIN"; pnl_r = (tp - entry) / sl_dist; break
-                            else:
-                                if fut['high'] >= sl: hit = "LOSS"; pnl_r = -1.0; break
-                                if fut['low'] <= tp: hit = "WIN"; pnl_r = (entry - tp) / sl_dist; break
-                        
-                        if hit:
-                            trades.append({'t': ts, 'symbol': symbol, 'strategy': name, 'res': hit, 'r': pnl_r})
+                    if hit:
+                        trades.append({'t': ts, 'symbol': symbol, 'strategy': name, 'res': hit, 'r': pnl_r})
 
     if not trades:
         print("No trades found.")
