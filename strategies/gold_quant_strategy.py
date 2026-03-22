@@ -71,12 +71,17 @@ class GoldQuantStrategy(BaseStrategy):
                 dxy_slow = dxy_latest.get('ema_slow')
                 
                 if dxy_fast is not None and dxy_slow is not None:
-                    # Only block if it's a massive contradiction + low quality, otherwise let it trade
-                    if quality_score < 6.5:
+                    # V26.1 FORENSIC FIX: Soften DXY block to a score penalty instead of a hard block
+                    # Gold and DXY can move together intraday during heavy risk-off flows
+                    if quality_score < 8.0:
                         if dxy_fast > dxy_slow and direction == "BUY":
-                            return None 
+                            quality_score -= 1.5 
                         if dxy_fast < dxy_slow and direction == "SELL":
-                            return None 
+                            quality_score -= 1.5
+            
+            # Re-check quality score after DXY penalty
+            if quality_score < 5.0:
+                return None
 
             latest = df.iloc[-1]
             atr = latest['atr']
@@ -85,22 +90,28 @@ class GoldQuantStrategy(BaseStrategy):
             if optimal_rr.get('is_friction_heavy'):
                 return None
                 
-            # WIDE STOPS FOR MANIPULATION WICKS
-            sl_distance = atr * 2.8 
+            # V26.1 FORENSIC FIX: Disconnect TP from the widened SL. 
+            # Multiplying a 2.8 ATR SL by 1.5 RR created unreachable 4.2+ ATR Take Profits.
+            sl_distance = atr * 2.5 
+            
+            # Fixed, realistic scaling targets for M5 Gold Scalping
+            tp0_dist = atr * 1.0  # Quick scalp secured
+            tp1_dist = atr * 2.0  # Main target
+            tp2_dist = atr * 4.0  # Runner for huge moves
             
             # No pullback limit entry (enter at market or close) to avoid missing explosive moves
             entry_price = latest['close'] 
             
             if direction == "BUY":
                 sl = entry_price - sl_distance
-                tp0 = entry_price + (sl_distance * optimal_rr['tp1_rr'])
-                tp1 = entry_price + (sl_distance * optimal_rr['tp2_rr'])
-                tp2 = entry_price + (sl_distance * optimal_rr['tp3_rr'])
+                tp0 = entry_price + tp0_dist
+                tp1 = entry_price + tp1_dist
+                tp2 = entry_price + tp2_dist
             else:
                 sl = entry_price + sl_distance
-                tp0 = entry_price - (sl_distance * optimal_rr['tp1_rr'])
-                tp1 = entry_price - (sl_distance * optimal_rr['tp2_rr'])
-                tp2 = entry_price - (sl_distance * optimal_rr['tp3_rr'])
+                tp0 = entry_price - tp0_dist
+                tp1 = entry_price - tp1_dist
+                tp2 = entry_price - tp2_dist
             
             risk_details = RiskManager.calculate_lot_size(symbol, entry_price, sl)
             

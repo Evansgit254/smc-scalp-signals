@@ -12,6 +12,7 @@ from indicators.calculations import IndicatorCalculator
 from strategies.statistical_arbitrage_strategy import StatisticalArbitrageStrategy
 from strategies.smc_liquidity_sweep import SMCLiquiditySweepStrategy
 from strategies.anchored_poc_strategy import AnchoredPOCStrategy
+from strategies.gold_quant_strategy import GoldQuantStrategy
 
 async def run_forensic_audit(days=30):
     print("=" * 90)
