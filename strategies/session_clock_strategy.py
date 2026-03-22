@@ -28,6 +28,7 @@ import pytz
 from core.filters.risk_manager import RiskManager
 from indicators.calculations import IndicatorCalculator
 from core.filters.macro_filter import MacroFilter
+from data.news_fetcher import NewsFetcher
 
 # ── Signal Map ────────────────────────────────────────────────────────────────
 # Format: { symbol: [ (utc_hour, direction, rr_multiplier), ... ] }
@@ -137,6 +138,11 @@ class SessionClockStrategy(BaseStrategy):
             # Entry logic: These patterns happen DURING the sig_hour.
             # We trigger at the start of the hour.
             direction, rr_mult = matched
+
+            # V26.2: NEWS FILTER — Block signals within ±30 min of High-impact events
+            # Prevents SESSION_CLOCK from firing into NFP, CPI, FOMC, BoE decisions etc.
+            if NewsFetcher.is_high_impact_imminent(current_hour, news_events, symbol):
+                return None
 
             # V25.0 FORENSIC HEDGE: Apply Regime & Macro filters to Session Clock
             regime = IndicatorCalculator.get_market_regime(df)
