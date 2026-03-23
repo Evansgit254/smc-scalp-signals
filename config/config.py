@@ -44,6 +44,10 @@ RSI_SELL_HIGH = 75
 # TELEGRAM
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
+# Optional: comma-separated list of extra group Chat IDs to also broadcast signals to
+# e.g. TELEGRAM_EXTRA_CHAT_IDS=-1001234567890,-1009876543210
+_extra = os.getenv("TELEGRAM_EXTRA_CHAT_IDS", "")
+TELEGRAM_EXTRA_CHAT_IDS = [cid.strip() for cid in _extra.split(",") if cid.strip()]
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 # MT5 CREDENTIALS

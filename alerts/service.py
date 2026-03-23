@@ -4,7 +4,7 @@ Telegram Service for sending trading signals.
 from typing import Optional
 from telegram import Bot
 from telegram.error import TelegramError
-from config.config import TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID
+from config.config import TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID, TELEGRAM_EXTRA_CHAT_IDS
 from core.signal_formatter import SignalFormatter
 
 
@@ -16,9 +16,11 @@ class TelegramService:
     def __init__(self):
         self.bot_token = TELEGRAM_BOT_TOKEN
         self.chat_id = TELEGRAM_CHAT_ID
+        # All destinations: primary + any extras from TELEGRAM_EXTRA_CHAT_IDS env var
+        self.all_chat_ids = [self.chat_id] + TELEGRAM_EXTRA_CHAT_IDS if self.chat_id else TELEGRAM_EXTRA_CHAT_IDS
         self.bot = None
         
-        if self.bot_token and self.chat_id:
+        if self.bot_token and self.all_chat_ids:
             try:
                 self.bot = Bot(token=self.bot_token)
             except Exception as e:
@@ -110,26 +112,27 @@ TP2 (20% Exit):   {tp2:.5f} ({'+' if direction == 'BUY' else '-'}{tp2_pips:.1f} 
     
     async def send_signal(self, message: str) -> bool:
         """
-        Sends a formatted signal message to Telegram.
-        Returns True if successful, False otherwise.
+        Sends a formatted signal message to all configured Telegram chat IDs.
+        Returns True if at least one send succeeded.
         """
-        if not self.bot or not self.chat_id:
+        if not self.bot or not self.all_chat_ids:
             print("⚠️  Telegram not configured. Skipping send.")
             return False
         
-        try:
-            await self.bot.send_message(
-                chat_id=self.chat_id,
-                text=message,
-                parse_mode='HTML'
-            )
-            return True
-        except TelegramError as e:
-            print(f"❌ Telegram error: {e}")
-            return False
-        except Exception as e:
-            print(f"❌ Error sending Telegram message: {e}")
-            return False
+        any_success = False
+        for chat_id in self.all_chat_ids:
+            try:
+                await self.bot.send_message(
+                    chat_id=chat_id,
+                    text=message,
+                    parse_mode='HTML'
+                )
+                any_success = True
+            except TelegramError as e:
+                print(f"❌ Telegram error sending to {chat_id}: {e}")
+            except Exception as e:
+                print(f"❌ Error sending Telegram message to {chat_id}: {e}")
+        return any_success
     
     async def send_text(self, text: str, chat_id: str = None) -> bool:
         """
