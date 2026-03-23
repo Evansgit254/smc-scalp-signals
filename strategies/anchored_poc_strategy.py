@@ -89,6 +89,9 @@ class AnchoredPOCStrategy(BaseStrategy):
             
             # FORENSIC FIX: Increased threshold to 4.0 ATR (was 3.0, producing 16.5 signals/day)
             direction = None
+            # RSI exhaustion filter — market must be overbought/oversold at the extreme.
+            # V26.3: Reverted to 70/30 — the TRENDING regime block now handles
+            # knife-catching; extra RSI tightening removed too many valid trades.
             if dist_to_poc > (atr * 4.0) and rsi > 70:
                 direction = "SELL"  # Exhausted & overbought, revert to POC
             elif dist_to_poc < -(atr * 4.0) and rsi < 30:

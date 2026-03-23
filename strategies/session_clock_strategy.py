@@ -153,6 +153,17 @@ class SessionClockStrategy(BaseStrategy):
             if not MacroFilter.is_macro_safe(symbol, direction, macro_bias):
                 return None
 
+            # V26.3: Z-SCORE CONTRADICTION FILTER
+            # If the asset's z-score strongly opposes our direction, the time
+            # pattern is firing against a strong macro trend — skip it.
+            # e.g., GBPJPY SELL at 21:00 but z-score is deeply negative
+            # (already sold off hard) — asymmetric risk, reward is already taken.
+            zscore = latest.get('zscore_20', 0.0) or 0.0
+            if direction == "BUY"  and zscore < -1.8:
+                return None  # Market deeply oversold — reversal risk, no room to run
+            if direction == "SELL" and zscore > +1.8:
+                return None  # Market deeply overbought — squeeze risk, no room to fall
+
             # ATR for SL/TP
             atr = latest.get('atr', latest.get('ATR', None))
             if atr is None or atr == 0:
