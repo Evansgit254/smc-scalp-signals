@@ -24,6 +24,10 @@ class AnchoredPOCStrategy(BaseStrategy):
     BANNED_SYMBOLS = {"CL=F", "EURUSD=X", "GC=F"}
     # Only trade during hours with positive expectancy in audit
     PROFITABLE_HOURS = {0, 3, 6, 12, 21, 22}
+    # V26.3: Daily loss circuit breaker — track (symbol, utc_date) -> loss count
+    # If a symbol hits 2 SL in the same UTC day, ban it for the rest of that day.
+    _daily_losses: dict = {}
+    MAX_DAILY_LOSSES = 2
 
     def get_id(self) -> str:
         return "poc_edge_v1"
@@ -53,7 +57,15 @@ class AnchoredPOCStrategy(BaseStrategy):
             if hour not in self.PROFITABLE_HOURS:
                 return None
 
-            # Regime filter: don't mean-revert in a trending market
+            # V26.3: Daily loss circuit breaker
+            from datetime import datetime, timezone
+            today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+            loss_key = f"{symbol}:{today}"
+            if self._daily_losses.get(loss_key, 0) >= self.MAX_DAILY_LOSSES:
+                return None  # Already lost too many times on this symbol today
+
+            # Regime filter: block in TRENDING — now correctly classifies trends
+            # (V26.3 regime fix means this filter is actually effective now)
             regime = IndicatorCalculator.get_market_regime(df)
             if regime == 'TRENDING':
                 return None

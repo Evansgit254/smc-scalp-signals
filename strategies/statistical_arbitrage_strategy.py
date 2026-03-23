@@ -39,12 +39,24 @@ class StatisticalArbitrageStrategy(BaseStrategy):
             latest = df.iloc[-1]
             dxy_latest = dxy_df.iloc[-1]
             
+            # V26.3: REGIME FILTER — don't trade stat arb in a trending market.
+            # In trending macro environments, divergence correction can take days,
+            # exceeding our 4-12 hour expected hold. Only trade in RANGING regimes.
+            regime = IndicatorCalculator.get_market_regime(df)
+            if regime == 'TRENDING':
+                return None
+            
             # We need standard Z-Scores
             asset_z = latest.get('zscore_20')
             dxy_z = dxy_latest.get('zscore_20')
             
             if asset_z is None or dxy_z is None:
                 return None
+
+            # V26.3: DIVERGENCE PERSISTENCE — require 2 consecutive bars of divergence
+            # Prevents firing on a single-bar DXY spike that immediately reverses
+            prev_asset_z = df.iloc[-2].get('zscore_20', 0) if len(df) >= 2 else 0
+            prev_dxy_z   = dxy_df.iloc[-2].get('zscore_20', 0) if len(dxy_df) >= 2 else 0
 
             direction = None
             quality = 0.0
@@ -56,20 +68,22 @@ class StatisticalArbitrageStrategy(BaseStrategy):
             is_usd_base = symbol in ["USDJPY=X"] # Moves WITH DXY
             
             # USD-Quote assets (EURUSD, GC=F, etc) diverge when DXY is extremely overextended
-            # Lowering Z-score threshold slightly to 1.8 for better signal flow
+            # V26.3: Raised threshold from 1.8 to 2.2 to reduce simultaneous multi-symbol firing
+            # and require a more extreme, persistent divergence signal
+            DXY_THRESHOLD = 2.2
             if is_usd_quote:
-                if dxy_z > 1.8 and asset_z > 0.0:
+                if dxy_z > DXY_THRESHOLD and prev_dxy_z > DXY_THRESHOLD and asset_z > 0.0 and prev_asset_z > 0.0:
                     direction = "SELL"
                     quality = 8.5
-                elif dxy_z < -1.8 and asset_z < 0.0:
+                elif dxy_z < -DXY_THRESHOLD and prev_dxy_z < -DXY_THRESHOLD and asset_z < 0.0 and prev_asset_z < 0.0:
                     direction = "BUY"
                     quality = 8.5
                     
             elif is_usd_base:
-                if dxy_z > 1.8 and asset_z < 0.0:
+                if dxy_z > DXY_THRESHOLD and prev_dxy_z > DXY_THRESHOLD and asset_z < 0.0 and prev_asset_z < 0.0:
                     direction = "BUY"
                     quality = 8.5
-                elif dxy_z < -1.8 and asset_z > 0.0:
+                elif dxy_z < -DXY_THRESHOLD and prev_dxy_z < -DXY_THRESHOLD and asset_z > 0.0 and prev_asset_z > 0.0:
                     direction = "SELL"
                     quality = 8.5
 

@@ -153,35 +153,49 @@ class IndicatorCalculator:
         """
         Detects the current market regime based on volatility and trend.
         Returns: 'TRENDING', 'RANGING', or 'CHOPPY'
+        
+        V26.3 CRITICAL FIX: The previous EMA slope threshold of 0.05 was designed for
+        raw pip values on pairs like USDJPY (150.0 price), but is far too strict for
+        pairs like AUDUSD (0.63 price) or GBPUSD (1.28 price).
+        
+        Fix: Use a NORMALIZED slope (slope / close_price) to make the threshold
+        symbol-agnostic. Threshold is now 0.0003 (0.03% per bar) which correctly
+        classifies trending markets across all symbols.
+        
+        Additionally: If |zscore_20| > 1.5, the market is statistically confirmed 
+        to be trending regardless of slope — this prevents regime misclassification 
+        during strong macro moves.
         """
         if len(df) < 50: return "CHOPPY"
         
-        # 1. Volatility check (Current ATR vs 50-period average)
         atr_now = df.iloc[-1].get('atr')
         atr_avg = df['atr'].rolling(50).mean().iloc[-1]
         
         if atr_now is None or atr_avg is None: return "CHOPPY"
         
         vol_ratio = atr_now / atr_avg if atr_avg != 0 else 1.0
+        adx = df.iloc[-1].get('adx', 0)
         
-        # V22.1 HARDENED REGIME: Check ADX if available (Stronger Trend Filter)
-        adx = df.iloc[-1].get('adx', 0) # Default to 0 if not calculated yet
+        raw_slope = IndicatorCalculator.calculate_ema_slope(df, f'ema_{EMA_TREND}')
+        close_price = df.iloc[-1].get('close', 1.0)
+        # Normalize: slope as % of price, prevents symbol-scale bias
+        norm_slope = abs(raw_slope) / max(close_price, 0.0001)
         
-        # 2. Trendiness check (EMA Slope)
-        slope = IndicatorCalculator.calculate_ema_slope(df, f'ema_{EMA_TREND}')
+        # Z-score override: large z-score = market is stretched far from mean = trending
+        zscore = df.iloc[-1].get('zscore_20', 0.0) or 0.0
         
-        # 3. Decision Logic (Strict Filters)
-        
-        # CHOPPY: Low Volatility OR Very Low ADX
-        # We actively block these in strategy now
+        # CHOPPY: Low volatility or very weak ADX
         if vol_ratio < 0.9 or (adx > 0 and adx < 20):
             return "CHOPPY"
 
-        # TRENDING: High Volatility + Slope + ADX Confirmation
-        # Must have "Expansion" (vol_ratio > 1.2) and "Direction" (slope)
-        if vol_ratio > 1.2 and abs(slope) > 0.05:
-            if adx == 0 or adx > 25: # Use ADX confirmation if available
+        # TRENDING: V26.3 — lowered threshold to 0.0003 (normalized) + z-score override
+        # Either: clear directional slope OR statistically extreme z-score
+        is_sloping   = vol_ratio > 1.2 and norm_slope > 0.0003
+        is_stretched = abs(zscore) > 1.5  # Statistically far from mean = trend
+
+        if is_sloping or is_stretched:
+            if adx == 0 or adx > 25:
                 return "TRENDING"
         
-        # RANGING: Everything else (Standard Volatility, No strong trend)
         return "RANGING"
+
