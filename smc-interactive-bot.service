@@ -4,7 +4,6 @@ After=network.target
 
 [Service]
 Type=simple
-User=evans
 WorkingDirectory=/home/evans/Projects/smc-scalp-signals
 Environment="PYTHONPATH=/home/evans/Projects/smc-scalp-signals"
 ExecStart=/usr/bin/python3 /home/evans/Projects/smc-scalp-signals/app/interactive_bot.py

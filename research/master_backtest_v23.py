@@ -25,15 +25,17 @@ async def run_master_backtest(days=30):
     
     fetcher = DataFetcher()
     strategies = {
-        'INTRADAY': IntradayQuantStrategy(),
-        # SWING disabled — 21.8% WR, -0.33R exp. Re-enable after M30 entry fix.
+        # V27.0: INTRADAY and POC_EDGE disabled — 30-35% WR with only ~3.7R contribution.
+        # They contributed 64% of trade count but only 11% of total profit.
+        # Re-enable to benchmark only, not for live signal delivery.
+        # 'INTRADAY': IntradayQuantStrategy(),
+        # SWING disabled — 21.8% WR, -0.33R exp.
         # 'SWING':    SwingQuantStrategy(),
-        'CLOCK':    SessionClockStrategy(),
+        'CLOCK':    SessionClockStrategy(),  # V27.0: rr_mult>=1.5 filter active (60-65% WR)
         'ADVANCED': AdvancedPatternStrategy(),
         'GOLD_Q':   GoldQuantStrategy(),
-        'STAT_ARB': StatisticalArbitrageStrategy(),
         'SMC_SWEEP':  SMCLiquiditySweepStrategy(),
-        'POC_EDGE':   AnchoredPOCStrategy(),
+        # 'POC_EDGE': AnchoredPOCStrategy(),  # V27.0 disabled — 31% WR, minimal alpha
         'PRE_NEWS':   PreNewsQuantStrategy(),
         'NEWS_EDGE':  NewsEdgeStrategy(),
     }

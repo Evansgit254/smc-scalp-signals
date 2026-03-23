@@ -51,8 +51,9 @@ async def test_intraday_strategy_news_block(sample_data):
 @pytest.mark.asyncio
 async def test_swing_strategy_buy_signal(sample_data):
     strategy = SwingQuantStrategy()
-    with patch('core.alpha_factors.AlphaFactors.velocity_alpha', return_value=0.9), \
-         patch('core.alpha_factors.AlphaFactors.mean_reversion_zscore', return_value=2.0), \
+    with patch('core.alpha_combiner.AlphaCombiner.combine', return_value=0.95), \
+         patch('core.alpha_combiner.AlphaCombiner.calculate_quality_score', return_value=8.5), \
+         patch('core.filters.macro_filter.MacroFilter.is_macro_safe', return_value=True), \
          patch('core.filters.news_filter.NewsFilter.is_safe_to_trade', return_value=True):
         
         res = await strategy.analyze("EURUSD=X", sample_data, [], {})

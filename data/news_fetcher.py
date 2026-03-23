@@ -139,19 +139,33 @@ class NewsFetcher:
             if not time_str or time_str.lower() in ('all day', 'tentative', ''):
                 return None
 
-            # Combine date and time — FF dates look like "Mar 22" 
-            year = reference_date.year
-            combined = f"{date_str} {year} {time_str}"
-            
             from datetime import timedelta
-            import pytz
-            est = pytz.timezone('US/Eastern')
+            from zoneinfo import ZoneInfo
+            try:
+                est = ZoneInfo('US/Eastern')
+            except Exception:
+                # Fallback to UTC offset if tzdata is missing entirely
+                est = timezone(timedelta(hours=-4))
             
-            # Try multiple formats
-            for fmt in ('%b %d %Y %I:%M%p', '%b %d %Y %I%p'):
+            # Combine date and time
+            # Try MM-DD-YYYY first (common in some JSON feeds)
+            combined_mdy = f"{date_str} {time_str}"
+            
+            # Try Month DD YYYY (common in other feeds)
+            year = reference_date.year
+            combined_bdy = f"{date_str} {year} {time_str}"
+            
+            formats_to_try = [
+                (combined_mdy, '%m-%d-%Y %I:%M%p'),
+                (combined_mdy, '%m-%d-%Y %I%p'),
+                (combined_bdy, '%b %d %Y %I:%M%p'),
+                (combined_bdy, '%b %d %Y %I%p'),
+            ]
+            
+            for time_string, fmt in formats_to_try:
                 try:
-                    naive_dt = datetime.strptime(combined, fmt)
-                    aware_dt = est.localize(naive_dt)
+                    naive_dt = datetime.strptime(time_string, fmt)
+                    aware_dt = naive_dt.replace(tzinfo=est)
                     return aware_dt
                 except ValueError:
                     continue

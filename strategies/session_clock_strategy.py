@@ -65,9 +65,8 @@ CLOCK_SIGNALS = {
 }
 
 # ATR multipliers for SL/TP
-# V26.2 FIX: Tightened from 2.0 to 1.5 ATR.
-# The old 2.0 ATR unit made time-exit wins too small relative to SL losses.
-# At 1.5 ATR, a half-candle move in our favour = +0.33R instead of +0.25R.
+# V26.2: Tightened to 1.5 ATR. Best empirical performance across 30-day backtest.
+# The wider 2.5 ATR (V27.0) actually lowered total profit (27.8R vs 35.0R).
 SL_ATR = 1.5
 BASE_RR = 1.0  # 1:1 visual TP (trade managed by time exit, not TP hit)
 
@@ -135,9 +134,12 @@ class SessionClockStrategy(BaseStrategy):
             if matched is None:
                 return None
 
-            # Entry logic: These patterns happen DURING the sig_hour.
-            # We trigger at the start of the hour.
+            # V27.0 HIGH-CONVICTION FILTER: Only fire on patterns with rr_mult >= 1.5
+            # These correspond to 60-65%+ WR patterns (OIL 21:00, GBPJPY/USDJPY SELL 21:00)
+            # Lower-conviction patterns (rr_mult=1.0, 50-57% WR) are skipped from live.
             direction, rr_mult = matched
+            if rr_mult < 1.5:
+                return None
 
             # V26.2: NEWS FILTER — Block signals within ±30 min of High-impact events
             # Prevents SESSION_CLOCK from firing into NFP, CPI, FOMC, BoE decisions etc.
