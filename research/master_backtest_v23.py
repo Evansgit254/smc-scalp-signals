@@ -14,6 +14,7 @@ from strategies.statistical_arbitrage_strategy import StatisticalArbitrageStrate
 from strategies.smc_liquidity_sweep import SMCLiquiditySweepStrategy
 from strategies.anchored_poc_strategy import AnchoredPOCStrategy
 from strategies.pre_news_quant_strategy import PreNewsQuantStrategy
+from strategies.news_edge_strategy import NewsEdgeStrategy
 
 # Disable warnings for clean output
 import warnings
@@ -25,7 +26,8 @@ async def run_master_backtest(days=30):
     fetcher = DataFetcher()
     strategies = {
         'INTRADAY': IntradayQuantStrategy(),
-        'SWING':    SwingQuantStrategy(),
+        # SWING disabled — 21.8% WR, -0.33R exp. Re-enable after M30 entry fix.
+        # 'SWING':    SwingQuantStrategy(),
         'CLOCK':    SessionClockStrategy(),
         'ADVANCED': AdvancedPatternStrategy(),
         'GOLD_Q':   GoldQuantStrategy(),
@@ -33,6 +35,7 @@ async def run_master_backtest(days=30):
         'SMC_SWEEP':  SMCLiquiditySweepStrategy(),
         'POC_EDGE':   AnchoredPOCStrategy(),
         'PRE_NEWS':   PreNewsQuantStrategy(),
+        'NEWS_EDGE':  NewsEdgeStrategy(),
     }
     
     start_date = (datetime.now() - timedelta(days=days + 15)).strftime("%Y-%m-%d")

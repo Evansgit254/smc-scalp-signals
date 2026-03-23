@@ -26,6 +26,7 @@ import numpy as np
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from data.fetcher import DataFetcher
+from data.dukascopy_loader import DukascopyLoader
 
 # ── 1. Known Event Calendar ────────────────────────────────────────────────────
 # Format: (date_string "YYYY-MM-DD", event_type, hour_utc, expected_direction_hint)
@@ -67,7 +68,6 @@ SYMBOLS = [
     "GC=F",       # Gold → inverse yields, high CPI sensitivity
     "BTC-USD",    # Crypto → macro fear/greed gauge
 ]
-
 # Measurement windows (in 5-minute bars after event)
 WINDOWS = {
     "5min":  1,   # 1 bar = 5 minutes
@@ -75,7 +75,19 @@ WINDOWS = {
     "30min": 6,   # 6 bars = 30 minutes
 }
 
-# ── 2. Analysis Engine ─────────────────────────────────────────────────────────
+# ── 2. Data Source: Dukascopy + yfinance fallback ─────────────────────────────
+
+# Global loader instance — reused across all fetch calls
+_duka_loader = DukascopyLoader(base_dir="data/dukascopy")
+_duka_symbols = set(_duka_loader.list_available_symbols())
+
+if _duka_symbols:
+    print(f"📂 Dukascopy data found for: {sorted(_duka_symbols)}")
+else:
+    print("⚠️  No Dukascopy data found in data/dukascopy/")
+    print("   → Falling back to yfinance (limited to last 60 days)")
+
+# ── 3. Analysis Engine ─────────────────────────────────────────────────────────
 
 async def fetch_event_price_window(
     symbol: str,
@@ -87,26 +99,48 @@ async def fetch_event_price_window(
 ) -> Optional[pd.DataFrame]:
     """
     Fetch M5 price data centred around the event time.
+
+    Data source priority:
+      1. Dukascopy CSV (unlimited history) — if file exists for this symbol
+      2. yfinance API (last 60 days only) — fallback for recent data
+
     Returns a dataframe of bars or None if unavailable.
     """
+    # ── Path 1: Try Dukascopy first ──
+    if symbol in _duka_symbols:
+        window = _duka_loader.load_for_event(
+            symbol=symbol,
+            event_date=event_date,
+            event_hour_utc=event_hour_utc,
+            timeframe="5min",
+            bars_before=bars_before,
+            bars_after=bars_after,
+        )
+        if window is not None and not window.empty:
+            return window
+
+    # ── Path 2: yfinance fallback (recent data only) ──
     event_dt = datetime.strptime(event_date, "%Y-%m-%d").replace(
         hour=event_hour_utc, minute=0, tzinfo=timezone.utc
     )
-    
-    # Fetch the full day's 5m data
+
+    # yfinance only has M5 data for the last 60 days
+    cutoff = datetime.now(timezone.utc) - timedelta(days=58)
+    if event_dt < cutoff:
+        return None  # Too old for yfinance, Dukascopy data not available
+
     start = (event_dt - timedelta(hours=1)).strftime("%Y-%m-%d")
     end   = (event_dt + timedelta(days=1)).strftime("%Y-%m-%d")
-    
+
     df = fetcher.fetch_range(symbol, "5m", start, end)
     if df is None or df.empty:
         return None
-    
-    # Slice to the event window
+
     event_ts = pd.Timestamp(event_dt)
     mask = (df.index >= event_ts - timedelta(minutes=bars_before * 5)) & \
            (df.index <= event_ts + timedelta(minutes=bars_after * 5))
     window = df[mask]
-    
+
     return window if len(window) >= bars_after else None
 
 
