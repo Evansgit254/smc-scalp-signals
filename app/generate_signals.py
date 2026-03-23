@@ -11,6 +11,7 @@ from strategies.gold_quant_strategy import GoldQuantStrategy
 from strategies.statistical_arbitrage_strategy import StatisticalArbitrageStrategy
 from strategies.smc_liquidity_sweep import SMCLiquiditySweepStrategy
 from strategies.anchored_poc_strategy import AnchoredPOCStrategy
+from strategies.pre_news_quant_strategy import PreNewsQuantStrategy
 from core.signal_formatter import SignalFormatter
 from core.market_status import MarketStatus
 
@@ -41,6 +42,7 @@ async def generate_signals():
     stat_arb_strategy = StatisticalArbitrageStrategy()
     smc_sweep_strategy = SMCLiquiditySweepStrategy()
     poc_edge_strategy = AnchoredPOCStrategy()
+    pre_news_strategy = PreNewsQuantStrategy()
     
     # Fetch macro context (DXY, TNX) for all symbols
     print("📊 Fetching macro context...")
@@ -132,6 +134,11 @@ async def generate_signals():
             poc_signal = await poc_edge_strategy.analyze(symbol, data_bundle, news_events, market_context)
             if poc_signal:
                 all_signals.append(('POC_EDGE', poc_signal))
+
+            # V26.3: Pre-News Quant (Rubber Band Z-Score + DXY Divergence)
+            pre_news_signal = await pre_news_strategy.analyze(symbol, data_bundle, news_events, market_context)
+            if pre_news_signal:
+                all_signals.append(('PRE_NEWS', pre_news_signal))
                 
         except Exception as e:
             print(f"⚠️  Error processing {symbol}: {str(e)}")

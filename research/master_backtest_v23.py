@@ -13,6 +13,7 @@ from strategies.gold_quant_strategy import GoldQuantStrategy
 from strategies.statistical_arbitrage_strategy import StatisticalArbitrageStrategy
 from strategies.smc_liquidity_sweep import SMCLiquiditySweepStrategy
 from strategies.anchored_poc_strategy import AnchoredPOCStrategy
+from strategies.pre_news_quant_strategy import PreNewsQuantStrategy
 
 # Disable warnings for clean output
 import warnings
@@ -29,8 +30,9 @@ async def run_master_backtest(days=30):
         'ADVANCED': AdvancedPatternStrategy(),
         'GOLD_Q':   GoldQuantStrategy(),
         'STAT_ARB': StatisticalArbitrageStrategy(),
-        'SMC_SWEEP': SMCLiquiditySweepStrategy(),
-        'POC_EDGE': AnchoredPOCStrategy()
+        'SMC_SWEEP':  SMCLiquiditySweepStrategy(),
+        'POC_EDGE':   AnchoredPOCStrategy(),
+        'PRE_NEWS':   PreNewsQuantStrategy(),
     }
     
     start_date = (datetime.now() - timedelta(days=days + 15)).strftime("%Y-%m-%d")
