@@ -717,7 +717,20 @@ async def get_daily_analytics(current_user: User = Depends(get_current_user)):
             GROUP BY UPPER(TRIM(trade_type))
         """, (last_24h,)).fetchall()
         
-        stats_by_type = {row['trade_type']: dict(row) for row in type_stats}
+        stats_by_type = {}
+        for row in type_stats:
+            rtype = row['trade_type']
+            if rtype == 'SWING': rtype = 'CRT'
+            
+            if rtype not in stats_by_type:
+                stats_by_type[rtype] = dict(row)
+                stats_by_type[rtype]['trade_type'] = rtype
+            else:
+                # Aggregate if both exist
+                stats_by_type[rtype]['total'] += row['total']
+                stats_by_type[rtype]['wins'] += row['wins']
+                stats_by_type[rtype]['losses'] += row['losses']
+                stats_by_type[rtype]['open'] += row['open']
         
         # 3. Market Bias (Long vs Short)
         bias_rows = conn.execute("""
@@ -835,7 +848,20 @@ async def get_daily_analytics(current_user: User = Depends(get_current_user)):
             ORDER BY symbol ASC, total DESC
         """, (last_24h,)).fetchall()
         
-        strategy_symbol_breakdown = [dict(row) for row in strategy_symbol_rows]
+        strategy_symbol_breakdown = []
+        for row in strategy_symbol_rows:
+            d = dict(row)
+            if d['trade_type'] == 'SWING': d['trade_type'] = 'CRT'
+            
+            # Simple aggregation for matrix
+            existing = next((x for x in strategy_symbol_breakdown if x['symbol'] == d['symbol'] and x['trade_type'] == d['trade_type']), None)
+            if existing:
+                existing['total'] += d['total']
+                existing['wins'] += d['wins']
+                existing['losses'] += d['losses']
+                existing['open'] += d['open']
+            else:
+                strategy_symbol_breakdown.append(d)
 
         return {
             "total_signals": summary['total'] or 0,
