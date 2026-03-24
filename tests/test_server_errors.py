@@ -316,8 +316,8 @@ def test_ensure_db_schema_add_column_print():
     with patch('admin_server.sqlite3.connect') as mock_conn:
         mock_cursor = MagicMock()
         mock_conn.return_value.cursor.return_value = mock_cursor
-        # Force one ALTER TABLE to succeed
-        mock_cursor.execute.side_effect = [None, sqlite3.OperationalError("exists"), sqlite3.OperationalError("exists"), sqlite3.OperationalError("exists"), sqlite3.OperationalError("exists"), sqlite3.OperationalError("exists")]
+        # Force two statements to succeed (CREATE TABLE, then first ALTER), and rest to fail
+        mock_cursor.execute.side_effect = [None, None, sqlite3.OperationalError("exists"), sqlite3.OperationalError("exists"), sqlite3.OperationalError("exists"), sqlite3.OperationalError("exists"), sqlite3.OperationalError("exists"), sqlite3.OperationalError("exists")]
         with patch('admin_server.os.path.exists', return_value=True):
             ensure_db_schema()
 
