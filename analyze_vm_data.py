@@ -4,7 +4,7 @@ import numpy as np
 
 def analyze():
     # Connect to the VM database
-    conn = sqlite3.connect("/home/evans/Projects/smc-scalp-signals/database/signals_vm.db")
+    conn = sqlite3.connect("/home/evans/smc-scalp-signals/database/signals_vm.db")
     df = pd.read_sql_query("SELECT * FROM signals", conn)
     conn.close()
 

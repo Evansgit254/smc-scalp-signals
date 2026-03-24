@@ -1,0 +1,166 @@
+//@version=5
+origin_url = "https://github.com/Evansgit254/smc-scalp-signals"
+indicator("SMC Scalp Signals [Python Port V27.0]", shorttitle="SMC Scalp [V27]", overlay=true, max_labels_count=500, max_lines_count=500, max_boxes_count=500)
+
+// =====================================================================================================================
+// === SETTINGS & INPUTS ===
+// =====================================================================================================================
+grp_risk = "Risk Management (Python Parity)"
+inp_risk_pct     = input.float(2.0, title="Risk Per Trade (%)", group=grp_risk, step=0.1)
+inp_acct_bal     = input.float(1000.0, title="Account Balance ($)", group=grp_risk)
+inp_sl_atr_mult  = input.float(1.5, title="Stop Loss ATR Multiplier", group=grp_risk, step=0.1, tooltip="V27.0 Default for Clock/SMC")
+
+grp_indicators = "Core Indicators"
+inp_atr_len      = input.int(14, title="ATR Length", group=grp_indicators)
+inp_ema_fast     = input.int(20, title="Fast EMA Length", group=grp_indicators)
+inp_ema_slow     = input.int(50, title="Slow EMA Length", group=grp_indicators)
+inp_ema_trend    = input.int(100, title="Trend EMA Length", group=grp_indicators)
+inp_rsi_len      = input.int(14, title="RSI Length", group=grp_indicators)
+
+grp_sessions = "Session Times (UTC)"
+inp_lon_start    = input.int(8, title="London Open Hour (UTC)", group=grp_sessions)
+inp_lon_end      = input.int(16, title="London Close Hour (UTC)", group=grp_sessions)
+inp_ny_start     = input.int(13, title="NY Open Hour (UTC)", group=grp_sessions)
+inp_ny_end       = input.int(21, title="NY Close Hour (UTC)", group=grp_sessions)
+
+// =====================================================================================================================
+// === CORE CALCULATIONS ===
+// =====================================================================================================================
+atr = ta.atr(inp_atr_len)
+ema_fast = ta.ema(close, inp_ema_fast)
+ema_slow = ta.ema(close, inp_ema_slow)
+ema_trend = ta.ema(close, inp_ema_trend)
+rsi = ta.rsi(close, inp_rsi_len)
+
+// Determine Market Regime
+bool is_trending_up = (ema_fast > ema_slow) and (ema_slow > ema_trend) and (close > ema_fast)
+bool is_trending_dn = (ema_fast < ema_slow) and (ema_slow < ema_trend) and (close < ema_fast)
+string regime = is_trending_up ? "BULLISH" : is_trending_dn ? "BEARISH" : "CHOPPY"
+
+// =====================================================================================================================
+// === MODULE 1: SESSION CLOCK SYSTEM ===
+// =====================================================================================================================
+// Note: TradingView uses exchange timezone or UTC depending on chart settings. 
+// We explicitly calculate the UTC hour of the current bar.
+current_time_utc = time(timeframe.period, "0000-0000:1234567") // fallback 
+h_utc = hour(time, "UTC")
+m_utc = minute(time, "UTC")
+dow = dayofweek(time, "UTC")
+
+// Python V27.0 statistical maps (rr_mult >= 1.5 enforced)
+bool is_oil      = syminfo.ticker == "USOIL" or syminfo.ticker == "CL1!" or syminfo.ticker == "WTI"
+bool is_gold     = syminfo.ticker == "XAUUSD" or syminfo.ticker == "GC1!" or syminfo.ticker == "GOLD"
+bool is_gbpjpy   = syminfo.ticker == "GBPJPY"
+bool is_usdjpy   = syminfo.ticker == "USDJPY"
+
+bool clock_buy  = false
+bool clock_sell = false
+
+// Only fire at the exact start of the hour (top of the clock) & never on Fridays (dow == 6 = Friday in TV)
+if m_utc < 5 and dow != 6 
+    if is_oil and h_utc == 21
+        clock_buy := true
+    if is_gold and h_utc == 16
+        clock_buy := true
+    if is_gbpjpy and h_utc == 21
+        clock_sell := true
+    if is_usdjpy and h_utc == 21
+        clock_sell := true
+
+// =====================================================================================================================
+// === MODULE 2: SMC LIQUIDITY SWEEP ===
+// =====================================================================================================================
+// We track the highest high and lowest low of the last 24 hours
+var float rolling_24h_high = na
+var float rolling_24h_low = na
+rolling_24h_high := ta.highest(high, 24)
+rolling_24h_low  := ta.lowest(low, 24)
+
+bool smc_buy = false
+bool smc_sell = false
+
+// A bear sweep (sell signal): Price wicks above 24H high, but closes *below* it (liquidity grab)
+// A bull sweep (buy signal): Price wicks below 24H low, but closes *above* it
+if high > rolling_24h_high[1] and close < rolling_24h_high[1] and open < rolling_24h_high[1]
+    if rsi > 60 and regime != "BULLISH"
+        smc_sell := true
+
+if low < rolling_24h_low[1] and close > rolling_24h_low[1] and open > rolling_24h_low[1]
+    if rsi < 40 and regime != "BEARISH"
+        smc_buy := true
+
+// =====================================================================================================================
+// === SIGNAL COMBINATION & RISK DISPLAY ===
+// =====================================================================================================================
+bool final_buy  = clock_buy or smc_buy
+bool final_sell = clock_sell or smc_sell
+
+// Draw shapes for signals
+plotshape(final_buy,  style=shape.triangleup,   location=location.belowbar, color=color.new(#00FFFF, 0), size=size.normal, title="BUY Signal")
+plotshape(final_sell, style=shape.triangledown, location=location.abovebar, color=color.new(#FF00FF, 0), size=size.normal, title="SELL Signal")
+
+// Signal logic labels
+if clock_buy
+    label.new(bar_index, low - atr, "CLOCK Edge\n(60%+ WR)", color=color.new(color.blue, 80), style=label.style_label_up, textcolor=color.white, size=size.small)
+if clock_sell
+    label.new(bar_index, high + atr, "CLOCK Edge\n(60%+ WR)", color=color.new(color.red, 80), style=label.style_label_down, textcolor=color.white, size=size.small)
+
+if smc_buy
+    label.new(bar_index, low - atr, "SMC Sweep", color=color.new(color.green, 80), style=label.style_label_up, textcolor=color.white, size=size.small)
+    line.new(bar_index-5, rolling_24h_low[1], bar_index, rolling_24h_low[1], color=color.red, style=line.style_dashed)
+if smc_sell
+    label.new(bar_index, high + atr, "SMC Sweep", color=color.new(color.maroon, 80), style=label.style_label_down, textcolor=color.white, size=size.small)
+    line.new(bar_index-5, rolling_24h_high[1], bar_index, rolling_24h_high[1], color=color.green, style=line.style_dashed)
+
+// =====================================================================================================================
+// === VISUAL PORTFOLIO (SL / TP / LOTS) ===
+// =====================================================================================================================
+// Show the current trades risk lines
+var line sl_line = na
+var line tp_line = na
+var label risk_lbl = na
+
+if final_buy or final_sell
+    float sl_dist = atr * inp_sl_atr_mult
+    float tp_dist = sl_dist * 1.5 // Default 1.5R target
+
+    float entry_price = close
+    float sl_price = final_buy ? entry_price - sl_dist : entry_price + sl_dist
+    float tp_price = final_buy ? entry_price + tp_dist : entry_price - tp_dist
+    
+    // Risk Management Math
+    float risk_cash = inp_acct_bal * (inp_risk_pct / 100.0)
+    
+    // Approximate PIP divisor logic
+    float pip_div = 10000.0
+    if str.contains(syminfo.ticker, "JPY")
+        pip_div := 100.0
+    else if str.contains(syminfo.ticker, "XAU") or str.contains(syminfo.ticker, "GC")
+        pip_div := 10.0
+        
+    float sl_pips = math.abs(entry_price - sl_price) * pip_div
+    float lot_size_approx = risk_cash / (sl_pips * 10) // Basic USD cross approximation
+    
+    // Draw lines for the most recent signal
+    line.delete(sl_line)
+    line.delete(tp_line)
+    label.delete(risk_lbl)
+    
+    sl_line := line.new(bar_index, sl_price, bar_index+10, sl_price, color=color.red, width=2, style=line.style_solid)
+    tp_line := line.new(bar_index, tp_price, bar_index+10, tp_price, color=color.green, width=2, style=line.style_solid)
+    
+    // Draw trade details panel
+    string panel_txt = "🔥 SMC Signal V27 🔥\n" + (final_buy ? "BUY" : "SELL") + " @ " + str.tostring(entry_price) + "\nSL: " + str.tostring(sl_price) + " ("+str.tostring(sl_pips, "#.#")+" pips)\nRef Lots: " + str.tostring(lot_size_approx, "#.##")
+    risk_lbl := label.new(bar_index+5, entry_price, text=panel_txt, color=color.new(#1a1a1a, 10), textcolor=color.white, style=label.style_label_left, size=size.normal)
+
+// Data Table for Top Right Corner (Status)
+var table status_tbl = table.new(position.top_right, 2, 4, border_width = 1)
+if barstate.islast
+    table.cell(status_tbl, 0, 0, "SMC System", text_color=color.white, bgcolor=color.black)
+    table.cell(status_tbl, 1, 0, "V27.0 active", text_color=color.green, bgcolor=color.black)
+    table.cell(status_tbl, 0, 1, "Regime", text_color=color.white, bgcolor=color.black)
+    table.cell(status_tbl, 1, 1, regime, text_color=regime=="BULLISH"?color.green:regime=="BEARISH"?color.red:color.yellow, bgcolor=color.black)
+    table.cell(status_tbl, 0, 2, "ATR", text_color=color.white, bgcolor=color.black)
+    table.cell(status_tbl, 1, 2, str.tostring(atr, "#.####"), text_color=color.white, bgcolor=color.black)
+    table.cell(status_tbl, 0, 3, "Dow/Hr", text_color=color.white, bgcolor=color.black)
+    table.cell(status_tbl, 1, 3, str.tostring(dow) + " / " + str.tostring(h_utc), text_color=color.white, bgcolor=color.black)
