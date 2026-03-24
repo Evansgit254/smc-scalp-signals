@@ -19,16 +19,16 @@ sleep 2
 
 # 2. Start all components in the background
 echo "📡 Starting Signal Service..."
-nohup python3 signal_service.py >> signals.log 2>&1 &
+./venv/bin/python signal_service.py >> signals.log 2>&1 &
 
 echo "🎯 Starting Signal Tracker..."
-nohup python3 signal_tracker.py >> tracker.log 2>&1 &
+./venv/bin/python signal_tracker.py >> tracker.log 2>&1 &
 
 echo "📊 Starting Admin Dashboard..."
-nohup python3 admin_server.py >> admin.log 2>&1 &
+./venv/bin/python admin_server.py >> admin.log 2>&1 &
 
 echo "🤖 Starting Telegram Bot..."
-nohup python3 app/interactive_bot.py >> bot.log 2>&1 &
+./venv/bin/python app/interactive_bot.py >> bot.log 2>&1 &
 
 echo "✅ All services started manually!"
 echo "Use 'ps aux | grep python3' to verify or check the .log files."
