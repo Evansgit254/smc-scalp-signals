@@ -184,16 +184,17 @@ class DataFetcher:
         task_info.append(('^TNX', 'd1'))
 
         for symbol in symbols:
-            # Narrative (1H)
-            tasks.append(DataFetcher.fetch_data_async(symbol, NARRATIVE_TF, period="1mo"))
+            # Add specific timeframe tasks with sufficient lookback for 200-period EMAs
+            # Narrative (1H) - H1 needs > 200 rows. (Forex is 24/5, so 20d = ~240 rows)
+            tasks.append(DataFetcher.fetch_data_async(symbol, NARRATIVE_TF, period="3mo"))
             task_info.append((symbol, 'h1'))
             # Structure (15M)
-            tasks.append(DataFetcher.fetch_data_async(symbol, STRUCTURE_TF, period="8d"))
+            tasks.append(DataFetcher.fetch_data_async(symbol, STRUCTURE_TF, period="25d"))
             task_info.append((symbol, 'm15'))
-            # Entry (5M)
-            tasks.append(DataFetcher.fetch_data_async(symbol, ENTRY_TF, period="5d"))
+            # Entry (5M) - M5 or M15 needs plenty of data
+            tasks.append(DataFetcher.fetch_data_async(symbol, ENTRY_TF, period="10d"))
             task_info.append((symbol, 'm5'))
-            # Institutional (4H)
+            # Institutional (4H) - Additional context
             tasks.append(DataFetcher.fetch_data_async(symbol, INSTITUTIONAL_TF, period="3mo"))
             task_info.append((symbol, 'h4'))
             # Daily Bias (D1)
