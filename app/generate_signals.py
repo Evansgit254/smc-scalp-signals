@@ -49,8 +49,8 @@ async def generate_signals():
     print("📊 Fetching macro context...")
     market_context = {}
     try:
-        dxy_data = await fetcher.fetch_data_async(DXY_SYMBOL, "1h", period="10d")
-        tnx_data = await fetcher.fetch_data_async(TNX_SYMBOL, "1h", period="10d")
+        dxy_data = await fetcher.fetch_data_async(DXY_SYMBOL, "1h", period="60d")
+        tnx_data = await fetcher.fetch_data_async(TNX_SYMBOL, "1h", period="60d")
         
         if not dxy_data.empty:
             market_context['DXY'] = IndicatorCalculator.add_indicators(dxy_data, "1h")

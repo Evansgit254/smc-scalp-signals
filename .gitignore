@@ -5,6 +5,7 @@ venv/
 __pycache__/
 *.pyc
 .DS_Store
+*.log
 
 # Data & Database
 outputs/

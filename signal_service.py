@@ -139,7 +139,7 @@ class SignalService:
             # Sample first 4 symbols for speed (representative)
             for sym in list(SYMBOLS)[:4]:
                 try:
-                    raw = await fetcher.fetch_data_async(sym, "1h", period="5d")
+                    raw = await fetcher.fetch_data_async(sym, "1h", period="30d")
                     if raw is not None and not raw.empty:
                         h1_map[sym] = IndicatorCalculator.add_indicators(raw, "1h")
                 except Exception:

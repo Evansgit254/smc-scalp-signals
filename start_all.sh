@@ -2,8 +2,9 @@
 # Manual Startup Script for SMC Scalp Signals
 # Use this when systemctl --user is failing to connect to the bus.
 
-BASE_DIR="/home/evans/smc-scalp-signals"
+BASE_DIR="/home/evans/Projects/smc-scalp-signals"
 cd $BASE_DIR
+export PYTHONPATH=$BASE_DIR
 
 echo "🚀 Starting SMC Scalp Signals System..."
 

@@ -3,6 +3,10 @@ Interactive Telegram Bot for Multi-Client Management
 
 Handles commands: /start, /register, /update_balance, /settings, /help
 """
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 import logging
 import sqlite3
 from telegram import Update
