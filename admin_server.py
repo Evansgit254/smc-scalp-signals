@@ -53,17 +53,44 @@ app.add_middleware(
 # DATABASE PATHS MOVED TO config/config.py
 
 def ensure_db_schema():
-    """V18.1: Automatic Schema Migration - Ensures all required columns exist."""
-    if not os.path.exists(DB_SIGNALS):
-        return
-    
+    """V18.1: Automatic Schema Migration - Ensures all required columns exist.
+    Also creates the database and signals table from scratch if it does not exist yet.
+    """
+    # Always connect (sqlite3.connect creates the file if missing)
+    os.makedirs(os.path.dirname(DB_SIGNALS), exist_ok=True)
+
     conn = None
     try:
         conn = sqlite3.connect(DB_SIGNALS)
         conn.execute("PRAGMA journal_mode=WAL")
         cursor = conn.cursor()
         
-        # Required columns for High Fidelity Dashboard
+        # Create the core signals table from scratch if this is a fresh database
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS signals (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                symbol TEXT,
+                direction TEXT,
+                entry_price REAL,
+                stop_loss REAL,
+                take_profit REAL,
+                timestamp TEXT,
+                status TEXT DEFAULT 'OPEN',
+                strategy TEXT,
+                timeframe TEXT,
+                result_price REAL,
+                result_pips REAL,
+                trade_type TEXT DEFAULT 'SCALP',
+                quality_score REAL DEFAULT 0.0,
+                regime TEXT DEFAULT 'UNKNOWN',
+                expected_hold TEXT DEFAULT 'UNKNOWN',
+                risk_details TEXT DEFAULT '{}',
+                score_details TEXT DEFAULT '{}'
+            )
+        """)
+        conn.commit()
+
+        # Required columns for High Fidelity Dashboard (migration for existing DBs)
         required_cols = [
             ("trade_type", "TEXT DEFAULT 'SCALP'"),
             ("quality_score", "REAL DEFAULT 0.0"),
