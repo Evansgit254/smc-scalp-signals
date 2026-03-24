@@ -137,7 +137,7 @@
             </div>
             <div class="stat-card">
                 <div class="stat-label">System Status</div>
-                <div class="stat-val" id="system-status" style="color: var(--acc-gold);">CONNECTING...</div>
+                <div class="stat-val" id="system-status" style="color: var(--acc-gold);">SYNCING...</div>
             </div>
         </div>
 
@@ -541,14 +541,14 @@
                 setStyle('sidebar', 'display', 'flex');
                 setStyle('main-content', 'display', 'block');
 
-                // Start Data Loads
+                // Start Data Loads (V28.1: Incremental Sync for UI Stability)
+                loadStats(3); // Try 3 times initially
                 loadClients();
-                loadStats();
                 loadConfig();
                 loadSignals();
                 loadAnalytics();
                 showView('clients'); // Explicitly show first view
-                setInterval(loadStats, 10000);
+                setInterval(() => loadStats(1), 10000);
             }
 
             async function verifyToken() {
@@ -567,19 +567,19 @@
                 return fetch(url, options);
             }
 
-            async function loadStats() {
+            async function loadStats(retries = 1) {
                 const statusEl = document.getElementById('system-status');
                 try {
                     const res = await apiFetch('/api/stats');
                     if (res.status === 401) return logout();
-                    if (!res.ok) throw new Error("API Unreachable");
+                    if (!res.ok) throw new Error("API Connection Failed");
                     const data = await res.json();
 
                     document.getElementById('stat-active').innerText = data.active_clients;
                     document.getElementById('stat-signals').innerText = data.signals_today;
                     document.getElementById('server-time').innerText = data.server_time;
 
-                    // V19.2: Market Context
+                    // V19.2: Market Context (Only update if exists)
                     if (data.market_context) {
                         const ctx = data.market_context;
                         const dxyEl = document.getElementById('mctx-dxy');
@@ -587,25 +587,32 @@
                         const riskEl = document.getElementById('mctx-risk');
                         const newsEl = document.getElementById('mctx-news');
 
-                        dxyEl.innerText = ctx.DXY;
-                        dxyEl.style.color = ctx.DXY === 'BULLISH' ? '#00ff64' : '#ff4d4d';
-
-                        tnxEl.innerText = ctx.TNX;
-                        tnxEl.style.color = ctx.TNX === 'BULLISH' ? '#00ff64' : '#ff4d4d';
-
-                        riskEl.innerText = ctx.RISK === 'OFF' ? 'RISK OFF' : (ctx.RISK === 'ON' ? 'RISK ON' : 'NEUTRAL');
-                        riskEl.style.background = ctx.RISK === 'OFF' ? 'rgba(255,77,77,0.1)' : (ctx.RISK === 'ON' ? 'rgba(0,255,100,0.1)' : 'rgba(255,215,0,0.1)');
-                        riskEl.style.color = ctx.RISK === 'OFF' ? '#ff4d4d' : (ctx.RISK === 'ON' ? '#00ff64' : 'var(--acc-gold)');
-
-                        newsEl.innerText = ctx.NEWS;
-                        newsEl.style.color = ctx.NEWS.includes('EVENTS') ? '#fff' : '#00ff64';
-                        newsEl.style.background = ctx.NEWS.includes('EVENTS') ? '#ff4d4d' : 'transparent';
-                        if (ctx.NEWS.includes('EVENTS')) newsEl.style.padding = '2px 8px';
-                        if (ctx.NEWS.includes('EVENTS')) newsEl.style.borderRadius = '4px';
+                        if (dxyEl) {
+                            dxyEl.innerText = ctx.DXY;
+                            dxyEl.style.color = ctx.DXY === 'BULLISH' ? '#00ff64' : '#ff4d4d';
+                        }
+                        if (tnxEl) {
+                            tnxEl.innerText = ctx.TNX;
+                            tnxEl.style.color = ctx.TNX === 'BULLISH' ? '#00ff64' : '#ff4d4d';
+                        }
+                        if (riskEl) {
+                            riskEl.innerText = ctx.RISK === 'OFF' ? 'RISK OFF' : (ctx.RISK === 'ON' ? 'RISK ON' : 'NEUTRAL');
+                            riskEl.style.background = ctx.RISK === 'OFF' ? 'rgba(255,77,77,0.1)' : (ctx.RISK === 'ON' ? 'rgba(0,255,100,0.1)' : 'rgba(255,215,0,0.1)');
+                            riskEl.style.color = ctx.RISK === 'OFF' ? '#ff4d4d' : (ctx.RISK === 'ON' ? '#00ff64' : 'var(--acc-gold)');
+                        }
+                        if (newsEl) {
+                            newsEl.innerText = ctx.NEWS;
+                            newsEl.style.color = ctx.NEWS.includes('EVENTS') ? '#fff' : '#00ff64';
+                            newsEl.style.background = ctx.NEWS.includes('EVENTS') ? '#ff4d4d' : 'transparent';
+                            if (ctx.NEWS.includes('EVENTS')) {
+                                newsEl.style.padding = '2px 8px';
+                                newsEl.style.borderRadius = '4px';
+                            }
+                        }
                     }
 
                     if (statusEl) {
-                        // Normalize status (Handle "ONLINE" legacy or "ACTIVE" current)
+                        // Normalize status (Handle "ONLINE", "ACTIVE", or "SYNCING")
                         let sysStatus = data.system_status ? data.system_status.toUpperCase() : "ACTIVE";
                         if (sysStatus === "ONLINE") sysStatus = "ACTIVE";
 
@@ -613,7 +620,12 @@
                         statusEl.style.color = sysStatus === "ACTIVE" ? "#00ff64" : "var(--acc-gold)";
                     }
                 } catch (e) {
-                    console.error("Stats fetch failed:", e);
+                    if (retries > 1) {
+                        console.log(`Stats sync attempt failed. Retrying... (${retries-1} left)`);
+                        setTimeout(() => loadStats(retries - 1), 500);
+                        return;
+                    }
+                    console.error("Final stats fetch attempt failed:", e);
                     if (statusEl) {
                         statusEl.innerText = "OFFLINE";
                         statusEl.style.color = "#ff4d4d";
