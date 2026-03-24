@@ -111,7 +111,7 @@ class SignalFormatter:
         if is_swing:
             # 💎 INSTITUTIONAL SWING THEME
             border = "█" * 45
-            header_text = f"🏛️ INSTITUTIONAL SWING POSITION 🏛️"
+            header_text = f"🏛️ INSTITUTIONAL CRT POSITION 🏛️"
             intensity_emoji = "💎💎💎"
             theme_color = "GOLD" # Conceptual
             main_icon = "🏆"
