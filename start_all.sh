@@ -7,11 +7,13 @@ cd $BASE_DIR
 
 echo "🚀 Starting SMC Scalp Signals System..."
 
-# 1. Kill any existing processes to start clean
-pkill -f "python3 signal_service.py"
-pkill -f "python3 signal_tracker.py"
-pkill -f "python3 admin_server.py"
-pkill -f "python3 app/interactive_bot.py"
+# 1. Kill any existing processes (forceful) to start clean
+echo "🧹 Cleaning up old processes..."
+pkill -9 -f "signal_service.py"
+pkill -9 -f "signal_tracker.py"
+pkill -9 -f "admin_server.py"
+pkill -9 -f "interactive_bot.py"
+pkill -9 -f "smc-scalp-signals"
 
 sleep 2
 
