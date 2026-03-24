@@ -4,7 +4,7 @@ from config.config import SYMBOLS
 from data.fetcher import DataFetcher
 from indicators.calculations import IndicatorCalculator
 from strategies.intraday_quant_strategy import IntradayQuantStrategy
-from strategies.swing_quant_strategy import SwingQuantStrategy
+from strategies.crt_strategy import CRTStrategy
 from strategies.session_clock_strategy import SessionClockStrategy
 from strategies.advanced_pattern_strategy import AdvancedPatternStrategy
 from strategies.gold_quant_strategy import GoldQuantStrategy
@@ -35,8 +35,7 @@ async def generate_signals():
     fetcher = DataFetcher()
     client_manager = ClientManager()
     intraday_strategy = IntradayQuantStrategy()
-    # V25.0: SWING disabled — 6.9% WR, 93% SL rate in backtest. Re-enable after Pillar 1 (entry fix).
-    # swing_strategy = SwingQuantStrategy()
+    crt_strategy = CRTStrategy()  # Replaces Swing (V28.0: CRT — Candle Range Theory)
     clock_strategy = SessionClockStrategy()
     advanced_strategy = AdvancedPatternStrategy()
     gold_strategy = GoldQuantStrategy()
@@ -109,10 +108,10 @@ async def generate_signals():
             if intraday_signal:
                 all_signals.append(('INTRADAY', intraday_signal))
             
-            # V25.0: SWING disabled — re-enable after Pillar 1 (entry fix)
-            # swing_signal = await swing_strategy.analyze(symbol, data_bundle, news_events, market_context)
-            # if swing_signal:
-            #     all_signals.append(('SWING', swing_signal))
+            # V28.0: CRT Strategy (Candle Range Theory)
+            crt_signal = await crt_strategy.analyze(symbol, data_bundle, news_events, market_context)
+            if crt_signal:
+                all_signals.append(('CRT', crt_signal))
 
             # V22.4: Session Clock Strategy (Time-Based Edge)
             clock_signal = await clock_strategy.analyze(symbol, data_bundle, news_events, market_context)
