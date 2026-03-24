@@ -183,17 +183,18 @@ class SignalService:
             
             # Format and broadcast (V11.0 Personalized Multi-Client)
             try:
-                # V17.4: Generate reasoning once for consistency across all clients and logs
+                # V17.4: Generate reasoning once for consistency
                 from core.signal_formatter import SignalFormatter
                 if 'reasoning' not in signal_data:
                     signal_data['reasoning'] = SignalFormatter.generate_reasoning(signal_data)
                 
-                # Deduplication logic remains at the base level
-                await self.telegram.broadcast_personalized_signal(signal_data)
+                # V17.2: Log to database FIRST for dashboard reliability (V28.1 fix)
+                # This ensures the signal appears in performance tables even if Telegram fails.
+                self._log_to_database(signal_data)
                 self._mark_sent(signal_data)
                 
-                # V17.2: Log to database for dashboard
-                self._log_to_database(signal_data)
+                # Broadast after logging
+                await self.telegram.broadcast_personalized_signal(signal_data)
                 
                 sent_count += 1
                 
@@ -201,7 +202,7 @@ class SignalService:
                 await asyncio.sleep(1)
                 
             except Exception as e:
-                print(f"❌ Error sending signal: {e}")
+                print(f"❌ Error during signal processing/delivery: {e}")
         
         print(f"\n📊 Cycle summary: {sent_count} sent, {skipped} duplicates skipped")
         return len(signals), sent_count
