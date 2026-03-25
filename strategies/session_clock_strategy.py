@@ -120,8 +120,8 @@ class SessionClockStrategy(BaseStrategy):
             if current_dow == 4:
                 return None
                 
-            # Prevent multiple signals: Only trigger on the first execution of the hour
-            if current_minute >= 5:
+            # Prevent multiple signals: Only trigger in the first 15 minutes of the hour
+            if current_minute >= 15:
                 return None
 
             # Find matching signal for this hour
@@ -134,11 +134,10 @@ class SessionClockStrategy(BaseStrategy):
             if matched is None:
                 return None
 
-            # V27.0 HIGH-CONVICTION FILTER: Only fire on patterns with rr_mult >= 1.5
-            # These correspond to 60-65%+ WR patterns (OIL 21:00, GBPJPY/USDJPY SELL 21:00)
-            # Lower-conviction patterns (rr_mult=1.0, 50-57% WR) are skipped from live.
+            # V27.0 RELAXED FILTER: Allow patterns with rr_mult >= 1.0 (All defined patterns)
+            # This ensures EURUSD, AUDUSD, BTC, and OIL all fire correctly.
             direction, rr_mult = matched
-            if rr_mult < 1.5:
+            if rr_mult < 1.0:
                 return None
 
             # V26.2: NEWS FILTER — Block signals within ±30 min of High-impact events
