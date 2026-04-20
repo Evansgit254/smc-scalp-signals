@@ -426,21 +426,15 @@
                         </div>
                     </div>
                 </div>
+            <!-- Strategy Control Panel (Moved inside settings-view) -->
+            <div class="chart-card" id="strategy-control-panel" style="padding: 2rem; margin-top: 1.5rem; display:none;">
+                <div class="chart-header" style="display:flex; justify-content:space-between; margin-bottom: 1.5rem;">
+                    <div class="chart-title">🎛️ Strategy Control</div>
+                    <span style="font-size:0.8rem; color:var(--text-dim); align-self:center;">Changes take effect on next signal cycle</span>
+                </div>
+                <div id="strategy-toggles-grid" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(260px,1fr)); gap:1rem;"></div>
             </div>
         </div>
-
-        <!-- Strategy Control Panel -->
-        <div class="tab-content" id="tab-settings" style="display:none;">
-            <!-- (reused inside settings tab, rendered via JS injection) -->
-        </div>
-        <div class="chart-card" id="strategy-control-panel" style="padding: 2rem; margin-top: 1.5rem; display:none;">
-            <div class="chart-header" style="display:flex; justify-content:space-between; margin-bottom: 1.5rem;">
-                <div class="chart-title">🎛️ Strategy Control</div>
-                <span style="font-size:0.8rem; color:var(--text-dim); align-self:center;">Changes take effect on next signal cycle</span>
-            </div>
-            <div id="strategy-toggles-grid" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(260px,1fr)); gap:1rem;"></div>
-        </div>
-
 
         <div class="modal" id="edit-modal">
             <div class="modal-content">
@@ -1378,11 +1372,11 @@
                 }
             }
 
-            // Load strategies when settings tab is active
-            const _origShowTab = window.showTab;
-            window.showTab = function(tab) {
-                if (typeof _origShowTab === 'function') _origShowTab(tab);
-                if (tab === 'settings') loadStrategies();
+            // Load strategies when settings view is active
+            const _origShowView = window.showView;
+            window.showView = function(view) {
+                if (typeof _origShowView === 'function') _origShowView(view);
+                if (view === 'settings') loadStrategies();
             };
         </script>
     </div>
