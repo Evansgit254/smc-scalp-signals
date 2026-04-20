@@ -173,6 +173,8 @@ class CRTStrategy(BaseStrategy):
                 tp1 = entry_price - risk * 2.0
                 tp2 = entry_price - risk * 4.0
 
+            direction_mult = 1.0 if direction == "BUY" else -1.0
+
             if risk <= 0:
                 return None
 
@@ -197,7 +199,7 @@ class CRTStrategy(BaseStrategy):
                 "sl":            round(sl, 5),
                 "tp0":           round(tp1, 5),   # TP1 mapped to tp0 (first target)
                 "tp1":           round(tp2, 5),   # TP2 mapped to tp1 (runner)
-                "tp2":           round(entry_price + (risk * 6.0), 5),  # tp2 = 6R stretch
+                "tp2":           round(entry_price + (direction_mult * risk * 6.0), 5),  # tp2 = 6R stretch (direction-aware)
                 "confidence":    round(quality_score / 10, 3) if isinstance(quality_score, (int, float)) else 0.5,
                 "quality_score": quality_score,
                 "regime":        regime,
