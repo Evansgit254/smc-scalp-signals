@@ -1043,8 +1043,17 @@
             }
 
             function openSignalModal(index) {
+                console.log("Opening signal modal for index:", index);
                 const sig = allSignals[index];
+                if (!sig) {
+                    console.error("Signal not found at index:", index);
+                    return;
+                }
                 const content = document.getElementById('signal-details-body');
+                if (!content) {
+                    console.error("signal-details-body element not found!");
+                    return;
+                }
 
                 const directionColor = sig.direction === 'BUY' ? '#00ff64' : '#ff3232';
                 let reasoningText = sig.reasoning || 'No reasoning available.';
@@ -1052,8 +1061,8 @@
                 // Parse JSON fields safely
                 let risk = {};
                 let score = {};
-                try { risk = JSON.parse(sig.risk_details || '{}'); } catch (e) { }
-                try { score = JSON.parse(sig.score_details || '{}'); } catch (e) { }
+                try { risk = typeof sig.risk_details === 'string' ? JSON.parse(sig.risk_details || '{}') : (sig.risk_details || {}); } catch (e) { }
+                try { score = typeof sig.score_details === 'string' ? JSON.parse(sig.score_details || '{}') : (sig.score_details || {}); } catch (e) { }
 
                 content.innerHTML = `
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2rem;">
@@ -1061,12 +1070,12 @@
                         <div class="detail-row"><span class="detail-label">STRATEGY</span> <span class="detail-value" style="color:var(--acc-cyan)">${sig.trade_type || 'SCALP'} (${sig.timeframe || 'M5'})</span></div>
                         <div class="detail-row"><span class="detail-label">SYMBOL</span> <span class="detail-value">${sig.symbol}</span></div>
                         <div class="detail-row"><span class="detail-label">DIRECTION</span> <span class="detail-value" style="color: ${directionColor}">${sig.direction}</span></div>
-                        <div class="detail-row"><span class="detail-label">ENTRY</span> <span class="detail-value">${sig.entry_price}</span></div>
-                        <div class="detail-row"><span class="detail-label">STOP LOSS</span> <span class="detail-value" style="color: #ff4d4d">${sig.sl}</span></div>
+                        <div class="detail-row"><span class="detail-label">ENTRY</span> <span class="detail-value">${sig.entry_price || '-'}</span></div>
+                        <div class="detail-row"><span class="detail-label">STOP LOSS</span> <span class="detail-value" style="color: #ff4d4d">${sig.sl || '-'}</span></div>
                         <div class="detail-row"><span class="detail-label">EXPECTED HOLD</span> <span class="detail-value">${sig.expected_hold || '-'}</span></div>
                     </div>
                     <div>
-                        <div class="detail-row"><span class="detail-label">CONFIDENCE</span> <span class="detail-value">${(sig.confidence * 100).toFixed(1)}%</span></div>
+                        <div class="detail-row"><span class="detail-label">CONFIDENCE</span> <span class="detail-value">${((sig.confidence || 0) * 100).toFixed(1)}%</span></div>
                         <div class="detail-row"><span class="detail-label">QUALITY SCORE</span> <span class="detail-value" style="color: var(--acc-gold)">${sig.quality_score || '-'}</span></div>
                         <div class="detail-row"><span class="detail-label">REGIME</span> <span class="detail-value">${sig.regime || '-'}</span></div>
                         <div class="detail-row"><span class="detail-label">RISK RECOM.</span> <span class="detail-value">${risk.risk_percent || '-'}% ($${risk.risk_cash || '-'})</span></div>
@@ -1086,11 +1095,11 @@
                         </div>
                         <div>
                             <div class="detail-label">Momentum</div>
-                            <div>${score.momentum ? score.momentum.toFixed(2) : '-'}</div>
+                            <div>${(score.momentum != null) ? score.momentum.toFixed(2) : '-'}</div>
                         </div>
                         <div>
                             <div class="detail-label">Volatility</div>
-                            <div>${score.volatility ? score.volatility.toFixed(2) : '-'}</div>
+                            <div>${(score.volatility != null) ? score.volatility.toFixed(2) : '-'}</div>
                         </div>
                      </div>
                 </div>
