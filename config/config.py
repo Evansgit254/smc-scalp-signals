@@ -56,6 +56,13 @@ MT5_LOGIN = int(MT5_LOGIN) if MT5_LOGIN and MT5_LOGIN.strip() else 0
 MT5_PASSWORD = os.getenv("MT5_PASSWORD", "")
 MT5_SERVER = os.getenv("MT5_SERVER", "")
 
+# MT5 AUTO-TRADING via MetaAPI (Linux-compatible REST bridge)
+# Sign up free at https://metaapi.cloud to get these values
+METAAPI_TOKEN = os.getenv("METAAPI_TOKEN", "")
+METAAPI_ACCOUNT_ID = os.getenv("METAAPI_ACCOUNT_ID", "")
+MT5_AUTO_TRADE = os.getenv("MT5_AUTO_TRADE", "false").lower() == "true"
+MT5_PAPER_MODE = os.getenv("MT5_PAPER_MODE", "true").lower() == "true"  # Default: paper mode for safety
+
 # SESSION TIMES (UTC)
 # London: 08:00 - 16:00
 # NY: 13:00 - 21:00

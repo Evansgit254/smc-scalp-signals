@@ -429,7 +429,19 @@
             </div>
         </div>
 
-        <!-- Edit Modal -->
+        <!-- Strategy Control Panel -->
+        <div class="tab-content" id="tab-settings" style="display:none;">
+            <!-- (reused inside settings tab, rendered via JS injection) -->
+        </div>
+        <div class="chart-card" id="strategy-control-panel" style="padding: 2rem; margin-top: 1.5rem; display:none;">
+            <div class="chart-header" style="display:flex; justify-content:space-between; margin-bottom: 1.5rem;">
+                <div class="chart-title">🎛️ Strategy Control</div>
+                <span style="font-size:0.8rem; color:var(--text-dim); align-self:center;">Changes take effect on next signal cycle</span>
+            </div>
+            <div id="strategy-toggles-grid" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(260px,1fr)); gap:1rem;"></div>
+        </div>
+
+
         <div class="modal" id="edit-modal">
             <div class="modal-content">
                 <h2 id="modal-title">Edit Client</h2>
@@ -1301,6 +1313,77 @@
                 if (success) showToast("Configuration Saved!");
                 else showToast("Some settings failed to save", "error");
             }
+
+            // ── Strategy Toggle Functions ────────────────────────────────────
+            async function loadStrategies() {
+                const panel = document.getElementById('strategy-control-panel');
+                const grid = document.getElementById('strategy-toggles-grid');
+                if (!panel || !grid) return;
+
+                try {
+                    const res = await apiFetch('/api/strategies');
+                    if (!res.ok) return;
+                    const strategies = await res.json();
+
+                    panel.style.display = 'block';
+                    grid.innerHTML = '';
+
+                    strategies.forEach(s => {
+                        const locked = s.locked;
+                        const card = document.createElement('div');
+                        card.style.cssText = `
+                            background: rgba(255,255,255,0.03);
+                            border: 1px solid ${locked ? 'rgba(0,230,255,0.3)' : s.enabled ? 'rgba(0,255,100,0.2)' : 'rgba(255,60,60,0.2)'};
+                            border-radius: 12px; padding: 1.2rem;
+                            display:flex; justify-content:space-between; align-items:center;
+                            transition: border 0.3s;
+                        `;
+                        card.innerHTML = `
+                            <div>
+                                <div style="font-weight:600; margin-bottom:4px;">
+                                    ${locked ? '🔒 ' : ''}${s.name}
+                                </div>
+                                <div style="font-size:0.75rem; color:${locked ? 'var(--acc-cyan)' : s.enabled ? 'var(--acc-green)' : '#ff4444'}">
+                                    ${locked ? 'Always Active' : s.enabled ? 'Enabled' : 'Disabled'}
+                                </div>
+                            </div>
+                            <label class="toggle-switch" style="pointer-events:${locked ? 'none' : 'auto'}; opacity:${locked ? '0.5' : '1'}">
+                                <input type="checkbox" ${s.enabled ? 'checked' : ''} ${locked ? 'disabled' : ''}
+                                    onchange="toggleStrategy('${s.id}', this)">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        `;
+                        grid.appendChild(card);
+                    });
+                } catch(e) {
+                    console.error("Strategy load failed:", e);
+                }
+            }
+
+            async function toggleStrategy(strategyId, checkbox) {
+                try {
+                    const res = await apiFetch(`/api/strategies/${strategyId}/toggle`, { method: 'POST' });
+                    if (!res.ok) {
+                        const err = await res.json();
+                        showToast(err.detail || 'Toggle failed', 'error');
+                        checkbox.checked = !checkbox.checked; // revert
+                        return;
+                    }
+                    const data = await res.json();
+                    showToast(`${strategyId.replace('_',' ')}: ${data.enabled ? '✅ Enabled' : '⛔ Disabled'}`);
+                    loadStrategies(); // refresh cards
+                } catch(e) {
+                    showToast('Error toggling strategy', 'error');
+                    checkbox.checked = !checkbox.checked;
+                }
+            }
+
+            // Load strategies when settings tab is active
+            const _origShowTab = window.showTab;
+            window.showTab = function(tab) {
+                if (typeof _origShowTab === 'function') _origShowTab(tab);
+                if (tab === 'settings') loadStrategies();
+            };
         </script>
     </div>
 </body>

@@ -16,6 +16,25 @@ from strategies.news_edge_strategy import NewsEdgeStrategy
 from core.signal_formatter import SignalFormatter
 from core.market_status import MarketStatus
 
+
+def _is_strategy_enabled(key: str) -> bool:
+    """Check system_config DB for strategy toggle. Defaults to True if not found."""
+    import sqlite3
+    from config.config import DB_CLIENTS
+    try:
+        conn = sqlite3.connect(DB_CLIENTS)
+        conn.row_factory = sqlite3.Row
+        row = conn.execute(
+            "SELECT value FROM system_config WHERE key = ?", (key,)
+        ).fetchone()
+        conn.close()
+        if row:
+            return row["value"].lower() == "true"
+    except Exception:
+        pass
+    return True  # Fail-open: enable if DB check fails
+
+
 async def generate_signals():
     """
     Main signal generation engine.
@@ -103,48 +122,58 @@ async def generate_signals():
                     all_signals.append(('GOLD_QUANT', gold_signal))
                 continue  # Skip all forex strategies for GC=F
             
-            # Generate intraday signal with context
-            intraday_signal = await intraday_strategy.analyze(symbol, data_bundle, news_events, market_context)
-            if intraday_signal:
-                all_signals.append(('INTRADAY', intraday_signal))
+            # Generate intraday signal with context (toggle: strategy_scalp)
+            if _is_strategy_enabled("strategy_scalp"):
+                intraday_signal = await intraday_strategy.analyze(symbol, data_bundle, news_events, market_context)
+                if intraday_signal:
+                    all_signals.append(('INTRADAY', intraday_signal))
             
-            # V28.0: CRT Strategy (Candle Range Theory)
+            # V28.0: CRT Strategy — ALWAYS ON (locked)
             crt_signal = await crt_strategy.analyze(symbol, data_bundle, news_events, market_context)
             if crt_signal:
                 all_signals.append(('CRT', crt_signal))
 
-            # V22.4: Session Clock Strategy (Time-Based Edge)
-            clock_signal = await clock_strategy.analyze(symbol, data_bundle, news_events, market_context)
-            if clock_signal:
-                all_signals.append(('SESSION_CLOCK', clock_signal))
+            # V22.4: Session Clock (toggle: strategy_session_clock)
+            if _is_strategy_enabled("strategy_session_clock"):
+                clock_signal = await clock_strategy.analyze(symbol, data_bundle, news_events, market_context)
+                if clock_signal:
+                    all_signals.append(('SESSION_CLOCK', clock_signal))
 
-            # V23: Advanced Patterns (DOW + PA)
+            # V23: Advanced Patterns — ALWAYS ON (locked)
             advanced_signal = await advanced_strategy.analyze(symbol, data_bundle, news_events, market_context)
             if advanced_signal:
                 all_signals.append(('ADVANCED', advanced_signal))
                 
-            # Triple-Edge Suite
-            stat_arb_signal = await stat_arb_strategy.analyze(symbol, data_bundle, news_events, market_context)
-            if stat_arb_signal:
-                all_signals.append(('STAT_ARB', stat_arb_signal))
+            # Statistical Arbitrage (toggle: strategy_stat_arb)
+            if _is_strategy_enabled("strategy_stat_arb"):
+                stat_arb_signal = await stat_arb_strategy.analyze(symbol, data_bundle, news_events, market_context)
+                if stat_arb_signal:
+                    all_signals.append(('STAT_ARB', stat_arb_signal))
                 
-            smc_signal = await smc_sweep_strategy.analyze(symbol, data_bundle, news_events, market_context)
-            if smc_signal:
-                all_signals.append(('SMC_SWEEP', smc_signal))
+            # SMC Liquidity Sweep (toggle: strategy_smc_sweep)
+            if _is_strategy_enabled("strategy_smc_sweep"):
+                smc_signal = await smc_sweep_strategy.analyze(symbol, data_bundle, news_events, market_context)
+                if smc_signal:
+                    all_signals.append(('SMC_SWEEP', smc_signal))
                 
-            poc_signal = await poc_edge_strategy.analyze(symbol, data_bundle, news_events, market_context)
-            if poc_signal:
-                all_signals.append(('POC_EDGE', poc_signal))
+            # Anchored POC Edge (toggle: strategy_poc_edge)
+            if _is_strategy_enabled("strategy_poc_edge"):
+                poc_signal = await poc_edge_strategy.analyze(symbol, data_bundle, news_events, market_context)
+                if poc_signal:
+                    all_signals.append(('POC_EDGE', poc_signal))
 
-            # V26.3: Pre-News Quant (Rubber Band Z-Score + DXY Divergence)
-            pre_news_signal = await pre_news_strategy.analyze(symbol, data_bundle, news_events, market_context)
-            if pre_news_signal:
-                all_signals.append(('PRE_NEWS', pre_news_signal))
+            # Pre-News Quant (toggle: strategy_pre_news)
+            if _is_strategy_enabled("strategy_pre_news"):
+                pre_news_signal = await pre_news_strategy.analyze(symbol, data_bundle, news_events, market_context)
+                if pre_news_signal:
+                    all_signals.append(('PRE_NEWS', pre_news_signal))
 
-            # V27: Post-Event News Edge (Forensic Database, ≥65% hit rate)
-            news_edge_signal = await news_edge_strategy.analyze(symbol, data_bundle, news_events, market_context)
-            if news_edge_signal:
-                all_signals.append(('NEWS_EDGE', news_edge_signal))
+            # News Edge (toggle: strategy_news_edge)
+            if _is_strategy_enabled("strategy_news_edge"):
+                news_edge_signal = await news_edge_strategy.analyze(symbol, data_bundle, news_events, market_context)
+                if news_edge_signal:
+                    all_signals.append(('NEWS_EDGE', news_edge_signal))
+
                 
         except Exception as e:
             print(f"⚠️  Error processing {symbol}: {str(e)}")

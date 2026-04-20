@@ -145,7 +145,15 @@ def ensure_config_table():
             ("risk_per_trade", "2.0", "float"),
             ("max_concurrent_trades", "4", "int"),
             ("min_quality_score", "5.0", "float"),
-            ("news_filter_minutes", "30", "int")
+            ("news_filter_minutes", "30", "int"),
+            # Strategy toggles (CRT & ADVANCED_PATTERN are always on — not listed here)
+            ("strategy_session_clock", "true", "bool"),
+            ("strategy_smc_sweep", "true", "bool"),
+            ("strategy_scalp", "true", "bool"),
+            ("strategy_poc_edge", "true", "bool"),
+            ("strategy_stat_arb", "true", "bool"),
+            ("strategy_pre_news", "true", "bool"),
+            ("strategy_news_edge", "true", "bool"),
         ]
         
         cursor = conn.cursor()
@@ -339,13 +347,123 @@ async def update_config(update: ConfigUpdate, current_user: User = Depends(get_c
         conn = get_db_connection(DB_CLIENTS)
         conn.execute("UPDATE system_config SET value = ? WHERE key = ?", (str(update.value), update.key))
         conn.commit()
-        return {"status": "success", "key": update.key, "value": update.value}
+        return {{"status": "success", "key": update.key, "value": update.value}}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     finally:
         if conn: conn.close()
 
+# ── Strategy Toggle API ────────────────────────────────────────────────────────
+# CRT and ADVANCED_PATTERN are always active. All others can be toggled.
+ALWAYS_ON_STRATEGIES = {"crt", "advanced_pattern"}
+
+STRATEGY_META = {
+    "session_clock":  {"name": "Session Clock",       "key": "strategy_session_clock"},
+    "smc_sweep":      {"name": "SMC Liquidity Sweep",  "key": "strategy_smc_sweep"},
+    "scalp":          {"name": "Intraday Scalp",       "key": "strategy_scalp"},
+    "poc_edge":       {"name": "Anchored POC Edge",    "key": "strategy_poc_edge"},
+    "stat_arb":       {"name": "Statistical Arb",      "key": "strategy_stat_arb"},
+    "pre_news":       {"name": "Pre-News Quant",       "key": "strategy_pre_news"},
+    "news_edge":      {"name": "News Edge",            "key": "strategy_news_edge"},
+    # Always-on (no toggle key needed)
+    "crt":            {"name": "CRT Strategy",         "key": None, "locked": True},
+    "advanced_pattern":{"name": "Advanced Pattern",   "key": None, "locked": True},
+}
+
+@app.get("/api/strategies")
+async def get_strategies(current_user: User = Depends(get_current_user)):
+    """Get list of all strategies with their enabled/locked status."""
+    conn = None
+    try:
+        conn = get_db_connection(DB_CLIENTS)
+        result = []
+        for strategy_id, meta in STRATEGY_META.items():
+            locked = meta.get("locked", False)
+            if locked:
+                result.append({
+                    "id": strategy_id,
+                    "name": meta["name"],
+                    "enabled": True,
+                    "locked": True
+                })
+            else:
+                row = conn.execute(
+                    "SELECT value FROM system_config WHERE key = ?", (meta["key"],)
+                ).fetchone()
+                enabled = (row["value"].lower() == "true") if row else True
+                result.append({
+                    "id": strategy_id,
+                    "name": meta["name"],
+                    "enabled": enabled,
+                    "locked": False
+                })
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        if conn: conn.close()
+
+@app.post("/api/strategies/{strategy_id}/toggle")
+async def toggle_strategy(strategy_id: str, current_user: User = Depends(get_current_user)):
+    """Toggle a strategy on or off. CRT and ADVANCED_PATTERN cannot be toggled."""
+    if strategy_id in ALWAYS_ON_STRATEGIES:
+        raise HTTPException(
+            status_code=403,
+            detail=f"Strategy '{strategy_id}' is locked and cannot be disabled."
+        )
+    meta = STRATEGY_META.get(strategy_id)
+    if not meta:
+        raise HTTPException(status_code=404, detail=f"Strategy '{strategy_id}' not found.")
+
+    conn = None
+    try:
+        conn = get_db_connection(DB_CLIENTS)
+        row = conn.execute(
+            "SELECT value FROM system_config WHERE key = ?", (meta["key"],)
+        ).fetchone()
+        current = (row["value"].lower() == "true") if row else True
+        new_val = "false" if current else "true"
+        conn.execute(
+            "UPDATE system_config SET value = ? WHERE key = ?", (new_val, meta["key"])
+        )
+        conn.commit()
+        return {
+            "status": "success",
+            "strategy": strategy_id,
+            "enabled": new_val == "true"
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        if conn: conn.close()
+
+
+# ── MT5 Position Management API ───────────────────────────────────────────────
+@app.get("/api/mt5/positions")
+async def get_mt5_positions(current_user: User = Depends(get_current_user)):
+    """Get all open MT5 positions (live or paper)."""
+    try:
+        from core.trade_executor import get_executor
+        executor = get_executor()
+        positions = await executor.get_open_positions()
+        return {"positions": positions, "mode": "PAPER" if executor.paper_mode else "LIVE"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/mt5/close/{position_id}")
+async def close_mt5_position(position_id: str, current_user: User = Depends(get_current_user)):
+    """Close an open MT5 position by ID."""
+    try:
+        from core.trade_executor import get_executor
+        executor = get_executor()
+        result = await executor.close_trade(position_id)
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 class ClientUpdate(BaseModel):
+
     account_balance: Optional[float] = None
     risk_percent: Optional[float] = None
     subscription_days: Optional[int] = None

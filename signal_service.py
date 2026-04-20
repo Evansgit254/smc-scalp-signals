@@ -195,8 +195,21 @@ class SignalService:
                 
                 # Broadast after logging
                 await self.telegram.broadcast_personalized_signal(signal_data)
-                
+
+                # V29.0: MT5 Auto-Trade Execution (paper mode by default)
+                from config.config import MT5_AUTO_TRADE
+                if MT5_AUTO_TRADE:
+                    try:
+                        from core.trade_executor import get_executor
+                        executor = get_executor()
+                        trade_result = await executor.execute_trade(signal_data)
+                        mode_tag = "📝 PAPER" if trade_result.get("status") == "paper" else "✅ LIVE"
+                        print(f"  {mode_tag} Trade: {signal_data.get('direction')} {signal_data.get('symbol')} → {trade_result.get('status')}")
+                    except Exception as te:
+                        print(f"  ⚠️  Trade execution error: {te}")
+
                 sent_count += 1
+
                 
                 # Small delay to avoid API flood
                 await asyncio.sleep(1)
