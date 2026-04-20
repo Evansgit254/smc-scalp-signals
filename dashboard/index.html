@@ -333,26 +333,53 @@
         </div> <!-- Close performance-view -->
 
         <div id="monitor-view" style="display: none;">
-            <div class="chart-card"
-                style="padding: 1.5rem; height: calc(100vh - 200px); display: flex; flex-direction: column;">
-                <div class="chart-header"
-                    style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                    <div class="chart-title">System Logs</div>
-                    <div style="display: flex; gap: 0.5rem;">
-                        <select id="log-service-select" class="dark-input"
-                            style="padding: 8px; border-radius: 4px; background: rgba(0,0,0,0.3); color: #fff; border: 1px solid var(--glass-border);">
-                            <option value="smc-signal-service">Signal Service</option>
-                            <option value="smc-admin-dashboard">Admin Dashboard</option>
-                            <option value="smc-interactive-bot">Telegram Bot</option>
-                        </select>
-                        <button onclick="loadLogs()" style="width: auto; padding: 8px 15px;">REFRESH</button>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; height: calc(100vh - 200px);">
+                
+                <!-- Left: System Logs -->
+                <div class="chart-card" style="padding: 1.5rem; display: flex; flex-direction: column;">
+                    <div class="chart-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                        <div class="chart-title">System Logs</div>
+                        <div style="display: flex; gap: 0.5rem;">
+                            <select id="log-service-select" class="dark-input" style="padding: 8px; border-radius: 4px; background: rgba(0,0,0,0.3); color: #fff; border: 1px solid var(--glass-border);">
+                                <option value="smc-signal-service">Signal Service</option>
+                                <option value="smc-admin-dashboard">Admin Dashboard</option>
+                                <option value="smc-interactive-bot">Telegram Bot</option>
+                            </select>
+                            <button onclick="loadLogs()" style="width: auto; padding: 8px 15px;">REFRESH</button>
+                        </div>
+                    </div>
+                    <div id="log-terminal" style="flex-grow: 1; background: #0c0c0c; border: 1px solid #333; border-radius: 6px; padding: 1rem; font-family: 'Courier New', Courier, monospace; font-size: 0.85rem; color: #00ff41; overflow-y: auto; white-space: pre-wrap; line-height: 1.4;">
+                        [SYSTEM] Waiting for initialization...
                     </div>
                 </div>
-                <div id="log-terminal"
-                    style="flex-grow: 1; background: #0c0c0c; border: 1px solid #333; border-radius: 6px; padding: 1rem; font-family: 'Courier New', Courier, monospace; font-size: 0.85rem; color: #00ff41; overflow-y: auto; white-space: pre-wrap; line-height: 1.4;">
-                    <!-- Logs appear here -->
-                    [SYSTEM] Waiting for initialization...
+
+                <!-- Right: MT5 Open Positions -->
+                <div class="chart-card" style="padding: 1.5rem; display: flex; flex-direction: column;">
+                    <div class="chart-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                        <div class="chart-title" style="display:flex; align-items:center; gap:10px;">
+                            <i class="fas fa-layer-group"></i> MT5 Open Positions
+                            <span id="mt5-mode-badge" style="font-size:0.7rem; padding:3px 8px; border-radius:12px; background:rgba(255,255,255,0.1);">SYNCING</span>
+                        </div>
+                        <button onclick="loadMt5Positions()" style="width: auto; padding: 8px 15px;"><i class="fas fa-sync-alt"></i></button>
+                    </div>
+                    <div style="flex-grow: 1; overflow-y: auto;">
+                        <table class="glass-table" style="font-size:0.85rem;">
+                            <thead>
+                                <tr>
+                                    <th>Symbol</th>
+                                    <th>Dir</th>
+                                    <th>Lot</th>
+                                    <th>Profit</th>
+                                    <th>Open</th>
+                                </tr>
+                            </thead>
+                            <tbody id="mt5-positions-body">
+                                <tr><td colspan="5" style="text-align:center; padding: 2rem;">Loading positions...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
+
             </div>
         </div>
 
@@ -1372,11 +1399,56 @@
                 }
             }
 
-            // Load strategies when settings view is active
+            async function loadMt5Positions() {
+                const tbody = document.getElementById('mt5-positions-body');
+                const badge = document.getElementById('mt5-mode-badge');
+                if (!tbody) return;
+
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Fetching positions...</td></tr>';
+                try {
+                    const res = await apiFetch('/api/mt5/positions');
+                    if (!res.ok) throw new Error('API failed');
+                    const data = await res.json();
+                    
+                    if (data.mode) {
+                        badge.innerText = data.mode;
+                        badge.style.background = data.mode === 'LIVE' ? 'rgba(0, 255, 100, 0.2)' : 'rgba(0, 212, 255, 0.2)';
+                        badge.style.color = data.mode === 'LIVE' ? 'var(--acc-green)' : 'var(--acc-cyan)';
+                    }
+
+                    if (!data.positions || data.positions.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color: var(--text-dim);">No open positions</td></tr>';
+                        return;
+                    }
+
+                    tbody.innerHTML = data.positions.map(p => {
+                        const dirColor = p.direction === 'BUY' ? 'var(--acc-green)' : 'var(--acc-red)';
+                        const profitColor = p.profit >= 0 ? 'var(--acc-green)' : 'var(--acc-red)';
+                        return `
+                        <tr>
+                            <td style="font-weight:600;">${p.symbol}</td>
+                            <td style="color: ${dirColor}; font-weight:bold;">${p.direction}</td>
+                            <td>${p.lot_size || p.volume || 0}</td>
+                            <td style="color: ${profitColor};">$${(p.profit || 0).toFixed(2)}</td>
+                            <td>$${(p.open_price || p.entry_price || 0).toFixed(5)}</td>
+                        </tr>
+                        `;
+                    }).join('');
+
+                } catch (e) {
+                    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color: #ff4444;">Failed to load positions</td></tr>';
+                }
+            }
+
+            // Load strategies/positions when their views are active
             const _origShowView = window.showView;
             window.showView = function(view) {
                 if (typeof _origShowView === 'function') _origShowView(view);
                 if (view === 'settings') loadStrategies();
+                if (view === 'monitor') {
+                    loadLogs();
+                    loadMt5Positions();
+                }
             };
         </script>
     </div>
