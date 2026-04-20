@@ -77,7 +77,9 @@ class TradeExecutor:
             return False
 
     def _map_symbol(self, yf_symbol: str) -> str:
-        return SYMBOL_MAP.get(yf_symbol, yf_symbol.replace("=X", "").replace("-", ""))
+        from config.config import MT5_SYMBOL_SUFFIX
+        base_sym = SYMBOL_MAP.get(yf_symbol, yf_symbol.replace("=X", "").replace("-", ""))
+        return f"{base_sym}{MT5_SYMBOL_SUFFIX}"
 
     def _log_paper_trade(self, action: str, signal_data: dict, result: dict):
         """Write paper trade to DB for tracking."""

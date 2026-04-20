@@ -62,6 +62,7 @@ METAAPI_TOKEN = os.getenv("METAAPI_TOKEN", "")
 METAAPI_ACCOUNT_ID = os.getenv("METAAPI_ACCOUNT_ID", "")
 MT5_AUTO_TRADE = os.getenv("MT5_AUTO_TRADE", "false").lower() == "true"
 MT5_PAPER_MODE = os.getenv("MT5_PAPER_MODE", "true").lower() == "true"  # Default: paper mode for safety
+MT5_SYMBOL_SUFFIX = os.getenv("MT5_SYMBOL_SUFFIX", "")  # e.g., "c" for HFM Cent accounts (EURUSDc)
 
 # SESSION TIMES (UTC)
 # London: 08:00 - 16:00
