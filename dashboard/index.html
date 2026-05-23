@@ -723,9 +723,9 @@
                     const gateLabel = sig.gate_status || 'N/A';
                     
                     row.innerHTML = `
-                        <td class="mono" style="font-size: 11px;">${sig.timestamp ? sig.timestamp.split(' ')[1] : '00:00:00'}</td>
+                        <td class="mono" style="font-size: 11px;">${sig.timestamp ? (sig.timestamp.includes('T') ? sig.timestamp.split('T')[1].split('.')[0] : sig.timestamp.split(' ')[1]) : '00:00:00'}</td>
                         <td class="mono font-bold">${sig.symbol}</td>
-                        <td class="mono text-xs text-tertiary">${sig.strategy_type}</td>
+                        <td class="mono text-xs text-tertiary">${sig.trade_type}</td>
                         <td class="mono" style="color: ${color}; font-weight: 700;">${sig.direction}</td>
                         <td class="mono">${(sig.entry_price || 0).toFixed(5)}</td>
                         <td class="mono text-tertiary">${(sig.sl || 0).toFixed(5)}</td>
