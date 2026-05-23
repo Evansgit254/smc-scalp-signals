@@ -102,11 +102,13 @@ done
 systemctl --user daemon-reload
 systemctl --user enable smc-signal-service.service
 systemctl --user enable smc-interactive-bot.service
+systemctl --user enable smc-admin-dashboard.service
 
 # 8. Start & Verify
 echo "🚀 Starting services..."
 systemctl --user restart smc-signal-service.service
 systemctl --user restart smc-interactive-bot.service
+systemctl --user restart smc-admin-dashboard.service
 
 echo "✅ Deployment complete!"
 echo "Check logs: journalctl --user -u smc-signal-service -f"
