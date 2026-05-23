@@ -70,11 +70,17 @@ mkdir -p ~/.config/systemd/user
 for srv in smc-*.service; do
     sed -i "s|WorkingDirectory=.*|WorkingDirectory=$BASE_DIR|g" "$srv"
     sed -i "s|Environment=\"PYTHONPATH=.*|Environment=\"PYTHONPATH=$BASE_DIR\"|g" "$srv"
-    sed -i "s|ExecStart=.*|ExecStart=$BASE_DIR/venv/bin/python $BASE_DIR/$(echo $srv | sed 's/smc-//;s/.service/.py/')|g" "$srv"
+    # Remove old ExecStart and set new one explicitly
+    sed -i "s|ExecStart=.*||g" "$srv"
     
-    # Special cases for different entry points
-    if [[ "$srv" == *"bot"* ]]; then
-        sed -i "s|ExecStart=.*|ExecStart=$BASE_DIR/venv/bin/python $BASE_DIR/app/interactive_bot.py|g" "$srv"
+    local_script=""
+    if [[ "$srv" == *"signal-service"* ]]; then local_script="signal_service.py"; fi
+    if [[ "$srv" == *"bot"* ]]; then local_script="app/interactive_bot.py"; fi
+    if [[ "$srv" == *"tracker"* ]]; then local_script="signal_tracker.py"; fi
+    if [[ "$srv" == *"dashboard"* ]]; then local_script="admin_server.py"; fi
+    
+    if [ -n "$local_script" ]; then
+        echo "ExecStart=$BASE_DIR/venv/bin/python $BASE_DIR/$local_script" >> "$srv"
     fi
     
     cp "$srv" ~/.config/systemd/user/
