@@ -1588,6 +1588,37 @@
             authToken = localStorage.getItem('authToken');
             showDashboard();
         }
+
+        async function loadSystemConfig() {
+            try {
+                const res = await apiFetch('/api/system/config');
+                const data = await res.json();
+                
+                // Update Strategies
+                const strategyContainer = document.getElementById('strategy-toggles');
+                if (strategyContainer && data.strategies) {
+                    strategyContainer.innerHTML = data.strategies.map(s => `
+                        <div class="micro-border" style="padding: 8px 12px; background: var(--bg-panel); display: flex; justify-content: space-between; align-items: center; border-left: 2px solid var(--acc-cyan); margin-bottom: 4px;">
+                            <span class="label-caps" style="color: var(--acc-cyan); font-size: 10px;">${s}</span>
+                            <span class="mono" style="font-size: 9px; color: var(--acc-emerald);">ACTIVE</span>
+                        </div>
+                    `).join('');
+                }
+
+                // Update Watchlist
+                const watchlistContainer = document.getElementById('watchlist-container');
+                if (watchlistContainer && data.symbols) {
+                    watchlistContainer.innerHTML = data.symbols.map(s => `
+                        <div style="background: var(--bg-surface); padding: 8px 12px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; border-bottom: 1px solid rgba(255,255,255,0.02);">
+                            <span class="mono text-xs">${s}</span>
+                            <span class="mono text-xs text-tertiary">TRACKING</span>
+                        </div>
+                    `).join('');
+                }
+            } catch (e) {
+                console.error("Failed to load system config", e);
+            }
+        }
     </script>
     <!-- 🏛️ FLASH FORENSICS MODAL -->
     <div id="forensicsOverlay" class="fixed inset-0 bg-black/90 backdrop-blur-md z-[200] hidden flex items-center justify-center p-4">
