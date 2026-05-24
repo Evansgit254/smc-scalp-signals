@@ -572,17 +572,24 @@
         // AUTH & VIEW CONTROLS
         (async () => {
             if (authToken) {
-                const isValid = await verifyToken();
-                if (isValid) showDashboard();
-                else logout();
+                const result = await verifyToken();
+                if (result === 'valid') showDashboard();
+                else if (result === 'invalid') logout();
+                else {
+                    // Network/CORS error — show dashboard anyway, syncAll will retry
+                    console.warn("Token verify failed (network). Proceeding with cached token.");
+                    showDashboard();
+                }
             }
         })();
 
         async function verifyToken() {
             try {
                 const res = await apiFetch('/api/me');
-                return res.ok;
-            } catch { return false; }
+                if (res.ok) return 'valid';
+                if (res.status === 401) return 'invalid';
+                return 'error'; // 500, etc
+            } catch { return 'error'; }
         }
 
         async function login() {
@@ -685,7 +692,11 @@
         async function loadStats() {
             try {
                 const res = await apiFetch('/api/stats');
-                if (res.status === 401) return logout();
+                if (res.status === 401) {
+                    console.warn("Auth token rejected by server (401). Logging out.");
+                    return logout();
+                }
+                if (!res.ok) { console.error("Stats API error:", res.status); return; }
                 const data = await res.json();
                 
                 document.getElementById('stat-active').innerText = data.active_clients;
