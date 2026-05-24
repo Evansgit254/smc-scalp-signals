@@ -204,6 +204,10 @@ body {
 .text-crimson { color: var(--acc-crimson); }
 .text-amber { color: var(--acc-amber); }
 
+.text-left { text-align: left !important; }
+.text-center { text-align: center !important; }
+.text-right { text-align: right !important; }
+
 .bg-cyan { background-color: var(--acc-cyan); }
 
 /* Buttons */
