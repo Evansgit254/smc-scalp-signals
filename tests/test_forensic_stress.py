@@ -10,7 +10,7 @@ from unittest.mock import patch, MagicMock
 from indicators.calculations import IndicatorCalculator
 from core.alpha_factors import AlphaFactors
 from core.alpha_combiner import AlphaCombiner
-from strategies.intraday_quant_strategy import IntradayQuantStrategy
+from strategies.quant_core_strategy import QuantCoreStrategy
 
 def test_flash_crash_scenario():
     """Test behavior during a flash crash (sudden 10% drop)"""
@@ -131,7 +131,7 @@ def test_alpha_factor_extreme_values():
 @pytest.mark.asyncio
 async def test_concurrent_symbol_processing():
     """Test that multiple symbols can be processed without race conditions"""
-    strategy = IntradayQuantStrategy()
+    strategy = QuantCoreStrategy()
     
     dates = pd.date_range('2024-01-01', periods=200, freq='5min')
     close = np.linspace(1.1000, 1.1200, 200)

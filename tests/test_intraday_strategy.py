@@ -1,49 +1,45 @@
 import pytest
 import pandas as pd
-from strategies.intraday_quant_strategy import IntradayQuantStrategy
-from unittest.mock import patch, MagicMock
+from strategies.quant_core_strategy import QuantCoreStrategy
+from unittest.mock import patch
 
 @pytest.mark.asyncio
-async def test_intraday_strategy_id():
-    strat = IntradayQuantStrategy()
-    assert strat.get_id() == "intraday_quant_m5"
-    assert "Intraday" in strat.get_name()
-
-@pytest.mark.asyncio
-async def test_intraday_strategy_sell_logic():
-    strat = IntradayQuantStrategy()
+async def test_quant_core_strategy_logic():
+    """Verify core quant strategy decision logic."""
+    strat = QuantCoreStrategy()
+    assert "Alpha Core" in strat.get_name()
+    
+    # Create sample data
     df = pd.DataFrame({
-        'close': [100] * 100,
-        'high': [101] * 100,
-        'low': [99] * 100,
-        'atr': [1.0] * 100,
+        'close': [100.0] * 105,
+        'high': [101.0] * 105,
+        'low': [99.0] * 105,
+        'atr': [1.0] * 105
     })
     data = {'m5': df}
-    # Mock SessionFilter and AlphaCombiner to return a strong SELL signal
-    with patch('strategies.intraday_quant_strategy.SessionFilter.is_peak_session', return_value=True), \
-         patch('strategies.intraday_quant_strategy.MacroFilter.is_macro_safe', return_value=True), \
-         patch('strategies.intraday_quant_strategy.AlphaCombiner.combine', return_value=-1.2), \
-         patch('strategies.intraday_quant_strategy.AlphaCombiner.calculate_quality_score', return_value=9.0):
-        res = await strat.analyze("EURUSD", data, [], {'regime': 'TRENDING'})
-        assert res['direction'] == "SELL"
-        assert res['sl'] > res['entry_price']
+    
+    # Mocking Alpha Factors for a BUY signal
+    # alpha_signal > 1.1 triggers BUY
+    with patch('strategies.quant_core_strategy.AlphaCombiner.combine', return_value=1.5), \
+         patch('strategies.quant_core_strategy.RiskManager.calculate_lot_size', return_value={'lot_size': 0.1, 'skip_trade': False}):
+        
+        res = await strat.analyze("EURUSD", data, [], {})
+        assert res is not None
+        assert res['direction'] == "BUY"
+        assert res['entry_price'] == 100.0
 
 @pytest.mark.asyncio
-async def test_intraday_strategy_filters():
-    strat = IntradayQuantStrategy()
-    df = pd.DataFrame({'close': [100]*100, 'atr': [1.0]*100})
+async def test_quant_core_strategy_sell():
+    """Verify core quant strategy SELL logic."""
+    strat = QuantCoreStrategy()
+    df = pd.DataFrame({'close': [100.0]*105, 'atr': [1.0]*105})
     data = {'m5': df}
     
-    # Test News Filter blocking
-    with patch('strategies.intraday_quant_strategy.AlphaCombiner.combine', return_value=1.5), \
-         patch('strategies.intraday_quant_strategy.AlphaCombiner.calculate_quality_score', return_value=9.0), \
-         patch('strategies.intraday_quant_strategy.NewsFilter.is_safe_to_trade', return_value=False):
-        res = await strat.analyze("EURUSD", data, ["News"], {})
-        assert res is None
-
-@pytest.mark.asyncio
-async def test_intraday_strategy_exception():
-    strat = IntradayQuantStrategy()
-    # Trigger exception by passing None as data
-    res = await strat.analyze("EURUSD", None, [], {})
-    assert res is None
+    # alpha_signal < -1.1 triggers SELL
+    with patch('strategies.quant_core_strategy.AlphaCombiner.combine', return_value=-1.5), \
+         patch('strategies.quant_core_strategy.RiskManager.calculate_lot_size', return_value={'lot_size': 0.1, 'skip_trade': False}):
+        
+        res = await strat.analyze("EURUSD", data, [], {})
+        assert res is not None
+        assert res['direction'] == "SELL"
+        assert res['sl'] > 100.0

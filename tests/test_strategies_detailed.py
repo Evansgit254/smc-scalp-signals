@@ -1,7 +1,7 @@
 import pytest
 import pandas as pd
 import numpy as np
-from strategies.intraday_quant_strategy import IntradayQuantStrategy
+from strategies.quant_core_strategy import QuantCoreStrategy
 from strategies.swing_quant_strategy import SwingQuantStrategy
 from unittest.mock import patch, MagicMock
 
@@ -24,10 +24,10 @@ def sample_data():
 
 @pytest.mark.asyncio
 async def test_intraday_strategy_buy_signal(sample_data):
-    strategy = IntradayQuantStrategy()
+    strategy = QuantCoreStrategy()
     # Mock alpha factors to force a BUY signal
     # Mock alpha factors to force a strong BUY signal (must exceed 0.8 threshold in RANGING)
-    with patch('strategies.intraday_quant_strategy.SessionFilter.is_peak_session', return_value=True), \
+    with patch('strategies.quant_core_strategy.AlphaCombiner.combine', return_value=1.5), \
          patch('core.alpha_factors.AlphaFactors.velocity_alpha', return_value=3.0), \
          patch('core.alpha_factors.AlphaFactors.mean_reversion_zscore', return_value=4.0), \
          patch('core.alpha_factors.AlphaFactors.momentum_alpha', return_value=2.0), \
@@ -42,8 +42,8 @@ async def test_intraday_strategy_buy_signal(sample_data):
 
 @pytest.mark.asyncio
 async def test_intraday_strategy_news_block(sample_data):
-    strategy = IntradayQuantStrategy()
-    with patch('strategies.intraday_quant_strategy.SessionFilter.is_peak_session', return_value=True), \
+    strategy = QuantCoreStrategy()
+    with patch('strategies.quant_core_strategy.BaseStrategy.get_id', return_value="test"), \
          patch('core.filters.news_filter.NewsFilter.is_safe_to_trade', return_value=False):
         res = await strategy.analyze("EURUSD=X", sample_data, ["NewsEvent"], {})
         assert res is None

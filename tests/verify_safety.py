@@ -1,7 +1,7 @@
 import asyncio
 import pandas as pd
 from core.filters.risk_manager import RiskManager
-from strategies.intraday_quant_strategy import IntradayQuantStrategy
+from strategies.quant_core_strategy import QuantCoreStrategy
 from config.config import ACCOUNT_BALANCE
 
 async def verify_guidance_logic():
@@ -30,7 +30,7 @@ async def verify_guidance_logic():
     
     # 3. Test Strategy Integration
     print("\n[TEST 3] Strategy Delivery (No Blocking)")
-    strategy = IntradayQuantStrategy()
+    strategy = QuantCoreStrategy()
     
     # Mock data
     df = pd.DataFrame({

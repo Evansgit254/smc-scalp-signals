@@ -7,7 +7,7 @@ import asyncio
 import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
-from strategies.intraday_quant_strategy import IntradayQuantStrategy
+from strategies.quant_core_strategy import QuantCoreStrategy
 from strategies.swing_quant_strategy import SwingQuantStrategy
 from core.signal_formatter import SignalFormatter
 from core.alpha_factors import AlphaFactors
@@ -54,7 +54,7 @@ class TestSystemArchitecture:
         m5_df = IndicatorCalculator.add_indicators(mock_market_data['m5'], "5m")
         
         # 2. Execute strategy
-        strategy = IntradayQuantStrategy()
+        strategy = QuantCoreStrategy()
         signal = await strategy.analyze('EURUSD=X', {'m5': m5_df}, [], {})
         
         # 3. Validate signal structure
@@ -92,7 +92,7 @@ class TestSystemArchitecture:
         m5_df = IndicatorCalculator.add_indicators(mock_market_data['m5'], "5m")
         h1_df = IndicatorCalculator.add_indicators(mock_market_data['h1'], "1h")
         
-        intraday = IntradayQuantStrategy()
+        intraday = QuantCoreStrategy()
         swing = SwingQuantStrategy()
         
         # Execute both strategies
@@ -169,7 +169,7 @@ class TestSystemArchitecture:
         """Test strategy decision thresholds"""
         m5_df = IndicatorCalculator.add_indicators(mock_market_data['m5'], "5m")
         
-        strategy = IntradayQuantStrategy()
+        strategy = QuantCoreStrategy()
         signal = await strategy.analyze('EURUSD=X', {'m5': m5_df}, [], {})
         
         # If signal exists, validate it meets threshold
@@ -182,7 +182,7 @@ class TestSystemArchitecture:
         """Test system handles multiple symbols"""
         m5_df = IndicatorCalculator.add_indicators(mock_market_data['m5'], "5m")
         
-        strategy = IntradayQuantStrategy()
+        strategy = QuantCoreStrategy()
         
         symbols = ['EURUSD=X', 'GBPUSD=X', 'USDJPY=X']
         signals = []
@@ -225,7 +225,7 @@ class TestSystemArchitecture:
         # Empty dataframe
         empty_df = pd.DataFrame()
         
-        strategy = IntradayQuantStrategy()
+        strategy = QuantCoreStrategy()
         signal = await strategy.analyze('TEST', {'m5': empty_df}, [], {})
         
         # Should return None, not crash
@@ -237,7 +237,7 @@ class TestSystemArchitecture:
         m5_df = IndicatorCalculator.add_indicators(mock_market_data['m5'], "5m")
         h1_df = IndicatorCalculator.add_indicators(mock_market_data['h1'], "1h")
         
-        intraday = IntradayQuantStrategy()
+        intraday = QuantCoreStrategy()
         swing = SwingQuantStrategy()
         
         # Simulate processing multiple symbols

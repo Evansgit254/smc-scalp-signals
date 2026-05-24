@@ -112,3 +112,16 @@ class TestAlphaFactors:
         
         rs_alpha = AlphaFactors.relative_strength_alpha(sample_df, benchmark_df)
         assert rs_alpha == 0.0
+
+    def test_momentum_alpha_basic(self, sample_df):
+        """Test momentum alpha logic"""
+        momentum = AlphaFactors.momentum_alpha(sample_df)
+        assert isinstance(momentum, (float, np.floating))
+        assert not np.isnan(momentum)
+        
+    def test_volatility_regime_alpha_logic(self, sample_df):
+        """Test volatility regime detection stays within tanh bounds [-1, 1]"""
+        regime = AlphaFactors.volatility_regime_alpha(sample_df)
+        assert isinstance(regime, (float, np.floating))
+        assert -1.0 <= regime <= 1.0
+        assert not np.isnan(regime)

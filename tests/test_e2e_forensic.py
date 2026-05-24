@@ -57,8 +57,8 @@ def test_e2e_signal_flow():
     # Step 2: Generate Synthetic Signal
     print("\n🎯 Step 2: Signal Generation Test")
     try:
-        from strategies.intraday_quant_strategy import IntradayQuantStrategy
-        from core.data_fetcher import DataFetcher
+        from strategies.quant_core_strategy import QuantCoreStrategy
+        from data.fetcher import DataFetcher
         
         # Create synthetic market data
         dates = pd.date_range(end=datetime.now(), periods=500, freq='5min')
@@ -76,7 +76,7 @@ def test_e2e_signal_flow():
         print(f"   📈 Created synthetic data: {len(df)} candles, price range {df['close'].min():.2f}-{df['close'].max():.2f}")
         
         # Run strategy
-        strategy = IntradayQuantStrategy()
+        strategy = QuantCoreStrategy()
         signal = strategy.analyze('TESTPAIR', df, '5m')
         
         if signal:
