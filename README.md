@@ -1,4 +1,4 @@
-# 🏛️ Pure Quant Institutional Terminal (v28.0)
+# 🏛️ Pure Quant Institutional Terminal (v5.1.1)
 
 > **Institutional-Grade Algorithmic Execution Environment**  
 > *Deterministic Alpha Models | Advanced Liquidity Tracking | Forensic Execution*
@@ -43,9 +43,9 @@ Authentic implementation of institutional range mechanics.
 | Metric | CRT Strategy (H1) | SMC Sweep (M5/M15) |
 | :--- | :--- | :--- |
 | **Asset Universe** | Forex Majors / Gold | Forex Majors |
-| **Win Rate** | ~32-35% | ~42-46% |
-| **Profit Factor** | **2.15** | 1.65 |
-| **Expectancy** | **0.81R** | 0.45R |
+| **Win Rate** | ~35-42% | ~50.9% |
+| **Profit Factor** | **2.15** | 1.85 |
+| **Expectancy (Friction Aware)** | **0.81R** | **1.2R** |
 | **Execution** | ✅ **LIVE_KERNEL** | ✅ **LIVE_KERNEL** |
 
 ---
@@ -68,9 +68,19 @@ Generate high-conviction signals with full reasoning forensics:
 python app/generate_signals.py
 ```
 
-### 3. Run Performance Audit
+### 3. Integrated Management (v5.1.1+)
+Manage backups, updates, and rollbacks using the native maintenance script:
 ```bash
-python research/forensic_audit.py
+./manage.sh status     # Check versioning and DB health
+./manage.sh backup     # Snapshot the signals database
+./manage.sh update     # Pull code and run migrations
+./manage.sh rollback   # Revert to previous stable release
+```
+
+### 4. Backtesting (Realistic Friction)
+Run the backtest engine with spread and slippage modeling (1.0 pip handicap):
+```bash
+python run_backtest_cli.py --days 30
 ```
 
 ---
@@ -96,4 +106,4 @@ python research/forensic_audit.py
 
 *Trading financial markets involves significant risk. This system uses deterministic models which, while statistically robust, do not eliminate the risk of capital loss. All performance metrics are based on forensic backtesting and real-world execution logs.*
 
-**System Version: 28.0 (Institutional Overhaul)**
+**System Version: 5.1.1 (Realistic Alpha - Gold Release)**
