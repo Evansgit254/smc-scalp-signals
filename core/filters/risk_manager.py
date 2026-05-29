@@ -1,4 +1,4 @@
-from config.config import ACCOUNT_BALANCE, RISK_PER_TRADE_PERCENT, MIN_LOT_SIZE, USE_KELLY_SIZING
+import config.config as cfg
 import pandas as pd
 import sqlite3
 import os
@@ -45,8 +45,8 @@ class RiskManager:
         import os
         
         # Use provided balance or fallback to global config
-        current_balance = balance if balance is not None else ACCOUNT_BALANCE
-        base_risk_pct = risk_pct_override if risk_pct_override is not None else RISK_PER_TRADE_PERCENT
+        current_balance = balance if balance is not None else cfg.ACCOUNT_BALANCE
+        base_risk_pct = risk_pct_override if risk_pct_override is not None else cfg.RISK_PER_TRADE_PERCENT
         
         # V24.5 Forensic Alpha Scaling (Power Hours)
         # Audit (Run 24) showed 07:00 and 15:00 as massive outliers (>20R total)
@@ -84,7 +84,7 @@ class RiskManager:
                 pass
 
         # V8.0: Kelly Criterion or Fixed Risk
-        if USE_KELLY_SIZING and os.path.exists(db_path):
+        if cfg.USE_KELLY_SIZING and os.path.exists(db_path):
             kelly_fraction = RiskManager._calculate_kelly_fraction(db_path)
             if kelly_fraction > 0:
                 # Use Kelly but cap at 2x base risk for safety
@@ -115,13 +115,13 @@ class RiskManager:
         key = symbol.replace("=X", "").replace("^", "")
         pip_val = RiskManager.PIP_VALUE_001.get(key, 0.10)
         
-        if pips == 0: return {"lots": MIN_LOT_SIZE, "risk_cash": 0}
+        if pips == 0: return {"lots": cfg.MIN_LOT_SIZE, "risk_cash": 0}
 
         # Calculation: (Risk Amount / (Pip Value 0.01 * Pips)) * 0.01
         recommended_lots = (risk_amount / (pip_val * pips)) * 0.01
         
         # Round to 2 decimal places and ensure minimum
-        final_lots = max(round(recommended_lots, 2), MIN_LOT_SIZE)
+        final_lots = max(round(recommended_lots, 2), cfg.MIN_LOT_SIZE)
         
         actual_risk = (final_lots / 0.01) * pip_val * pips
         actual_risk_pct = (actual_risk / current_balance) * 100
@@ -133,7 +133,7 @@ class RiskManager:
             # Recalculate lot size to meet cap: lots = (target_risk / (pip_val * pips)) * 0.01
             max_risk_amount = current_balance * (MAX_RISK_PERCENT / 100)
             final_lots = (max_risk_amount / (pip_val * pips)) * 0.01
-            final_lots = max(round(final_lots, 2), MIN_LOT_SIZE)
+            final_lots = max(round(final_lots, 2), cfg.MIN_LOT_SIZE)
             # Recalculate actual risk with capped lots
             actual_risk = (final_lots / 0.01) * pip_val * pips
             actual_risk_pct = (actual_risk / current_balance) * 100
@@ -161,15 +161,15 @@ class RiskManager:
         if quality == "A+":
             # A+ setups use aggressive "Load the Boat" layering
             # 50% Market, 30% Retest, 20% Extreme Retest
-            l1_lots = max(MIN_LOT_SIZE, round(total_lots * 0.5, 2))
-            l2_lots = max(MIN_LOT_SIZE, round(total_lots * 0.3, 2))
-            l3_lots = max(MIN_LOT_SIZE, round(total_lots * 0.2, 2))
+            l1_lots = max(cfg.MIN_LOT_SIZE, round(total_lots * 0.5, 2))
+            l2_lots = max(cfg.MIN_LOT_SIZE, round(total_lots * 0.3, 2))
+            l3_lots = max(cfg.MIN_LOT_SIZE, round(total_lots * 0.2, 2))
         else:
             # Standard setups use balanced layering
             # 40% (Market), 40% (Retest), 20% (Defensive)
-            l1_lots = max(MIN_LOT_SIZE, round(total_lots * 0.4, 2))
-            l2_lots = max(MIN_LOT_SIZE, round(total_lots * 0.4, 2))
-            l3_lots = max(MIN_LOT_SIZE, round(total_lots * 0.2, 2))
+            l1_lots = max(cfg.MIN_LOT_SIZE, round(total_lots * 0.4, 2))
+            l2_lots = max(cfg.MIN_LOT_SIZE, round(total_lots * 0.4, 2))
+            l3_lots = max(cfg.MIN_LOT_SIZE, round(total_lots * 0.2, 2))
         
         # Calculate Price Levels for Layers
         dist = abs(entry - sl)

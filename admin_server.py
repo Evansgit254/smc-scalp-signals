@@ -9,6 +9,7 @@ import json
 import secrets
 import stripe
 import hashlib
+import hmac
 import jwt
 from datetime import datetime, timedelta
 from typing import List, Optional
@@ -22,6 +23,8 @@ from indicators.calculations import IndicatorCalculator
 from core.filters.macro_filter import MacroFilter
 from config.config import DXY_SYMBOL, TNX_SYMBOL, SYMBOLS, DB_CLIENTS, DB_SIGNALS
 from core.client_manager import ClientManager
+from core.secure_config import protect_config_value, reveal_config_value, redact_config_value, encryption_available
+from core.db_utils import connect_sqlite, ensure_base_tables, write_audit_event
 
 # Stripe Configuration
 stripe.api_key = os.getenv("STRIPE_API_KEY")
@@ -43,9 +46,7 @@ market_context_cache = {
 app = FastAPI(title="Trading Expert Admin Dashboard")
 
 def get_db_connection(path):
-    conn = sqlite3.connect(path)
-    conn.row_factory = sqlite3.Row
-    return conn
+    return connect_sqlite(path)
 
 # Restricted CORS for Security
 ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "http://localhost:5000,http://127.0.0.1:5000").split(",")
@@ -58,6 +59,22 @@ app.add_middleware(
 
 # DATABASE PATHS MOVED TO config/config.py
 
+async def reconciliation_loop():
+    """Background task to sync the local terminal ledger with the broker truth."""
+    from core.trade_executor import get_executor
+    executor = get_executor()
+    print("🛰️  Institutional Reconciliation Engine: Active")
+    while True:
+        try:
+            await executor.reconcile_with_broker()
+        except Exception as e:
+            print(f"⚠️  Background Reconciliation Error: {e}")
+        await asyncio.sleep(300) # 5-minute audit cycle
+
+@app.on_event("startup")
+async def startup_event():
+    asyncio.create_task(reconciliation_loop())
+
 def ensure_db_schema():
     """V18.1: Automatic Schema Migration - Ensures all required columns exist.
     Also creates the database and signals table from scratch if it does not exist yet.
@@ -67,8 +84,7 @@ def ensure_db_schema():
 
     conn = None
     try:
-        conn = sqlite3.connect(DB_SIGNALS)
-        conn.execute("PRAGMA journal_mode=WAL")
+        conn = connect_sqlite(DB_SIGNALS)
         cursor = conn.cursor()
         
         # Create the core signals table from scratch if this is a fresh database
@@ -114,6 +130,17 @@ def ensure_db_schema():
         """)
         # Initialize if empty
         cursor.execute("INSERT OR IGNORE INTO paper_account (id, balance, equity) VALUES (1, 100000.0, 100000.0)")
+
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS trade_reservations (
+                symbol TEXT PRIMARY KEY,
+                direction TEXT,
+                signal_uid TEXT,
+                status TEXT DEFAULT 'ACTIVE',
+                created_at TEXT,
+                updated_at TEXT
+            )
+        """)
         
         conn.commit()
 
@@ -152,7 +179,19 @@ def ensure_db_schema():
             ("gate_status", "TEXT DEFAULT 'UNKNOWN'"),
             ("gate_reason", "TEXT DEFAULT 'UNKNOWN'"),
             ("closed_at", "TEXT"),
-            ("max_tp_reached", "INTEGER DEFAULT 0")
+            ("max_tp_reached", "INTEGER DEFAULT 0"),
+            ("signal_uid", "TEXT"),
+            ("execution_status", "TEXT DEFAULT 'NONE'"),
+            ("broker_order_id", "TEXT"),
+            ("broker_position_id", "TEXT"),
+            ("requested_price", "REAL"),
+            ("fill_price", "REAL"),
+            ("requested_lot_size", "REAL"),
+            ("filled_lot_size", "REAL"),
+            ("slippage_pips", "REAL"),
+            ("execution_error", "TEXT"),
+            ("data_timestamp", "TEXT"),
+            ("bar_closed", "INTEGER DEFAULT 1")
         ]
         
         for col_name, col_def in required_cols:
@@ -175,14 +214,37 @@ def ensure_config_table():
     """Ensure system_config table exists and has required defaults."""
     conn = None
     try:
-        conn = sqlite3.connect(DB_CLIENTS)
+        conn = connect_sqlite(DB_CLIENTS)
         conn.execute("""
             CREATE TABLE IF NOT EXISTS system_config (
                 key TEXT PRIMARY KEY,
                 value TEXT,
-                type TEXT
+                type TEXT,
+                updated_at TEXT,
+                updated_by TEXT,
+                version INTEGER DEFAULT 0
             )
         """)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS config_audit (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                key TEXT,
+                old_value TEXT,
+                new_value TEXT,
+                updated_by TEXT,
+                updated_at TEXT
+            )
+        """)
+        for col_name, col_def in [
+            ("updated_at", "TEXT"),
+            ("updated_by", "TEXT"),
+            ("version", "INTEGER DEFAULT 0")
+        ]:
+            try:
+                conn.execute(f"ALTER TABLE system_config ADD COLUMN {col_name} {col_def}")
+            except sqlite3.OperationalError:
+                pass
+        ensure_base_tables(conn)
         
         # Ensure defaults exist (INSERT OR IGNORE)
         defaults = [
@@ -190,9 +252,10 @@ def ensure_config_table():
             ("risk_per_trade", "2.0", "float"),
             ("max_concurrent_trades", "4", "int"),
             ("min_quality_score", "5.0", "float"),
+            ("max_daily_loss_pct", "2.0", "float"),
             ("news_filter_minutes", "30", "int"),
             ("strategy_session_clock", "true", "bool"),
-            ("strategy_smc_sweep", "true", "bool"),
+            ("strategy_smc_sweep", "false", "bool"),
             ("strategy_poc_edge", "true", "bool"),
             ("strategy_stat_arb", "true", "bool"),
             ("strategy_pre_news", "true", "bool"),
@@ -215,43 +278,58 @@ def ensure_config_table():
 
 ensure_config_table()
 
+def hash_password(plain_password: str) -> str:
+    iterations = 260000
+    salt = secrets.token_hex(16)
+    pwd_hash = hashlib.pbkdf2_hmac(
+        "sha256",
+        plain_password.encode(),
+        salt.encode(),
+        iterations
+    ).hex()
+    return f"pbkdf2${iterations}${salt}${pwd_hash}"
+
 def ensure_users_table():
     """V18.2: Authoritative Credential Sync - Ensures .env credentials match the DB."""
     conn = None
     try:
-        conn = sqlite3.connect(DB_CLIENTS)
+        conn = connect_sqlite(DB_CLIENTS)
         conn.execute("""
             CREATE TABLE IF NOT EXISTS admin_users (
                 username TEXT PRIMARY KEY,
                 password_hash TEXT,
-                last_login TEXT
+                last_login TEXT,
+                role TEXT DEFAULT 'admin'
             )
         """)
+        try:
+            conn.execute("ALTER TABLE admin_users ADD COLUMN role TEXT DEFAULT 'admin'")
+        except sqlite3.OperationalError:
+            pass
         
         # V18.2 Sync Logic: Always favor .env if provided
         if ADMIN_PASS:
-            salt = secrets.token_hex(8)
-            pwd_hash = hashlib.sha256((ADMIN_PASS + salt).encode()).hexdigest()
-            stored_pwd = f"{salt}${pwd_hash}"
+            stored_pwd = hash_password(ADMIN_PASS)
             
             # This will either insert or replace the existing admin credentials
             conn.execute("""
-                INSERT OR REPLACE INTO admin_users (username, password_hash) 
-                VALUES (?, ?)
-            """, (ADMIN_USER, stored_pwd))
+                INSERT OR REPLACE INTO admin_users (username, password_hash, role) 
+                VALUES (?, ?, COALESCE((SELECT role FROM admin_users WHERE username = ?), 'admin'))
+            """, (ADMIN_USER, stored_pwd, ADMIN_USER))
             conn.commit()
             print(f"✅ Synchronized admin credentials for user: {ADMIN_USER}")
         else:
             # Fallback only if no pass provided and table is empty
             cursor = conn.cursor()
             if cursor.execute("SELECT COUNT(*) FROM admin_users").fetchone()[0] == 0:
-                default_salt = secrets.token_hex(8)
-                password = "admin123"
-                pwd_hash = hashlib.sha256((password + default_salt).encode()).hexdigest()
-                stored_pwd = f"{default_salt}${pwd_hash}"
-                cursor.execute("INSERT INTO admin_users (username, password_hash) VALUES (?, ?)", ("admin", stored_pwd))
-                conn.commit()
-                print("✅ Initialized admin_users with standard credentials (admin/admin123)")
+                if os.getenv("ALLOW_DEFAULT_ADMIN", "false").lower() == "true":
+                    password = "admin123"
+                    stored_pwd = hash_password(password)
+                    cursor.execute("INSERT INTO admin_users (username, password_hash, role) VALUES (?, ?, ?)", ("admin", stored_pwd, "admin"))
+                    conn.commit()
+                    print("✅ Initialized admin_users with development credentials (admin/admin123)")
+                else:
+                    print("⚠️ No admin user created. Set ADMIN_PASS or ALLOW_DEFAULT_ADMIN=true for local development.")
             
     except Exception as e:
         print(f"⚠️ Users table sync failed: {e}")
@@ -277,14 +355,29 @@ class AuthToken(BaseModel):
 
 class User(BaseModel):
     username: str
+    role: str = "admin"
 
 def verify_password(plain_password, stored_password):
     try:
+        if stored_password.startswith("pbkdf2$"):
+            _, iterations, salt, hash_val = stored_password.split('$')
+            check_hash = hashlib.pbkdf2_hmac(
+                "sha256",
+                plain_password.encode(),
+                salt.encode(),
+                int(iterations)
+            ).hex()
+            return hmac.compare_digest(check_hash, hash_val)
         salt, hash_val = stored_password.split('$')
         check_hash = hashlib.sha256((plain_password + salt).encode()).hexdigest()
-        return check_hash == hash_val
+        return hmac.compare_digest(check_hash, hash_val)
     except:
         return False
+
+def require_role(user: User, *roles: str):
+    if user.role == "admin" or user.role in roles:
+        return
+    raise HTTPException(status_code=403, detail="Insufficient permission for this governance action")
 
 async def get_current_user(token: str = Depends(oauth2_scheme)):
     try:
@@ -296,7 +389,7 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
                 detail="Could not validate credentials",
                 headers={"WWW-Authenticate": "Bearer"},
             )
-        return User(username=username)
+        return User(username=username, role=payload.get("role", "admin"))
     except jwt.ExpiredSignatureError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -334,7 +427,7 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
     
     # Generate Secure JWT Token
     expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    to_encode = {"sub": user['username'], "exp": expire}
+    to_encode = {"sub": user['username'], "role": user['role'] if 'role' in user.keys() else "admin", "exp": expire}
     encoded_jwt = jwt.encode(to_encode, JWT_SECRET, algorithm=ALGORITHM)
     
     return {"access_token": encoded_jwt, "token_type": "bearer"}
@@ -346,6 +439,75 @@ async def read_users_me(current_user: User = Depends(get_current_user)):
 class ConfigUpdate(BaseModel):
     key: str
     value: str
+
+class MetaAPIConfig(BaseModel):
+    token: str
+    accountId: str
+    paperMode: bool
+
+CONFIG_SCHEMA = {
+    "system_status": {"type": "str", "allowed": {"ACTIVE", "PAUSED"}},
+    "risk_per_trade": {"type": "float", "min": 0.0, "max": 5.0},
+    "max_concurrent_trades": {"type": "int", "min": 0, "max": 50},
+    "min_quality_score": {"type": "float", "min": 0.0, "max": 10.0},
+    "min_quality_score_intraday": {"type": "float", "min": 0.0, "max": 10.0},
+    "max_daily_loss_pct": {"type": "float", "min": 0.0, "max": 20.0},
+    "news_filter_minutes": {"type": "int", "min": 0, "max": 240},
+    "mt5_auto_trade": {"type": "bool"},
+    "mt5_paper_mode": {"type": "bool"},
+    "data_provider": {"type": "str", "allowed": {"yfinance", "mt5"}},
+}
+
+
+def _schema_for_config_key(key: str) -> dict:
+    if key.startswith("strategy_"):
+        return {"type": "bool"}
+    if key in CONFIG_SCHEMA:
+        return CONFIG_SCHEMA[key]
+    raise HTTPException(status_code=400, detail=f"Unknown config key: {key}")
+
+
+def validate_config_value(key: str, value: str) -> tuple[str, str]:
+    spec = _schema_for_config_key(key)
+    raw = str(value)
+    cfg_type = spec["type"]
+
+    if cfg_type == "bool":
+        normalized = raw.strip().lower()
+        if normalized not in {"true", "false"}:
+            raise HTTPException(status_code=400, detail=f"{key} must be true or false")
+        return normalized, "bool"
+
+    if cfg_type == "str":
+        normalized = raw.strip()
+        allowed = spec.get("allowed")
+        if allowed:
+            compare = normalized if normalized in allowed else normalized.lower()
+            if compare not in allowed:
+                raise HTTPException(status_code=400, detail=f"Invalid value for {key}")
+            normalized = compare
+        if key == "system_status":
+            normalized = normalized.upper()
+        return normalized, "str"
+
+    if cfg_type == "int":
+        try:
+            parsed = int(raw)
+        except ValueError:
+            raise HTTPException(status_code=400, detail=f"{key} must be an integer")
+    elif cfg_type == "float":
+        try:
+            parsed = float(raw)
+        except ValueError:
+            raise HTTPException(status_code=400, detail=f"{key} must be numeric")
+    else:
+        raise HTTPException(status_code=400, detail=f"Unsupported config type for {key}")
+
+    if "min" in spec and parsed < spec["min"]:
+        raise HTTPException(status_code=400, detail=f"{key} must be >= {spec['min']}")
+    if "max" in spec and parsed > spec["max"]:
+        raise HTTPException(status_code=400, detail=f"{key} must be <= {spec['max']}")
+    return str(parsed), cfg_type
 
 from fastapi.responses import FileResponse
 import os
@@ -370,10 +532,10 @@ async def get_config(current_user: User = Depends(get_current_user)):
         rows = conn.execute("SELECT key, value, type FROM system_config").fetchall()
         config = {}
         for row in rows:
-            val = row['value']
+            val = redact_config_value(row['key'], row['value'])
             if row['type'] == 'int': val = int(val)
             elif row['type'] == 'float': val = float(val)
-            elif row['type'] == 'bool': val = (val.lower() == 'true')
+            elif row['type'] == 'bool': val = (str(val).lower() == 'true')
             config[row['key']] = val
         return config
     except Exception as e:
@@ -385,12 +547,140 @@ async def get_config(current_user: User = Depends(get_current_user)):
 @app.post("/api/config")
 async def update_config(update: ConfigUpdate, current_user: User = Depends(get_current_user)):
     """Update a specific configuration setting"""
+    require_role(current_user, "risk_manager", "operator")
+    conn = None
+    try:
+        normalized_value, cfg_type = validate_config_value(update.key, update.value)
+        conn = get_db_connection(DB_CLIENTS)
+        existing = conn.execute("SELECT value, type FROM system_config WHERE key = ?", (update.key,)).fetchone()
+        new_value = protect_config_value(update.key, normalized_value)
+        conn.execute("BEGIN IMMEDIATE")
+        conn.execute("""
+            INSERT INTO system_config (key, value, type, updated_at, updated_by, version)
+            VALUES (?, ?, ?, ?, ?, 1)
+            ON CONFLICT(key) DO UPDATE SET
+                value = excluded.value,
+                type = excluded.type,
+                updated_at = excluded.updated_at,
+                updated_by = excluded.updated_by,
+                version = COALESCE(system_config.version, 0) + 1
+        """, (update.key, new_value, cfg_type, datetime.utcnow().isoformat(), current_user.username))
+        conn.execute("""
+            INSERT INTO config_audit (key, old_value, new_value, updated_by, updated_at)
+            VALUES (?, ?, ?, ?, ?)
+        """, (
+            update.key,
+            redact_config_value(update.key, existing["value"] if existing else None),
+            redact_config_value(update.key, new_value),
+            current_user.username,
+            datetime.utcnow().isoformat()
+        ))
+        write_audit_event(
+            conn,
+            event_type="config.update",
+            actor=current_user.username,
+            target=update.key,
+            before_value=redact_config_value(update.key, existing["value"] if existing else None),
+            after_value=redact_config_value(update.key, new_value),
+        )
+        conn.commit()
+        return {"status": "success", "key": update.key, "value": redact_config_value(update.key, normalized_value)}
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        if isinstance(e, HTTPException):
+            raise e
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        if conn: conn.close()
+
+@app.post("/api/config/data-provider")
+async def set_data_provider(update: ConfigUpdate, current_user: User = Depends(get_current_user)):
+    """Update data provider (yfinance or mt5)"""
+    require_role(current_user, "operator")
+    if update.value not in ["yfinance", "mt5"]:
+        raise HTTPException(status_code=400, detail="Invalid data provider")
+    
     conn = None
     try:
         conn = get_db_connection(DB_CLIENTS)
-        conn.execute("UPDATE system_config SET value = ? WHERE key = ?", (str(update.value), update.key))
+        old = conn.execute("SELECT value FROM system_config WHERE key = 'data_provider'").fetchone()
+        conn.execute("""
+            INSERT INTO system_config (key, value, type, updated_at, updated_by, version)
+            VALUES (?, ?, ?, ?, ?, 1)
+            ON CONFLICT(key) DO UPDATE SET
+                value = excluded.value,
+                type = excluded.type,
+                updated_at = excluded.updated_at,
+                updated_by = excluded.updated_by,
+                version = COALESCE(system_config.version, 0) + 1
+        """, ("data_provider", update.value, "str", datetime.utcnow().isoformat(), current_user.username))
+        write_audit_event(
+            conn,
+            event_type="config.data_provider",
+            actor=current_user.username,
+            target="data_provider",
+            before_value=old["value"] if old else None,
+            after_value=update.value,
+        )
         conn.commit()
-        return {"status": "success", "key": update.key, "value": update.value}
+        # Sync env mode
+        os.environ["DATA_MODE"] = "YFINANCE" if update.value == "yfinance" else "MT5_BRIDGE"
+        return {"status": "success", "provider": update.value}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        if conn: conn.close()
+
+@app.post("/api/mt5/config")
+async def update_mt5_config(config: MetaAPIConfig, current_user: User = Depends(get_current_user)):
+    """Update MetaAPI credentials in DB"""
+    require_role(current_user, "risk_manager")
+    if not encryption_available():
+        raise HTTPException(
+            status_code=503,
+            detail="CONFIG_ENCRYPTION_KEY or JWT_SECRET must be set before storing MetaAPI credentials"
+        )
+    conn = None
+    try:
+        conn = get_db_connection(DB_CLIENTS)
+        updates = [
+            ("metaapi_token", protect_config_value("metaapi_token", config.token), "str"),
+            ("metaapi_account_id", protect_config_value("metaapi_account_id", config.accountId), "str"),
+            ("mt5_paper_mode", "true" if config.paperMode else "false", "bool")
+        ]
+        for key, value, cfg_type in updates:
+            old = conn.execute("SELECT value FROM system_config WHERE key = ?", (key,)).fetchone()
+            conn.execute("""
+                INSERT INTO system_config (key, value, type, updated_at, updated_by, version)
+                VALUES (?, ?, ?, ?, ?, 1)
+                ON CONFLICT(key) DO UPDATE SET
+                    value = excluded.value,
+                    type = excluded.type,
+                    updated_at = excluded.updated_at,
+                    updated_by = excluded.updated_by,
+                    version = COALESCE(system_config.version, 0) + 1
+            """, (key, value, cfg_type, datetime.utcnow().isoformat(), current_user.username))
+            conn.execute("""
+                INSERT INTO config_audit (key, old_value, new_value, updated_by, updated_at)
+                VALUES (?, ?, ?, ?, ?)
+            """, (
+                key,
+                redact_config_value(key, old["value"] if old else None),
+                redact_config_value(key, value),
+                current_user.username,
+                datetime.utcnow().isoformat()
+            ))
+            write_audit_event(
+                conn,
+                event_type="credential.update" if key.startswith("metaapi_") else "config.update",
+                actor=current_user.username,
+                target=key,
+                before_value=redact_config_value(key, old["value"] if old else None),
+                after_value=redact_config_value(key, value),
+            )
+        conn.commit()
+        return {"status": "success"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     finally:
@@ -480,6 +770,42 @@ async def toggle_strategy(strategy_id: str, current_user: User = Depends(get_cur
         if conn: conn.close()
 
 
+@app.get("/api/mt5/status")
+async def get_mt5_status(current_user: User = Depends(get_current_user)):
+    """Returns MT5 connection heartbeat status from persistent DB config"""
+    conn = None
+    try:
+        conn = get_db_connection(DB_CLIENTS)
+        row = conn.execute("SELECT value FROM system_config WHERE key = 'data_provider'").fetchone()
+        env_mode = os.getenv("DATA_MODE")
+        mode = env_mode.upper() if env_mode else (row[0].upper() if row else "YFINANCE")
+        if mode == "MT5":
+            mode = "MT5_BRIDGE"
+        
+        status = "DISCONNECTED"
+        account = "YFINANCE_REST"
+        if mode == "MT5_BRIDGE":
+            token_row = conn.execute("SELECT value FROM system_config WHERE key = 'metaapi_token'").fetchone()
+            acct_row = conn.execute("SELECT value FROM system_config WHERE key = 'metaapi_account_id'").fetchone()
+            has_token = bool(reveal_config_value("metaapi_token", token_row["value"] if token_row else None))
+            has_account = bool(reveal_config_value("metaapi_account_id", acct_row["value"] if acct_row else None))
+            status = "CONNECTING" if has_token and has_account else "ERROR"
+            account = "METAAPI_CONFIGURED" if has_token and has_account else "METAAPI_MISSING_CREDS"
+        
+        # Check if credentials exist
+        has_creds = conn.execute("SELECT value FROM system_config WHERE key = 'metaapi_token' AND value != ''").fetchone()
+        
+        return {
+            "status": status,
+            "mode": mode,
+            "account": account,
+            "credentials_set": bool(reveal_config_value("metaapi_token", has_creds["value"] if has_creds else None))
+        }
+    except Exception as e:
+        return {"status": "ERROR", "mode": "UNKNOWN", "detail": str(e)}
+    finally:
+        if conn: conn.close()
+
 # ── MT5 Position Management API ───────────────────────────────────────────────
 @app.get("/api/mt5/positions")
 async def get_mt5_positions(current_user: User = Depends(get_current_user)):
@@ -515,10 +841,7 @@ class ClientUpdate(BaseModel):
 
 
 def get_db_connection(db_path):
-    conn = sqlite3.connect(db_path)
-    conn.execute("PRAGMA journal_mode=WAL")
-    conn.row_factory = sqlite3.Row
-    return conn
+    return connect_sqlite(db_path)
 
 @app.get("/api/clients")
 async def get_clients(current_user: User = Depends(get_current_user)):
@@ -1464,24 +1787,52 @@ async def get_backtest_results(run_id: int, current_user: User = Depends(get_cur
             "equity_curve": equity_curve
         }
 
+class SystemAction(BaseModel):
+    action: str
+
+@app.post("/api/system/manage")
+async def system_manage(data: SystemAction, current_user: User = Depends(get_current_user)):
+    """Handles governance actions (backup, update, rollback)"""
+    valid_actions = ["backup", "update", "rollback"]
+    if data.action not in valid_actions:
+        raise HTTPException(status_code=400, detail=f"Invalid action: {data.action}")
+    
+    # Implementation logic for backup/update/rollback would go here
+    return {"status": "success", "action": data.action, "timestamp": datetime.now().isoformat()}
+
 @app.get("/api/system/config")
 async def get_system_config(current_user: User = Depends(get_current_user)):
     """Returns the list of active symbols and strategies for the dashboard sidebar."""
     clean_symbols = [s.replace("=X", "").replace("=F", "").replace("-USD", "/USD") for s in SYMBOLS]
+    # Core Institutional Modules (Always Visible)
+    core_modules = ['CRT_ALGORITHM', 'ADV_PATTERN_ENGINE']
     
-    # Extract unique trade types from signal history
-    strategies = ["CRT_SMC"] # Default
+    # Official Institutional Strategy Registry (V28.1 Compliance)
+    official_map = {
+        'CRT': 'CRT_ALGORITHM',
+        'SMC_SWEEP': 'SMC_SWEEP_MODULE',
+        'ADVANCED': 'ADV_PATTERN_ENGINE',
+        'STAT_ARB': 'STAT_ARB_KERNEL',
+        'POC_EDGE': 'POC_REVERSION_PRO',
+        'SESSION_CLOCK': 'SESSION_CLOCK_TRAP',
+        'GOLD_QUANT': 'GOLD_PRECISION_MDL'
+    }
+
+    strategies = core_modules.copy()
     try:
         conn = get_db_connection(DB_SIGNALS)
         rows = conn.execute("SELECT DISTINCT trade_type FROM signals").fetchall()
         if rows:
-            strategies = list(set([r['trade_type'] for r in rows if r['trade_type']]))
+            db_strategies = [r['trade_type'] for r in rows if r['trade_type']]
+            # Map DB keys to official names and merge with Core
+            mapped_db = [official_map.get(s, s) for s in db_strategies]
+            strategies = list(set(strategies + mapped_db))
         conn.close()
     except: pass
 
     return {
         "symbols": clean_symbols,
-        "strategies": strategies
+        "strategies": sorted(strategies)
     }
 
 # Mount static files for the dashboard

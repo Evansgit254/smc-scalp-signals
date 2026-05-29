@@ -51,7 +51,7 @@ def imminent_events():
 @pytest.fixture
 def market_context():
     # DXY Context
-    dates = pd.date_range('2024-01-01', periods=5, freq='1H')
+    dates = pd.date_range('2024-01-01', periods=5, freq='1h')
     dxy_df = pd.DataFrame({
         'close': [104.5] * 5,
         'ema_20': [104.0] * 5 # Close > EMA -> BULLISH DXY
@@ -65,7 +65,7 @@ async def test_pre_news_buy_signal(sample_data_buy, imminent_events):
     event_time = datetime.now(timezone.utc) + timedelta(minutes=45)
     
     # Needs BEARISH DXY to trigger divergence bonus against a negative Z-Score
-    dates = pd.date_range('2024-01-01', periods=5, freq='1H')
+    dates = pd.date_range('2024-01-01', periods=5, freq='1h')
     dxy_df = pd.DataFrame({'close': [103.0] * 5, 'ema_20': [104.0] * 5}, index=dates)
     bearish_context = {'DXY': dxy_df}
     

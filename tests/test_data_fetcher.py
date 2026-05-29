@@ -8,7 +8,7 @@ def test_fetch_data_success():
     with patch("yfinance.download") as mock_download:
         mock_df = pd.DataFrame({
             "Open": [1.0], "High": [1.1], "Low": [0.9], "Close": [1.0], "Volume": [100]
-        }, index=[pd.Timestamp.now(tz="UTC")])
+        }, index=[pd.Timestamp("2023-01-01", tz="UTC")])
         mock_download.return_value = mock_df
         
         res = DataFetcher.fetch_data("EURUSD=X", "1h", "5d")
@@ -42,7 +42,7 @@ def test_fetch_range_success():
     with patch("yfinance.download") as mock_download:
         mock_df = pd.DataFrame({
             "Open": [1.0], "High": [1.1], "Low": [0.9], "Close": [1.0], "Volume": [100]
-        }, index=[pd.Timestamp.now(tz="UTC")])
+        }, index=[pd.Timestamp("2023-01-01", tz="UTC")])
         mock_download.return_value = mock_df
         
         res = DataFetcher.fetch_range("EURUSD=X", "1h", "2024-01-01", "2024-01-02")

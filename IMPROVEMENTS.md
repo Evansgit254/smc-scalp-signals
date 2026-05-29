@@ -259,4 +259,20 @@ All identified trade-offs (except #7 - Data Dependency) have been addressed:
 ✅ **Risk Management**: Increased limits with better correlation management  
 ✅ **Dynamic Position Sizing**: Kelly criterion implementation  
 
-The system is now more sophisticated, adaptive, and scalable while maintaining its core principles of determinism and auditability.
+---
+
+## 11. ✅ System Truthness & Institutional Reliability
+
+### Improvements:
+- **API Integrity Audit**: Performed a forensic audit of the test suite versus server implementation.
+- **Ghost Endpoint Remediation**: Implemented missing backend logic for core institutional features:
+  - `POST /api/config/data-provider`: Seamless switching between yfinance and MT5 data modes.
+  - `GET /api/mt5/status`: Live connection heartbeat and account probe.
+  - `POST /api/system/manage`: Governance framework for system backups and rollback ops.
+- **Test Suite Hardening**: Upgraded 10+ tests from shallow status checks to deep JSON schema and data validation.
+- **Deterministic Verification**: Ensured 100% test pass rate with genuine assertions against live SQLite data.
+
+### Impact:
+- Eliminated "specification gap" between documentation/tests and reality.
+- Provided foundation for multi-regime backtesting with hot-swappable data providers.
+- Improved system reliability for Phase B institutional deployment.

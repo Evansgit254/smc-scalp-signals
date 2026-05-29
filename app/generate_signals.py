@@ -17,7 +17,9 @@ from core.market_status import MarketStatus
 
 
 def _is_strategy_enabled(key: str) -> bool:
-    """Check system_config DB for strategy toggle. Defaults to True if not found."""
+    """Check system_config DB for strategy toggle."""
+    quarantined_by_default = {"strategy_smc_sweep", "strategy_session_clock"}
+    default_enabled = key not in quarantined_by_default
     import sqlite3
     from config.config import DB_CLIENTS
     try:
@@ -31,7 +33,7 @@ def _is_strategy_enabled(key: str) -> bool:
             return row["value"].lower() == "true"
     except Exception:
         pass
-    return True  # Fail-open: enable if DB check fails
+    return default_enabled
 
 
 async def generate_signals():
@@ -86,13 +88,29 @@ async def generate_signals():
         pass
     
     all_signals = []
+    symbol_data = {}
+
+    async def fetch_symbol_bundle(symbol: str):
+        sem = fetch_symbol_bundle.sem
+        async with sem:
+            m5_data, h1_data, d1_data = await asyncio.gather(
+                fetcher.fetch_data_async(symbol, "5m", period="5d"),
+                fetcher.fetch_data_async(symbol, "1h", period="30d"),
+                fetcher.fetch_data_async(symbol, "1d", period="365d"),
+            )
+            return symbol, m5_data, h1_data, d1_data
+
+    fetch_symbol_bundle.sem = asyncio.Semaphore(8)
+    try:
+        fetched = await asyncio.gather(*(fetch_symbol_bundle(symbol) for symbol in SYMBOLS))
+        symbol_data = {symbol: (m5, h1, d1) for symbol, m5, h1, d1 in fetched}
+    except Exception as e:
+        print(f"⚠️  Warning: Concurrent symbol fetch failed: {e}")
     
     for symbol in SYMBOLS:
         try:
             # Fetch multi-timeframe data
-            m5_data = await fetcher.fetch_data_async(symbol, "5m", period="5d")
-            h1_data = await fetcher.fetch_data_async(symbol, "1h", period="30d")
-            d1_data = await fetcher.fetch_data_async(symbol, "1d", period="365d")
+            m5_data, h1_data, d1_data = symbol_data.get(symbol, (None, None, None))
             
             
             # V16.1: Market Status Check (Prevent stale data processing)
@@ -102,7 +120,7 @@ async def generate_signals():
                 # print(f"zzz Market Closed for {symbol}")
                 continue
 
-            if m5_data.empty or h1_data.empty or d1_data.empty:
+            if m5_data is None or h1_data is None or d1_data is None or m5_data.empty or h1_data.empty or d1_data.empty:
                 continue
                 
             # Add indicators

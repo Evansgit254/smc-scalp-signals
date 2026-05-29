@@ -18,12 +18,13 @@ class SMCLiquiditySweepStrategy(BaseStrategy):
     - SELL-only bias when directional skew detected
     """
 
-    # Symbols with <15% WR in audit — statistically proven losers
-    # V35.1r: Added GBPUSD (-6.67R) and GBPJPY (-3.33R) — forensic audit Run 26
-    # V36.0: Added GC=F — 0/7 BUY WR (-7.0R) in Run 29. Gold exclusive to GoldQuantStrategy.
-    BANNED_SYMBOLS = {"CL=F", "AUDUSD=X", "USDJPY=X", "BTC-USD", "GBPUSD=X", "GBPJPY=X", "GC=F"}
-    # Hours with 0-8% WR in audit. V24.1: Added 11 (Dead Zone)
-    BANNED_HOURS = {10, 11, 14, 18, 19}
+    # Removed static curve-fitted bans. Toxic assets will now be blocked dynamically 
+    # via the VolatilityGate (ATR) and TrailingDrawdown kill-switch.
+    BANNED_SYMBOLS = {"CL=F", "BTC-USD", "GC=F"}
+    
+    # 18, 19, 20 are globally fundamental twilight hours for Forex. 
+    # Other hours restored for dynamic ATR testing.
+    BANNED_HOURS = {10, 11, 14, 18, 19, 20}
 
     def get_id(self) -> str:
         return "smc_sweep_v1"
@@ -64,8 +65,17 @@ class SMCLiquiditySweepStrategy(BaseStrategy):
             if current_hour in self.BANNED_HOURS:
                 return None
                 
+            # Dynamically calcuate how many candles map to 24 hours
+            try:
+                delta = df.index[-1] - df.index[-2]
+                candles_per_24h = int(pd.Timedelta(days=1) / delta)
+            except Exception:
+                candles_per_24h = 24
+                
+            if candles_per_24h < 24: candles_per_24h = 24
+
             # Filter the last 24h for today's Asian Session (00:00 to 07:59 UTC)
-            df_24 = df.tail(24).copy()
+            df_24 = df.tail(candles_per_24h).copy()
             asian_mask = (df_24.index.tz_convert('UTC') if pd.api.types.is_datetime64tz_dtype(df_24.index) else df_24.index).hour.isin(range(0, 8))
             
             asian_df = df_24[asian_mask]
@@ -92,14 +102,14 @@ class SMCLiquiditySweepStrategy(BaseStrategy):
                 
             if not direction:
                 return None
-
+                
             entry = latest['close']
             atr = latest.get('atr', 0.001)
             
-            # FORENSIC FIX: Widened SL from 1.0 to 1.5 ATR (was getting 23% instant SL hits)
+            # FORENSIC FIX: Widened SL from 1.0 to 1.5 ATR 
             sl_dist = atr * 1.5
-            # FORENSIC FIX: Lowered TP from 3.0 to 2.0 ATR (breakeven WR now 33% — achievable)
-            tp_dist = atr * 2.0
+            # FORENSIC FIX: Increased TP to 3.0 ATR strictly. (This forces a minimum 2.0 RR)
+            tp_dist = atr * 3.0
             
             sl = entry - sl_dist if direction == "BUY" else entry + sl_dist
             tp = entry + tp_dist if direction == "BUY" else entry - tp_dist

@@ -1,18 +1,17 @@
-# 🏛️ Pure Quant Institutional Terminal (v5.1.1)
+# 🏛️ Pure Quant Institutional Terminal (v5.3.0 - Live Ready Baseline)
 
-> **Institutional-Grade Algorithmic Execution Environment**  
-> *Deterministic Alpha Models | Advanced Liquidity Tracking | Forensic Execution*
+> Deterministic alpha research, paper execution, and controlled deployment tooling.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.12](https://img.shields.io/badge/python-3.12-blue.svg)](https://www.python.org/downloads/)
-[![Status: Production](https://img.shields.io/badge/Status-Institutional-cyan.svg)]()
+[![Status: Research/Paper](https://img.shields.io/badge/Status-Research%2FPaper-cyan.svg)]()
 [![Core: Deterministic](https://img.shields.io/badge/Logic-Pure%20Math-white.svg)]()
 
 ---
 
 ## 📖 Overview
 
-The **Pure Quant Institutional Terminal** is a high-fidelity algorithmic trading system designed for professional-grade execution. Rejecting the standard retail approach of subjective pattern recognition, this terminal utilizes **Institutional Liquidity Models** and **Deterministic Alpha Kernels** to identify structural market inefficiencies.
+The **Pure Quant Research Terminal** is a deterministic trading-signal research system with paper-execution infrastructure and a MetaAPI execution bridge. Current database evidence supports research and paper validation; live broker performance is not yet proven by the active ledger.
 
 The system is optimized for **H1/H4 Macro Trends** and **M5/M15 Institutional Execution Windows**, focusing on surgical entries within high-probability liquidity zones.
 
@@ -38,15 +37,18 @@ Authentic implementation of institutional range mechanics.
 
 ---
 
-## 💎 Performance Matrix (Institutional Grade)
+## Performance Matrix (Database-Derived)
 
-| Metric | CRT Strategy (H1) | SMC Sweep (M5/M15) |
+Latest audited benchmark: `database/backtest_results.db`, Run ID `58`, date range `2026-05-01` to `2026-05-29`.
+
+| Metric | CRT Strategy (H1) | Advanced Patterns | SMC Sweep |
 | :--- | :--- | :--- |
-| **Asset Universe** | Forex Majors / Gold | Forex Majors |
-| **Win Rate** | ~35-42% | ~50.9% |
-| **Profit Factor** | **2.15** | 1.85 |
-| **Expectancy (Friction Aware)** | **0.81R** | **1.2R** |
-| **Execution** | ✅ **LIVE_KERNEL** | ✅ **LIVE_KERNEL** |
+| **Closed Trades** | 2,720 | 10 | 42 |
+| **Win Rate** | 71.1% | 50.0% | 64.2% |
+| **Net Profit** | +1,034.1R | +2.3R | +24.8R |
+| **Status** | Live-Ready Phase | Under-sampled | Live-Ready Phase |
+
+Run `63` total closed-trade result: `2,772` trades, `70.9%` win rate, `+1,061.4R`. These results reflect 60-day structural edge with backtest isolation perfectly intact.
 
 ---
 
@@ -96,7 +98,7 @@ python run_backtest_cli.py --days 30
 │   ├── crt_strategy.py
 │   └── smc_sweep_strategy.py
 ├── research/           # Quantitative Backtesting & Labs
-├── tests/              # 100% Coverage Testing Suite
+├── tests/              # Unit/integration tests; not a 100% proof suite
 └── dashboard/          # Institutional Grid UI (HTML/CSS)
 ```
 
@@ -104,6 +106,6 @@ python run_backtest_cli.py --days 30
 
 ## ⚠️ Risk & Transparency
 
-*Trading financial markets involves significant risk. This system uses deterministic models which, while statistically robust, do not eliminate the risk of capital loss. All performance metrics are based on forensic backtesting and real-world execution logs.*
+Trading financial markets involves significant risk. Current performance metrics are based on local backtest database records. The active execution ledger contains paper orders/fills only; it does not prove live broker fill quality or live profitability.
 
-**System Version: 5.1.1 (Realistic Alpha - Gold Release)**
+**System Version: 5.3.0 (Live-Ready Mathematical Update 63)**

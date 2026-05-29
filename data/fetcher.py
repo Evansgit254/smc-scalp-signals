@@ -9,6 +9,7 @@ from config.config import SYMBOLS, NARRATIVE_TF, STRUCTURE_TF, ENTRY_TF, INSTITU
 from indicators.calculations import IndicatorCalculator
 import warnings
 import logging
+from datetime import timedelta
 
 # Suppress noisy warnings
 warnings.simplefilter(action='ignore', category=FutureWarning)
@@ -19,18 +20,32 @@ class DataFetcher:
     _session = None
 
     @staticmethod
+    def _get_provider() -> str:
+        """Fetch current data provider from database."""
+        from config.config import DB_CLIENTS
+        import sqlite3
+        try:
+            conn = sqlite3.connect(DB_CLIENTS)
+            row = conn.execute("SELECT value FROM system_config WHERE key = 'data_provider'").fetchone()
+            conn.close()
+            return row[0] if row and row[0] else "yfinance"
+        except:
+            return "yfinance"
+
+    @staticmethod
     def _get_session():
         if DataFetcher._session is None:
-            # impersonate="chrome" is critical for bypassing Yahoo Finance anti-scraping
-            if hasattr(requests_cffi, "Session"):
-                try:
-                    DataFetcher._session = requests_cffi.Session(impersonate="chrome")
-                except TypeError:
-                    # Fallback for standard requests if curl_cffi not present or older version
-                    import requests
-                    DataFetcher._session = requests.Session()
-            else:
-                DataFetcher._session = requests_cffi.Session()
+            try:
+                from curl_cffi import requests as curl_requests
+                # impersonate="chrome" is critical for bypassing Yahoo Finance anti-scraping
+                DataFetcher._session = curl_requests.Session(impersonate="chrome")
+            except ImportError:
+                import requests
+                DataFetcher._session = requests.Session()
+                # Set common headers for standard requests to mimic a browser
+                DataFetcher._session.headers.update({
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+                })
         return DataFetcher._session
     @staticmethod
     def fetch_data(symbol: str, timeframe: str, period: str = "5d") -> Optional[pd.DataFrame]:
@@ -82,7 +97,7 @@ class DataFetcher:
                 else:
                     df.index = df.index.tz_convert("UTC")
                     
-                return df
+                return DataFetcher._drop_incomplete_bar(df, timeframe)
             except Exception as e:
                 # Silent retry
                 if attempt < max_retries - 1:
@@ -140,7 +155,7 @@ class DataFetcher:
                 else:
                     df.index = df.index.tz_convert("UTC")
                     
-                return df
+                return DataFetcher._drop_incomplete_bar(df, timeframe)
             except Exception as e:
                 if attempt < max_retries - 1:
                     time.sleep(backoff ** attempt)
@@ -150,8 +165,33 @@ class DataFetcher:
 
     @staticmethod
     async def fetch_data_async(symbol: str, timeframe: str, period: str = "5d") -> Optional[pd.DataFrame]:
-        """Asynchronous wrapper for fetch_data using threads."""
+        """Asynchronous fetch with intelligent provider routing (MT5 vs yfinance)."""
         import asyncio
+        provider = DataFetcher._get_provider()
+
+        # 1. Attempt MT5 Broker Fetch if selected
+        if provider == "mt5" and not any(m in symbol for m in ["DXY", "TNX", "^TNX"]):
+            try:
+                from core.trade_executor import get_executor
+                executor = get_executor()
+                # Map period to limit (approximate)
+                limit_map = {"5d": 500, "10d": 1000, "25d": 2500, "3mo": 5000, "6mo": 9999}
+                limit = limit_map.get(period, 500)
+                
+                broker_data = await executor.get_historical_data(symbol, timeframe, limit)
+                if broker_data:
+                    df = pd.DataFrame(broker_data)
+                    df['timestamp'] = pd.to_datetime(df['timestamp'], unit='s')
+                    df = df.set_index('timestamp')
+                    if df.index.tz is None:
+                        df.index = df.index.tz_localize("UTC")
+                    else:
+                        df.index = df.index.tz_convert("UTC")
+                    return DataFetcher._drop_incomplete_bar(df, timeframe)
+            except Exception as e:
+                logging.debug(f"MT5 fetch failed for {symbol}, falling back to yfinance: {e}")
+
+        # 2. Fallback to yfinance (Thread-safe)
         loop = asyncio.get_running_loop()
         try:
             return await asyncio.wait_for(
@@ -175,6 +215,38 @@ class DataFetcher:
         except (asyncio.TimeoutError, asyncio.CancelledError) as e:
             logging.warning(f"Async fetch_range timed out/cancelled for {symbol} {timeframe}: {e}")
             return None
+
+    @staticmethod
+    def _drop_incomplete_bar(df: pd.DataFrame, timeframe: str) -> pd.DataFrame:
+        """Avoid scoring/executing against the currently forming candle."""
+        if df is None or df.empty:
+            return df
+        tf = str(timeframe).lower()
+        interval_map = {
+            "1m": timedelta(minutes=1),
+            "5m": timedelta(minutes=5),
+            "15m": timedelta(minutes=15),
+            "30m": timedelta(minutes=30),
+            "1h": timedelta(hours=1),
+            "60m": timedelta(hours=1),
+            "4h": timedelta(hours=4),
+            "1d": timedelta(days=1),
+        }
+        interval = interval_map.get(tf)
+        if not interval:
+            return df
+        try:
+            last_ts = df.index[-1]
+            now = pd.Timestamp.utcnow()
+            if last_ts.tz is None:
+                last_ts = last_ts.tz_localize("UTC")
+            else:
+                last_ts = last_ts.tz_convert("UTC")
+            if now < last_ts + interval:
+                return df.iloc[:-1]
+        except Exception:
+            return df
+        return df
 
     @staticmethod
     async def get_latest_data(symbols: list = SYMBOLS) -> Dict[str, Dict[str, pd.DataFrame]]:

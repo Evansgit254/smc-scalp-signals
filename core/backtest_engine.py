@@ -14,10 +14,11 @@ class BacktestEngine:
     Engineered for high-fidelity signal verification and data integrity.
     """
     
-    def __init__(self, start_date: str, end_date: str, symbols: List[str] = SYMBOLS):
+    def __init__(self, start_date: str, end_date: str, symbols: List[str] = SYMBOLS, include_smc_sweep: bool = False):
         self.start_date = start_date
         self.end_date = end_date
         self.symbols = symbols
+        self.include_smc_sweep = include_smc_sweep
         self.results_db = "database/backtest_results.db"
         self._initialize_database()
         
@@ -53,7 +54,19 @@ class BacktestEngine:
                     timestamp TEXT,
                     closed_at TEXT
                 );
+                CREATE TABLE IF NOT EXISTS trade_reservations (
+                    symbol TEXT PRIMARY KEY,
+                    direction TEXT,
+                    signal_uid TEXT,
+                    status TEXT DEFAULT 'ACTIVE',
+                    created_at TEXT,
+                    updated_at TEXT
+                );
             """)
+            # Cleanup past aborted runs (ghost trades/reservations that pollute new runs)
+            conn.execute("UPDATE backtest_signals SET result = 'CLOSED', closed_at = timestamp WHERE result = 'OPEN' AND (closed_at IS NULL OR closed_at = '')")
+            conn.execute("DELETE FROM trade_reservations")
+            conn.commit()
 
     async def run(self, progress_callback: Optional[Any] = None) -> Dict[str, Any]:
         """
@@ -71,10 +84,11 @@ class BacktestEngine:
 
         strategies = [
             CRTStrategy(),
-            SMCLiquiditySweepStrategy(),
             AdvancedPatternStrategy(),
             SessionClockStrategy()
         ]
+        if self.include_smc_sweep:
+            strategies.append(SMCLiquiditySweepStrategy())
         
         run_id = self._create_run_header()
         performance = {"total_pips": 0.0, "wins": 0, "signals": []}
@@ -111,6 +125,16 @@ class BacktestEngine:
                     signal = await strategy.analyze(symbol, data_bundle, [], {})
                     if not signal:
                         continue
+
+                    # Inject current volatility context for ExecutionGate
+                    if 'atr' in entry_df.columns and 'atr_avg' in entry_df.columns:
+                        signal['current_atr'] = entry_df['atr'].iloc[idx_entry]
+                        signal['avg_atr'] = entry_df['atr_avg'].iloc[idx_entry]
+                    else:
+                        signal['current_atr'] = 1.0
+                        signal['avg_atr'] = 1.0
+
+                    signal['run_id'] = run_id
 
                     # Execute Gate Validation
                     gate = ExecutionGate.validate(
@@ -172,7 +196,7 @@ class BacktestEngine:
             return {'result': 'OPEN', 'pips': 0, 'closed_at': None}
 
         # Conversion: JPY pairs use 0.01 as 1 pip, others use 0.0001
-        is_jpy = "JPY" in signal['symbol']
+        is_jpy = "JPY" in signal.get('symbol', '')
         pip_value = 0.01 if is_jpy else 0.0001
         
         # Total execution friction in price points
@@ -218,36 +242,54 @@ class BacktestEngine:
     async def _fetch_all_symbol_data(self) -> Dict[str, Dict[str, pd.DataFrame]]:
         """Handles MTF data loading with fallback logic."""
         from data.fetcher import DataFetcher
+        from data.deep_fetcher import DeepDataFetcher
         processed = {}
         
         # Define ranges (padded for indicator warmup)
         start_dt = datetime.strptime(self.start_date, '%Y-%m-%d')
         h1_start = (start_dt - timedelta(days=30)).strftime('%Y-%m-%d')
-        m5_start = max((datetime.now() - timedelta(days=59)).strftime('%Y-%m-%d'), 
-                       (start_dt - timedelta(days=5)).strftime('%Y-%m-%d'))
+        # Removed the 59-day hard clamp to allow deep history fetching
+        m5_start = (start_dt - timedelta(days=5)).strftime('%Y-%m-%d')
         d1_start = (start_dt - timedelta(days=730)).strftime('%Y-%m-%d')
         fetch_end = (datetime.strptime(self.end_date, '%Y-%m-%d') + timedelta(days=2)).strftime('%Y-%m-%d')
 
+        is_deep_history = (datetime.now() - datetime.strptime(m5_start, '%Y-%m-%d')).days > 58
+
         for symbol in self.symbols:
             try:
-                m5 = await DataFetcher.fetch_range_async(symbol, "5m", m5_start, fetch_end)
-                m15 = await DataFetcher.fetch_range_async(symbol, "15m", m5_start, fetch_end)
+                if is_deep_history:
+                    m5 = await DeepDataFetcher.fetch_range_async(symbol, "5m", m5_start, fetch_end)
+                    m15 = await DeepDataFetcher.fetch_range_async(symbol, "15m", m5_start, fetch_end)
+                else:
+                    m5 = await DataFetcher.fetch_range_async(symbol, "5m", m5_start, fetch_end)
+                    m15 = await DataFetcher.fetch_range_async(symbol, "15m", m5_start, fetch_end)
+                    
                 h1 = await DataFetcher.fetch_range_async(symbol, "1h", h1_start, fetch_end)
                 d1 = await DataFetcher.fetch_range_async(symbol, "1d", d1_start, fetch_end)
                 
-                if h1 is None or d1 is None or (m5 is None and m15 is None):
+                if h1 is None or d1 is None or h1.empty or d1.empty:
                     continue
 
+                if m5 is None or m5.empty:
+                    print(f"Skipping {symbol}: Deep historical M5 data missing. Requires manual CSV drop into Dukascopy directory.")
+                    continue
+
+                # Strict M5 enforce
+                entry_df = m5 
+                entry_tf = "5m"
+
                 processed[symbol] = {
-                    'entry': IndicatorCalculator.add_indicators(m5 if m5 is not None else m15, "5m" if m5 is not None else "15m"),
+                    'entry': IndicatorCalculator.add_indicators(entry_df, entry_tf),
                     'h1': IndicatorCalculator.add_indicators(h1, "1h"),
                     'd1': IndicatorCalculator.add_indicators(d1, "1d")
                 }
-                if m5 is not None and m15 is not None:
+                if m15 is not None and not m15.empty:
                     processed[symbol]['m15'] = IndicatorCalculator.add_indicators(m15, "15m")
 
             except Exception as e:
+                import traceback
                 print(f"⚠️ Data Fetch Error [{symbol}]: {str(e)}")
+                # traceback.print_exc()
         return processed
 
     def _create_run_header(self) -> int:

@@ -15,6 +15,7 @@ async def test_paper_trade_execution(executor):
     signal = {
         "symbol": "EURUSD=X",
         "direction": "BUY",
+        "entry_price": 1.0550,
         "lot_size": 0.05,
         "sl": 1.0500,
         "tp1": 1.0600,
@@ -40,3 +41,20 @@ async def test_auto_trade_disabled(executor):
     
     assert result["status"] == "skipped"
     assert "MT5_AUTO_TRADE=false" in result["reason"]
+
+@pytest.mark.asyncio
+async def test_missing_entry_price_blocks_execution(executor):
+    signal = {
+        "symbol": "EURUSD=X",
+        "direction": "BUY",
+        "lot_size": 0.05,
+        "sl": 1.0500,
+        "tp1": 1.0600,
+    }
+
+    with patch.object(executor, "_persist_execution_state") as mock_persist:
+        result = await executor.execute_trade(signal)
+
+    assert result["status"] == "error"
+    assert "entry_price" in result["reason"]
+    mock_persist.assert_called_once()

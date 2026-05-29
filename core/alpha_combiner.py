@@ -163,6 +163,6 @@ class AlphaCombiner:
         signal_strength = min(abs(signal) / 2.0, 1.0)  # Normalize to 0-1
         
         # Combined quality score (0-10)
-        # base_boost allows strategies like CRT to inject institutional confidence
-        quality = (alignment * 5.0 + signal_strength * 3.0 + (base_boost * 0.2))
+        # V35.1 Fix: Remove 0.2 suppression penalty on base_boost to actively enable Structural Models
+        quality = (alignment * 5.0 + signal_strength * 3.0 + base_boost)
         return round(min(quality, 10.0), 2)

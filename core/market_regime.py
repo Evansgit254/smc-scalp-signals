@@ -13,6 +13,7 @@ Based on backtested thresholds:
 import numpy as np
 import sqlite3
 from datetime import datetime
+from core.db_utils import connect_sqlite, write_audit_event
 
 # --- REGIME THRESHOLDS ---
 ADX_TRENDING  = 25.0   # Strong trend
@@ -162,15 +163,38 @@ def apply_regime_filter(regime_result: dict, db_clients_path: str):
     so _load_dynamic_config() picks it up automatically next cycle.
     """
     threshold = regime_result['quality_threshold']
+    conn = None
     try:
-        conn = sqlite3.connect(db_clients_path)
-        conn.execute(
-            "UPDATE system_config SET value=? WHERE key='MIN_QUALITY_SCORE'",
-            (str(threshold),)
+        conn = connect_sqlite(db_clients_path)
+        previous = conn.execute("SELECT value FROM system_config WHERE key='min_quality_score'").fetchone()
+        conn.execute("""
+            INSERT INTO system_config (key, value, type, updated_at, updated_by, version)
+            VALUES ('min_quality_score', ?, 'float', ?, 'regime_detector', 1)
+            ON CONFLICT(key) DO UPDATE SET
+                value = excluded.value,
+                type = excluded.type,
+                updated_at = excluded.updated_at,
+                updated_by = excluded.updated_by,
+                version = COALESCE(system_config.version, 0) + 1
+        """, (str(threshold), datetime.utcnow().isoformat()))
+        write_audit_event(
+            conn,
+            event_type="config.regime_update",
+            actor="regime_detector",
+            target="min_quality_score",
+            before_value=previous["value"] if previous else None,
+            after_value=threshold,
+            metadata={
+                "regime": regime_result.get("regime"),
+                "adx": regime_result.get("adx"),
+                "vol_ratio": regime_result.get("vol_ratio"),
+            },
         )
         conn.commit()
-        conn.close()
         print(f"🧠 REGIME: {regime_result['regime']} → Quality threshold set to {threshold}")
         print(f"   └─ {regime_result['detail']}")
     except Exception as e:
         print(f"⚠️  Could not apply regime filter: {e}")
+    finally:
+        if conn:
+            conn.close()

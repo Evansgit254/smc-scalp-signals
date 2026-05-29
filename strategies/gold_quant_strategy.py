@@ -6,7 +6,7 @@ from core.alpha_combiner import AlphaCombiner
 from core.filters.risk_manager import RiskManager
 from core.filters.session_filter import SessionFilter
 from indicators.calculations import IndicatorCalculator
-from config.config import MIN_QUALITY_SCORE_INTRADAY
+import config.config as cfg
 
 class GoldQuantStrategy(BaseStrategy):
     """
@@ -49,7 +49,7 @@ class GoldQuantStrategy(BaseStrategy):
             quality_score = AlphaCombiner.calculate_quality_score(factors, alpha_signal)
             
             # High frequency requirement for Gold: lower the quality bar to ensure daily action
-            if quality_score < 5.0:
+            if quality_score < cfg.MIN_QUALITY_SCORE_INTRADAY:
                 return None
                 
             direction = None
@@ -80,7 +80,7 @@ class GoldQuantStrategy(BaseStrategy):
                             quality_score -= 1.5
             
             # Re-check quality score after DXY penalty
-            if quality_score < 5.0:
+            if quality_score < cfg.MIN_QUALITY_SCORE_INTRADAY:
                 return None
 
             latest = df.iloc[-1]

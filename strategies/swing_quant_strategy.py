@@ -7,7 +7,7 @@ from core.filters.risk_manager import RiskManager
 from core.filters.macro_filter import MacroFilter
 from core.filters.news_filter import NewsFilter
 from indicators.calculations import IndicatorCalculator
-from config.config import ATR_MULTIPLIER, MIN_QUALITY_SCORE
+import config.config as cfg
 
 class SwingQuantStrategy(BaseStrategy):
     """
@@ -71,7 +71,7 @@ class SwingQuantStrategy(BaseStrategy):
                 swing_rr_multiplier = 1.5
             
             # Tightened quality filter for swing
-            if quality_score < 5.0:
+            if quality_score < cfg.MIN_QUALITY_SCORE:
                 return None
             
             # Direction determination

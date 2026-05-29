@@ -16,7 +16,7 @@ def test_indicator_calculation_purity():
         'close': np.linspace(100.5, 150.5, 300),
         'volume': [1000] * 300
     })
-    data.index = pd.date_range("2023-01-01", periods=300, freq="5m")
+    data.index = pd.date_range("2023-01-01", periods=300, freq="5min")
     
     # Calculate indicators
     result = IndicatorCalculator.add_indicators(data, "5m")
@@ -34,7 +34,7 @@ def test_gate_inventory_blocking():
     db_signals = "database/backtest_results.db" # Using the backtest DB for simulation
     db_clients = "database/clients.db"
     
-    signal = {'symbol': 'TEST_SYMBOL', 'quality_score': 8.5}
+    signal = {'symbol': 'TEST_SYMBOL', 'quality_score': 8.5, 'entry_price': 1.2345}
     
     # Mock an open position in the DB for the test runner session
     # (In a real test we'd use a memory DB, but let's check logic)
@@ -45,6 +45,145 @@ def test_gate_inventory_blocking():
     
     # If result is BLOCKED due to EXISTING_POSITION, the gate is doing its job.
     assert 'status' in result
+
+def test_gate_blocks_backtest_positions_until_closed_at(tmp_path):
+    """Backtest rows with a future closed_at must still count as open at current_ts."""
+    db_signals = tmp_path / "signals.db"
+    db_clients = tmp_path / "clients.db"
+
+    import sqlite3
+    conn = sqlite3.connect(db_signals)
+    conn.execute("""
+        CREATE TABLE backtest_signals (
+            symbol TEXT,
+            timestamp TEXT,
+            closed_at TEXT,
+            gate_status TEXT,
+            result TEXT
+        )
+    """)
+    conn.execute("""
+        INSERT INTO backtest_signals VALUES (
+            'EURUSD=X',
+            '2026-05-29T08:00:00+00:00',
+            '2026-05-29T10:00:00+00:00',
+            'PASSED',
+            'TP1'
+        )
+    """)
+    conn.commit()
+    conn.close()
+
+    conn = sqlite3.connect(db_clients)
+    conn.execute("CREATE TABLE system_config (key TEXT, value TEXT)")
+    conn.execute("INSERT INTO system_config VALUES ('min_quality_score', '5.0')")
+    conn.commit()
+    conn.close()
+
+    blocked = ExecutionGate.validate(
+        {'symbol': 'EURUSD=X', 'quality_score': 8.5, 'entry_price': 1.1000},
+        str(db_signals),
+        str(db_clients),
+        table_name='backtest_signals',
+        current_ts=pd.Timestamp('2026-05-29T09:00:00+00:00'),
+    )
+    assert blocked['status'] == 'BLOCKED'
+    assert blocked['reason'] == 'EXISTING_POSITION_IN_EURUSD=X'
+
+    passed = ExecutionGate.validate(
+        {'symbol': 'EURUSD=X', 'quality_score': 8.5, 'entry_price': 1.1000},
+        str(db_signals),
+        str(db_clients),
+        table_name='backtest_signals',
+        current_ts=pd.Timestamp('2026-05-29T11:00:00+00:00'),
+    )
+    assert passed['status'] == 'PASSED'
+
+def test_gate_requires_executable_entry(tmp_path):
+    db_signals = tmp_path / "signals.db"
+    db_clients = tmp_path / "clients.db"
+
+    import sqlite3
+    conn = sqlite3.connect(db_signals)
+    conn.execute("""
+        CREATE TABLE signals (
+            symbol TEXT,
+            timestamp TEXT,
+            closed_at TEXT,
+            gate_status TEXT,
+            result TEXT,
+            status TEXT
+        )
+    """)
+    conn.commit()
+    conn.close()
+
+    conn = sqlite3.connect(db_clients)
+    conn.execute("CREATE TABLE system_config (key TEXT, value TEXT)")
+    conn.execute("INSERT INTO system_config VALUES ('min_quality_score', '5.0')")
+    conn.commit()
+    conn.close()
+
+    blocked = ExecutionGate.validate(
+        {'symbol': 'EURUSD=X', 'quality_score': 8.5},
+        str(db_signals),
+        str(db_clients),
+    )
+    assert blocked == {'status': 'BLOCKED', 'reason': 'MISSING_EXECUTABLE_ENTRY'}
+
+def test_gate_live_strategy_column_kill_switch(tmp_path):
+    db_signals = tmp_path / "signals.db"
+    db_clients = tmp_path / "clients.db"
+
+    import sqlite3
+    conn = sqlite3.connect(db_signals)
+    conn.execute("""
+        CREATE TABLE signals (
+            symbol TEXT,
+            strategy TEXT,
+            timestamp TEXT,
+            closed_at TEXT,
+            gate_status TEXT,
+            result TEXT,
+            status TEXT,
+            result_pips REAL
+        )
+    """)
+    for i in range(5):
+        conn.execute("""
+            INSERT INTO signals VALUES (
+                'EURUSD=X',
+                'CRT',
+                ?,
+                ?,
+                'PASSED',
+                'SL',
+                'CLOSED',
+                -1.0
+            )
+        """, (f"2026-05-29T0{i}:00:00", f"2026-05-29T0{i}:05:00"))
+    conn.commit()
+    conn.close()
+
+    conn = sqlite3.connect(db_clients)
+    conn.execute("CREATE TABLE system_config (key TEXT, value TEXT)")
+    conn.execute("INSERT INTO system_config VALUES ('min_quality_score', '5.0')")
+    conn.commit()
+    conn.close()
+
+    blocked = ExecutionGate.validate(
+        {
+            'symbol': 'EURUSD=X',
+            'trade_type': 'CRT',
+            'quality_score': 8.5,
+            'entry_price': 1.1000,
+        },
+        str(db_signals),
+        str(db_clients),
+        current_ts=pd.Timestamp('2026-05-29T06:00:00'),
+    )
+    assert blocked['status'] == 'BLOCKED'
+    assert blocked['reason'].startswith('REGIME_BLEED_KILL_SWITCH')
 
 # 3. SIMULATION OUTCOME INTEGRITY
 def test_simulation_exit_logic():

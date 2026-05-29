@@ -40,12 +40,12 @@
             <div style="display: flex; align-items: center; gap: 24px;">
                 <div style="display: flex; align-items: center; gap: 8px;">
                     <i class="fas fa-terminal text-cyan"></i>
-                    <span class="mono" style="font-weight: 700; font-size: 14px; letter-spacing: 1.5px;">QUANT_CORE v28.0 [REFACTORED]</span>
+                    <span class="mono" style="font-weight: 700; font-size: 14px; letter-spacing: 1.5px;">QUANT_CORE v31.2 [INSTITUTIONAL_SYNC]</span>
                 </div>
-                <div class="badge" style="border: 1px solid var(--acc-emerald); color: var(--acc-emerald);">LIVE_FEED</div>
+                <div id="feed-status-badge" class="badge" style="border: 1px solid var(--acc-amber); color: var(--acc-amber);">SYNCING</div>
                 <div style="display: flex; align-items: center; gap: 8px; margin-left: 12px;">
-                    <span style="width: 8px; height: 8px; border-radius: 50%; background: var(--acc-emerald); box-shadow: 0 0 8px var(--acc-emerald);"></span>
-                    <span class="label-caps" style="font-size: 10px; color: var(--text-secondary);">SYS_OK</span>
+                    <span id="sys-status-dot" style="width: 8px; height: 8px; border-radius: 50%; background: var(--acc-amber); box-shadow: 0 0 8px var(--acc-amber);"></span>
+                    <span id="sys-status-label" class="label-caps" style="font-size: 10px; color: var(--text-secondary);">SYNCING</span>
                 </div>
             </div>
 
@@ -55,8 +55,8 @@
                     <span class="mono text-sm" id="server-time" style="color: var(--text-primary);">--:--:--</span>
                 </div>
                 <div style="display: flex; flex-direction: column; align-items: flex-end;">
-                    <span class="label-caps" style="font-size: 9px;">Portfolio Equity</span>
-                    <span class="mono text-sm" style="color: var(--acc-emerald);">$102,450.22 <span style="font-size: 10px;">(+0.85%)</span></span>
+                    <span class="label-caps" style="font-size: 9px;">Paper Equity</span>
+                    <span id="portfolio-equity" class="mono text-sm" style="color: var(--text-primary);">$--</span>
                 </div>
                 <div style="height: 32px; width: 1px; background: var(--border-color);"></div>
                 <div id="regime-indicator" class="micro-border" style="padding: 4px 12px; display: flex; align-items: center; gap: 8px; background: rgba(0, 212, 255, 0.05);">
@@ -96,41 +96,45 @@
                     <i class="fas fa-plus text-tertiary" style="cursor: pointer;"></i>
                 </div>
                 <div id="watchlist-container" style="display: flex; flex-direction: column; gap: 1px; background: var(--border-color);">
-                    <!-- Dummy watchlist rows -->
-                    <div style="background: var(--bg-surface); padding: 8px 12px; display: flex; justify-content: space-between; align-items: center; cursor: pointer;">
-                        <span class="mono text-sm">EURUSD</span>
-                        <span class="mono text-sm text-emerald">1.08420</span>
-                    </div>
-                    <div style="background: var(--bg-surface); padding: 8px 12px; display: flex; justify-content: space-between; align-items: center; cursor: pointer;">
-                        <span class="mono text-sm">GBPUSD</span>
-                        <span class="mono text-sm text-crimson">1.27455</span>
-                    </div>
-                    <div style="background: var(--bg-surface); padding: 8px 12px; display: flex; justify-content: space-between; align-items: center; cursor: pointer;">
-                        <span class="mono text-sm">XAUUSD</span>
-                        <span class="mono text-sm">2342.10</span>
-                    </div>
+                    <!-- Populated via /api/system/config -->
                 </div>
             </div>
 
-            <!-- Navigation Links -->
-            <nav style="padding: 16px; background: var(--bg-panel); border-top: 1px solid var(--border-color);">
-                <div class="nav-item active" style="margin-bottom: 8px; cursor: pointer; display: flex; gap: 10px; align-items: center; color: var(--acc-cyan);" onclick="showView('signals')">
-                    <i class="fas fa-bolt"></i> <span class="label-caps" style="color: inherit;">Signal Feed</span>
+            <!-- 🛰️ SYSTEM COMPONENT NAVIGATION -->
+            <nav class="nav-section">
+                <div class="label-caps" style="padding: 0 16px 8px; font-size: 9px; opacity: 0.5;">Core Modules</div>
+                <div class="nav-item active" onclick="showView('signals')">
+                    <i class="fas fa-satellite-dish"></i>
+                    <span class="label-caps">Alpha Terminal</span>
                 </div>
-                <div class="nav-item" style="margin-bottom: 8px; cursor: pointer; display: flex; gap: 10px; align-items: center; color: var(--text-secondary);" onclick="showView('clients')">
-                    <i class="fas fa-users"></i> <span class="label-caps" style="color: inherit;">Clients</span>
+                <div class="nav-item" onclick="showView('clients')">
+                    <i class="fas fa-users-viewfinder"></i>
+                    <span class="label-caps">Institutional Clients</span>
                 </div>
-                <div class="nav-item" style="margin-bottom: 8px; cursor: pointer; display: flex; gap: 10px; align-items: center; color: var(--text-secondary);" onclick="showView('performance')">
-                    <i class="fas fa-chart-line"></i> <span class="label-caps" style="color: inherit;">Analytics</span>
+                <div class="nav-item" onclick="showView('performance')">
+                    <i class="fas fa-microchip"></i>
+                    <span class="label-caps">Quant Analytics</span>
                 </div>
-                <div class="nav-item" style="margin-bottom: 8px; cursor: pointer; display: flex; gap: 10px; align-items: center; color: var(--text-secondary);" onclick="showView('monitor')">
-                    <i class="fas fa-terminal"></i> <span class="label-caps" style="color: inherit;">Monitor</span>
+                
+                <div class="label-caps" style="padding: 24px 16px 8px; font-size: 9px; opacity: 0.5;">System Tools</div>
+                <div class="nav-item" onclick="showView('monitor')">
+                    <i class="fas fa-activity"></i>
+                    <span class="label-caps">System Heartbeat</span>
                 </div>
-                <div class="nav-item" style="cursor: pointer; display: flex; gap: 10px; align-items: center; color: var(--text-secondary);" onclick="showView('backtest')">
-                    <i class="fas fa-history"></i> <span class="label-caps" style="color: inherit;">Backtest</span>
+                <div class="nav-item" onclick="showView('backtest')">
+                    <i class="fas fa-vial"></i>
+                    <span class="label-caps">Strategy Lab</span>
                 </div>
-                <div class="nav-item" onclick="logout()" style="margin-top: 24px; cursor: pointer; display: flex; gap: 10px; align-items: center; color: var(--acc-crimson);">
-                    <i class="fas fa-power-off"></i> <span class="label-caps" style="color: inherit;">Logout</span>
+                <div class="nav-item" onclick="showView('settings')">
+                    <i class="fas fa-sliders-h"></i>
+                    <span class="label-caps">Engine Governance</span>
+                </div>
+
+                <div style="flex: 1;"></div>
+                
+                <div class="nav-item" onclick="logout()" style="color: var(--acc-crimson); border-top: 1px solid var(--border-color); border-radius: 0; margin: 0 -16px; padding: 16px 32px;">
+                    <i class="fas fa-power-off"></i>
+                    <span class="label-caps">Secure Logout</span>
                 </div>
             </nav>
         </aside>
@@ -341,18 +345,45 @@
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px;">
                     <div class="chart-card">
                         <h3 class="label-caps" style="color: var(--acc-cyan); margin-bottom: 20px;">Execution Control</h3>
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
-                            <div>
-                                <div class="text-sm">Master Signal Switch</div>
-                                <div class="text-xs text-tertiary">Enable/Disable entire alpha core</div>
+                        <div style="margin-bottom: 24px; padding-top: 24px; border-top: 1px solid var(--border-color);">
+                            <label class="label-caps" style="font-size: 9px; color: var(--acc-cyan); display: block; margin-bottom: 12px;">Institutional Data Source</label>
+                            <div style="display: flex; gap: 8px;">
+                                <button id="provider-yfinance" class="btn btn-primary" style="flex: 1; font-size: 10px; background: var(--bg-surface); border-color: var(--border-color);" onclick="setDataProvider('yfinance')">YFINANCE</button>
+                                <button id="provider-mt5" class="btn btn-primary" style="flex: 1; font-size: 10px; background: var(--bg-surface); border-color: var(--border-color);" onclick="setDataProvider('mt5')">MT5_BRIDGE</button>
                             </div>
-                            <input type="checkbox" id="cfg-system-status">
                         </div>
-                        <div style="margin-bottom: 16px;">
-                            <label class="label-caps" style="font-size: 9px;">News Wash Zone (Min)</label>
-                            <input type="number" id="cfg-news-filter" style="width: 100%; background: var(--bg-base); border: 1px solid var(--border-color); padding: 10px; color: #fff; border-radius: var(--radius);">
+
+                        <button class="btn btn-primary" style="width: 100%; margin-bottom: 16px;" onclick="saveConfig()">COMMIT CORE CONFIG</button>
+
+                        <div style="padding: 16px; background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); border-radius: var(--radius);">
+                            <label class="label-caps" style="font-size: 9px; color: var(--acc-amber); display: block; margin-bottom: 12px;">System Maintenance</label>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                                <button class="btn" style="font-size: 9px; background: var(--bg-base); border: 1px solid var(--border-color);" onclick="runSystemManage('backup')">BACKUP_DB</button>
+                                <button class="btn" style="font-size: 9px; background: var(--bg-base); border: 1px solid var(--border-color);" onclick="runSystemManage('rollback')">ROLLBACK</button>
+                            </div>
                         </div>
-                        <button class="btn btn-primary" onclick="saveConfig()">COMMIT CONFIG CHANGES</button>
+                    </div>
+
+                    <div class="chart-card">
+                        <h3 class="label-caps" style="color: var(--acc-cyan); margin-bottom: 20px;">Terminal Configuration</h3>
+                        <div style="display: flex; flex-direction: column; gap: 16px;">
+                            <div>
+                                <label class="label-caps" style="font-size: 8px; color: var(--text-secondary); display: block; margin-bottom: 6px;">MetaAPI Token</label>
+                                <input type="password" id="meta-token" placeholder="Enter MetaAPI Token..." style="width: 100%; background: var(--bg-surface); border: 1px solid var(--border-color); color: var(--text-primary); padding: 8px; border-radius: var(--radius); font-family: monospace; font-size: 11px;">
+                            </div>
+                            <div>
+                                <label class="label-caps" style="font-size: 8px; color: var(--text-secondary); display: block; margin-bottom: 6px;">MT5 Account ID</label>
+                                <input type="text" id="meta-account-id" placeholder="Account UUID..." style="width: 100%; background: var(--bg-surface); border: 1px solid var(--border-color); color: var(--text-primary); padding: 8px; border-radius: var(--radius); font-family: monospace; font-size: 11px;">
+                            </div>
+                            <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 8px;">
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <label class="label-caps" style="font-size: 8px; color: var(--text-secondary);">Enable Paper Mode</label>
+                                    <input type="checkbox" id="meta-paper-mode" checked style="accent-color: var(--acc-cyan); cursor: pointer;">
+                                </div>
+                                <button class="btn btn-primary" onclick="saveTerminalConfig()" style="font-size: 9px; padding: 6px 12px;">SAVE_TERMINAL_CONFIG</button>
+                            </div>
+                            <p class="text-xs text-tertiary" style="margin-top: 10px; font-size: 9px;">NOTE: Linux trading requires a <a href="https://metaapi.cloud" target="_blank" style="color: var(--acc-cyan);">MetaAPI.cloud</a> REST bridge.</p>
+                        </div>
                     </div>
                 </div>
                 <div class="chart-card">
@@ -413,7 +444,7 @@
                     <span class="label-caps" style="cursor: pointer;" onclick="showView('signals')">Pending Orders</span>
                     <span class="label-caps" style="cursor: pointer;">Execution Log</span>
                 </div>
-                <div class="mono text-xs" style="color: var(--text-tertiary);">MT5_BRIDGE: <span class="text-emerald" id="mt5-mode-badge">SYNCHRONIZED</span></div>
+                <div class="mono text-xs" style="color: var(--text-secondary);"><span id="mt5-mode-badge">SYNC_INITIALIZING...</span></div>
             </div>
             <div style="flex: 1; overflow-y: auto;">
                 <table class="data-table">
@@ -496,29 +527,33 @@
 
              <!-- V31.0: Execution Gate Monitor -->
              <div style="padding: 16px; border-top: 1px solid var(--border-color);">
-                <span class="label-caps" style="display: block; margin-bottom: 12px; color: var(--acc-cyan);">Execution Gate</span>
-                <div class="card micro-border" style="margin-bottom: 8px;">
-                    <div class="label-caps" style="font-size: 9px; margin-bottom: 4px;">Paper Balance</div>
-                    <div class="mono text-lg" id="paper-balance" style="color: var(--acc-emerald);">$100,000</div>
+                <span class="label-caps" style="display: block; margin-bottom: 12px; color: var(--acc-cyan); opacity: 0.8;">Execution Gate</span>
+                <div class="card micro-border" style="margin-bottom: 12px; border-left: 2px solid var(--acc-cyan);">
+                    <div class="label-caps" style="font-size: 9px; margin-bottom: 4px; color: var(--text-secondary);">Paper Account Balance</div>
+                    <div class="mono text-lg" id="paper-balance" style="color: var(--text-primary);">$100,000</div>
                 </div>
-                <div style="display: flex; gap: 8px; margin-bottom: 8px;">
-                    <div class="card micro-border" style="flex: 1; text-align: center;">
-                        <div class="label-caps" style="font-size: 8px;">PASSED</div>
-                        <div class="mono" id="gate-passed-count" style="color: var(--acc-emerald); font-size: 18px;">0</div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 16px;">
+                    <div class="card" style="text-align: center; border-bottom: 2px solid var(--acc-emerald); background: rgba(0, 200, 150, 0.03);">
+                        <div class="label-caps" style="font-size: 8px; color: var(--text-tertiary);">PASSED</div>
+                        <div class="mono text-xl" id="gate-passed-count" style="color: var(--acc-emerald);">0</div>
                     </div>
-                    <div class="card micro-border" style="flex: 1; text-align: center;">
-                        <div class="label-caps" style="font-size: 8px;">BLOCKED</div>
-                        <div class="mono" id="gate-blocked-count" style="color: var(--acc-crimson); font-size: 18px;">0</div>
+                    <div class="card" style="text-align: center; border-bottom: 2px solid var(--acc-crimson); background: rgba(255, 59, 92, 0.03);">
+                        <div class="label-caps" style="font-size: 8px; color: var(--text-tertiary);">BLOCKED</div>
+                        <div class="mono text-xl" id="gate-blocked-count" style="color: var(--acc-crimson);">0</div>
                     </div>
                 </div>
-                <div style="margin-bottom: 4px;">
-                    <div class="label-caps" style="font-size: 8px; margin-bottom: 4px;">Observation Progress</div>
-                    <div style="background: rgba(255,255,255,0.05); height: 6px; border-radius: 3px; overflow: hidden;">
-                        <div id="observation-bar" style="height: 100%; background: var(--acc-cyan); width: 0%; transition: width 0.5s;"></div>
+                <div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+                        <span class="label-caps" style="font-size: 8px; color: var(--text-secondary);">OBSERVATION PROGRESS</span>
+                        <span id="observation-count-text" class="mono" style="font-size: 9px; color: var(--acc-cyan);">0 / 50</span>
                     </div>
-                    <div class="mono text-xs text-tertiary" style="margin-top: 4px;"><span id="observation-count">0</span> / 50 signals observed</div>
+                    <div style="background: rgba(255,255,255,0.05); height: 4px; border-radius: 2px; overflow: hidden;">
+                        <div id="observation-bar" style="height: 100%; background: var(--acc-cyan); width: 0%; transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);"></div>
+                    </div>
+                    <p style="font-size: 8px; color: var(--text-secondary); margin-top: 6px; letter-spacing: 0.05em;" class="mono text-right">MODEL_OBSERVATION_THRESHOLD: 50_SIGNALS</p>
                 </div>
              </div>
+
         </aside>
 
     </div>
@@ -648,10 +683,8 @@
             // Active Tab Highlighting
             document.querySelectorAll('.nav-item').forEach(item => {
                 item.classList.remove('active');
-                item.style.color = 'var(--text-secondary)';
                 if (item.getAttribute('onclick')?.includes(`'${view}'`)) {
                     item.classList.add('active');
-                    item.style.color = view === 'logout' ? 'var(--acc-crimson)' : 'var(--acc-cyan)';
                 }
             });
             
@@ -671,10 +704,110 @@
             loadStats();
             loadSignals();
             loadMt5Positions();
+            loadMt5Status();
             loadExecutionGate();
             loadSystemConfig();
             if (currentView === 'clients') loadClients();
             if (currentView === 'performance') loadAnalytics();
+        }
+
+        async function loadMt5Status() {
+            try {
+                const res = await apiFetch('/api/mt5/status');
+                const data = await res.json();
+                const badge = document.getElementById('mt5-mode-badge');
+                if (badge) {
+                    let statusText = data.status;
+                    if (!data.credentials_set && data.mode === 'MT5_BRIDGE') {
+                        statusText = 'MISSING_CREDENTIALS';
+                        badge.style.color = 'var(--acc-crimson)';
+                    } else {
+                        badge.style.color = data.status === 'CONNECTED' ? 'var(--acc-emerald)' : 'var(--acc-amber)';
+                    }
+                    badge.innerText = `${data.mode}: ${statusText}`;
+                }
+                const feedBadge = document.getElementById('feed-status-badge');
+                if (feedBadge) {
+                    const mode = data.mode || 'UNKNOWN';
+                    const truthfulStatus = data.status === 'CONNECTED' ? 'LIVE_BROKER' : (mode === 'MT5_BRIDGE' ? 'BRIDGE_CONFIG' : 'RESEARCH_FEED');
+                    const color = data.status === 'CONNECTED' ? 'var(--acc-emerald)' : 'var(--acc-amber)';
+                    feedBadge.innerText = truthfulStatus;
+                    feedBadge.style.borderColor = color;
+                    feedBadge.style.color = color;
+                }
+                
+                // Update provider buttons in settings
+                const yfBtn = document.getElementById('provider-yfinance');
+                const mtBtn = document.getElementById('provider-mt5');
+                if (yfBtn && mtBtn) {
+                    const isYF = data.mode === 'YFINANCE';
+                    yfBtn.style.background = isYF ? 'var(--acc-cyan)' : 'var(--bg-surface)';
+                    yfBtn.style.color = isYF ? '#000' : 'var(--text-primary)';
+                    mtBtn.style.background = !isYF ? 'var(--acc-cyan)' : 'var(--bg-surface)';
+                    mtBtn.style.color = !isYF ? '#000' : 'var(--text-primary)';
+                }
+            } catch (e) { console.error("MT5 Status Fetch Failed", e); }
+        }
+
+        async function saveTerminalConfig() {
+            const token = document.getElementById('meta-token').value;
+            const accountId = document.getElementById('meta-account-id').value;
+            const paperMode = document.getElementById('meta-paper-mode').checked;
+            
+            if (!token || !accountId) {
+                showToast("TOKEN_AND_ACCOUNT_ID_REQUIRED", true);
+                return;
+            }
+
+            try {
+                const res = await apiFetch('/api/mt5/config', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ token, accountId, paperMode })
+                });
+                if (res.ok) {
+                    showToast("TERMINAL_CONFIG_SAVED");
+                    loadMt5Status();
+                } else { showToast("SAVE_FAILED", true); }
+            } catch (e) { showToast("NETWORK_ERROR", true); }
+        }
+
+        async function setDataProvider(provider) {
+            try {
+                const res = await apiFetch('/api/config/data-provider', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ key: 'data_provider', value: provider })
+                });
+                if (res.ok) {
+                    showToast(`SWITCHED_TO: ${provider.toUpperCase()}`);
+                    loadMt5Status();
+                } else { showToast("FAILED_TO_SWITCH_PROVIDER", true); }
+            } catch (e) { showToast("NETWORK_ERROR", true); }
+        }
+
+        async function runSystemManage(action) {
+            if (!confirm(`CONFIRM_MAINTENANCE_ACTION: ${action.toUpperCase()}?`)) return;
+            try {
+                const res = await apiFetch('/api/system/manage', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: action })
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    showToast(`${action.toUpperCase()}_SUCCESSFUL`);
+                } else { showToast("ACTION_REJECTED", true); }
+            } catch (e) { showToast("MANAGEMENT_API_TIMEOUT", true); }
+        }
+
+        function showToast(msg, isError = false) {
+            const toast = document.getElementById('toast');
+            toast.innerText = msg;
+            toast.style.display = 'block';
+            toast.style.background = isError ? 'var(--acc-crimson)' : 'var(--acc-cyan)';
+            toast.style.color = isError ? '#fff' : '#000';
+            setTimeout(() => { toast.style.display = 'none'; }, 3000);
         }
 
         async function loadExecutionGate() {
@@ -690,11 +823,18 @@
                 const obsTarget = data.observation_target || 50;
                 const pct = Math.min(100, Math.round((obsCount / obsTarget) * 100));
                 document.getElementById('observation-bar').style.width = pct + '%';
-                document.getElementById('observation-count').innerText = obsCount;
+                document.getElementById('observation-count-text').innerText = `${obsCount} / ${obsTarget}`;
                 
                 // Color the balance based on P&L
                 const balEl = document.getElementById('paper-balance');
                 balEl.style.color = data.balance >= 100000 ? 'var(--acc-emerald)' : 'var(--acc-crimson)';
+                const equityEl = document.getElementById('portfolio-equity');
+                if (equityEl) {
+                    const equity = data.equity ?? data.balance;
+                    const roi = ((equity / 100000.0) - 1) * 100;
+                    equityEl.innerHTML = `$${Number(equity).toLocaleString(undefined, {maximumFractionDigits: 2})} <span style="font-size: 10px;">(${roi >= 0 ? '+' : ''}${roi.toFixed(2)}%)</span>`;
+                    equityEl.style.color = equity >= 100000 ? 'var(--acc-emerald)' : 'var(--acc-crimson)';
+                }
             } catch (e) { console.error("Execution Gate Fetch Failed", e); }
         }
 
@@ -724,6 +864,15 @@
                 const statusEl = document.getElementById('system-status');
                 statusEl.innerText = sysStatus;
                 statusEl.style.color = sysStatus === "ACTIVE" ? "var(--acc-emerald)" : "var(--acc-amber)";
+                const sysLabel = document.getElementById('sys-status-label');
+                const sysDot = document.getElementById('sys-status-dot');
+                if (sysLabel && sysDot) {
+                    const color = sysStatus === "ACTIVE" ? "var(--acc-emerald)" : "var(--acc-amber)";
+                    sysLabel.innerText = sysStatus === "ACTIVE" ? "SYS_ACTIVE" : `SYS_${sysStatus}`;
+                    sysLabel.style.color = color;
+                    sysDot.style.background = color;
+                    sysDot.style.boxShadow = `0 0 8px ${color}`;
+                }
             } catch (e) { console.error("Stats Sync Failed", e); }
         }
 
@@ -769,7 +918,7 @@
                 const tbody = document.getElementById('mt5-positions-body');
                 if (!tbody) return;
                 
-                document.getElementById('mt5-mode-badge').innerText = data.mode?.toUpperCase() || "SYNCED";
+                // Status handled by loadMt5Status to avoid race conditions
                 
                 if (!data.positions || data.positions.length === 0) {
                     tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--text-tertiary); padding: 32px;">NO OPEN EXPOSURE</td></tr>';
@@ -779,15 +928,20 @@
                 const fragment = document.createDocumentFragment();
                 data.positions.forEach(pos => {
                     const row = document.createElement('tr');
-                    const color = pos.type.includes('BUY') ? 'var(--acc-emerald)' : 'var(--acc-crimson)';
-                    const profitColor = pos.profit >= 0 ? 'var(--acc-emerald)' : 'var(--acc-crimson)';
+                    const side = pos.type || pos.direction || 'UNKNOWN';
+                    const lots = pos.volume ?? pos.lot_size ?? pos.filled_lot_size ?? 0;
+                    const entry = pos.price_open ?? pos.open_price ?? pos.entry_price ?? pos.fill_price ?? '--';
+                    const current = pos.price_current ?? pos.current_price ?? '--';
+                    const profit = Number(pos.profit ?? 0);
+                    const color = String(side).includes('BUY') ? 'var(--acc-emerald)' : 'var(--acc-crimson)';
+                    const profitColor = profit >= 0 ? 'var(--acc-emerald)' : 'var(--acc-crimson)';
                     row.innerHTML = `
                         <td class="mono font-bold">${pos.symbol}</td>
-                        <td><span class="badge" style="background: ${color}20; color: ${color};">${pos.type}</span></td>
-                        <td class="mono">${pos.volume}</td>
-                        <td class="mono">${pos.price_open}</td>
-                        <td class="mono text-tertiary">${pos.price_current}</td>
-                        <td class="mono text-right" style="color: ${profitColor}; font-weight: 700;">$${pos.profit.toFixed(2)}</td>
+                        <td><span class="badge" style="background: ${color}20; color: ${color};">${side}</span></td>
+                        <td class="mono">${lots}</td>
+                        <td class="mono">${entry}</td>
+                        <td class="mono text-tertiary">${current}</td>
+                        <td class="mono text-right" style="color: ${profitColor}; font-weight: 700;">$${profit.toFixed(2)}</td>
                     `;
                     fragment.appendChild(row);
                 });
@@ -1016,7 +1170,8 @@
                     const row = document.createElement('tr');
                     const isPending = run.status === 'IN_PROGRESS';
                     const wrColor = (run.win_rate >= 50) ? 'var(--acc-emerald)' : 'var(--acc-crimson)';
-                    const pipColor = (run.total_pips >= 0) ? 'var(--acc-emerald)' : 'var(--acc-crimson)';
+                    const netPips = run.net_pips ?? run.total_pips ?? 0;
+                    const pipColor = (netPips >= 0) ? 'var(--acc-emerald)' : 'var(--acc-crimson)';
                     
                     row.innerHTML = `
                         <td class="mono" style="font-size: 10px;">${run.timestamp}</td>
@@ -1025,7 +1180,7 @@
                             ${isPending ? '---' : (run.win_rate ? run.win_rate.toFixed(1) + '%' : '0.0%')}
                         </td>
                         <td class="mono text-right" style="color: ${isPending ? 'inherit' : pipColor};">
-                            ${isPending ? '---' : (run.total_pips ? (run.total_pips > 0 ? '+' : '') + run.total_pips.toFixed(1) : '0.0')}
+                            ${isPending ? '---' : (netPips ? (netPips > 0 ? '+' : '') + Number(netPips).toFixed(1) : '0.0')}
                         </td>
                         <td class="text-right">
                              ${!isPending ? `<button class="btn-micro" onclick="viewBacktestResults(${run.id})">VIEW</button>` : ''}
@@ -1197,83 +1352,17 @@
             } catch { showToast("CLIENT_SYNC_ERROR", "error"); }
         }
 
-        // CONFIG ENGINE
-        async function loadConfig() {
-            try {
-                const res = await apiFetch('/api/config');
-                const config = await res.json();
-                
-                document.getElementById('cfg-system-status').checked = config.master_switch;
-                document.getElementById('cfg-news-filter').value = config.news_wash_zone;
-                
-                const grid = document.getElementById('strategy-toggles-grid');
-                grid.innerHTML = '';
-                
-                // Map strategy keys to nice names
-                const nameMap = {
-                    'strategy_crt': 'CRT_ALGORITHM',
-                    'strategy_smc_sweep': 'SMC_SWEEP_MODULE',
-                    'strategy_pattern': 'ADV_PATTERN_ENGINE',
-                    'strategy_statarb': 'STAT_ARB_KERNEL',
-                    'strategy_poc_edge': 'POC_REVERSION_PRO',
-                    'strategy_session_clock': 'SESSION_CLOCK_TRAP'
-                };
-
-                for (const [key, val] of Object.entries(config.strategies)) {
-                    const card = document.createElement('div');
-                    card.className = 'micro-border';
-                    card.style.padding = '12px';
-                    card.style.background = 'var(--bg-surface)';
-                    card.style.display = 'flex';
-                    card.style.justifyContent = 'space-between';
-                    card.style.alignItems = 'center';
-                    
-                    card.innerHTML = `
-                        <span class="label-caps" style="font-size: 10px;">${nameMap[key] || key}</span>
-                        <input type="checkbox" id="cfg-strat-${key}" ${val ? 'checked' : ''} onchange="updateStrategyStatus('${key}', this.checked)">
-                    `;
-                    grid.innerHTML += card.outerHTML;
-                    
-                    // Also populate the left sidebar quick-view
-                    const leftGrid = document.getElementById('strategy-toggles');
-                    if (val) {
-                         const quick = document.createElement('div');
-                         quick.className = 'micro-border';
-                         quick.style.padding = '6px 10px';
-                         quick.style.marginBottom = '4px';
-                         quick.style.background = 'rgba(0, 212, 255, 0.03)';
-                         quick.style.display = 'flex';
-                         quick.style.justifyContent = 'space-between';
-                         quick.innerHTML = `<span class="label-caps" style="font-size: 9px; color: var(--acc-cyan);">${key.replace('strategy_','').toUpperCase()}</span><span class="mono" style="font-size: 8px; color: var(--acc-emerald);">ACTIVE</span>`;
-                         leftGrid.appendChild(quick);
-                    }
-                }
-            } catch { console.error("Config Load Failed"); }
-        }
-
         async function updateStrategyStatus(strategy, enabled) {
             try {
-                await apiFetch(`/api/config/strategy/${strategy}`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ enabled })
+                // Backend endpoint is POST /api/strategies/{id}/toggle
+                await apiFetch(`/api/strategies/${strategy}/toggle`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
                 });
-                showToast(`${strategy.toUpperCase()}_STATUS_COMMITTED`);
+                showToast(`${strategy.toUpperCase()}_STATUS_COMMITTED`, 'success');
             } catch { showToast("STRATEGY_SYNC_ERROR", "error"); }
         }
 
-        async function saveConfig() {
-            const master = document.getElementById('cfg-system-status').checked;
-            const news = document.getElementById('cfg-news-filter').value;
-            try {
-                await apiFetch('/api/config', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ master_switch: master, news_wash_zone: parseInt(news) })
-                });
-                showToast("CORE_ENGINE_CONFIG_SAVED");
-            } catch { showToast("CONFIG_COMMIT_ERROR", "error"); }
-        }
 
         // MODALS & TOASTS
         async function showSignalDetails(id) {
@@ -1298,11 +1387,27 @@
 
         function showToast(msg, type = 'success') {
             const t = document.getElementById('toast');
+            if (!t) return;
             t.innerText = msg;
-            t.style.background = type === 'success' ? 'var(--acc-cyan)' : 'var(--acc-crimson)';
-            t.style.display = 'block';
-            setTimeout(() => t.style.display = 'none', 3000);
+            t.style.borderLeft = type === 'success' ? '4px solid var(--acc-emerald)' : '4px solid var(--acc-crimson)';
+            t.classList.remove('hidden');
+            setTimeout(() => t.classList.add('hidden'), 3500);
         }
+
+        function viewBacktestResults(id) {
+            showToast("LOADING_RUN_" + id, "success");
+            // Future: Open results modal
+        }
+
+        async function deleteClient(id) {
+            if (!confirm(`Delete client ${id}?`)) return;
+            try {
+                await apiFetch(`/api/clients/${id}/delete`, { method: 'DELETE' });
+                showToast("CLIENT_DELETED", "success");
+                loadClients();
+            } catch { showToast("DELETE_FAILED", "error"); }
+        }
+
 
         // ─── FLASH FORENSICS ENGINE ───────────────────────────────────────────
         let currentSignalForForensics = null;
@@ -1580,11 +1685,7 @@
         }
 
         // Initialize App
-        const urlParams = new URLSearchParams(window.location.search);
-        if (urlParams.get('pass') === 'institutional') {
-             localStorage.setItem('authToken', 'mock_token');
-             showDashboard();
-        } else if (localStorage.getItem('authToken')) {
+        if (localStorage.getItem('authToken')) {
             authToken = localStorage.getItem('authToken');
             showDashboard();
         }
@@ -1595,15 +1696,39 @@
                 const data = await res.json();
                 
                 // Update Strategies
-                const strategyContainer = document.getElementById('strategy-toggles');
-                if (strategyContainer && data.strategies) {
-                    strategyContainer.innerHTML = data.strategies.map(s => `
-                        <div class="micro-border" style="padding: 8px 12px; background: var(--bg-panel); display: flex; justify-content: space-between; align-items: center; border-left: 2px solid var(--acc-cyan); margin-bottom: 4px;">
-                            <span class="label-caps" style="color: var(--acc-cyan); font-size: 10px;">${s}</span>
-                            <span class="mono" style="font-size: 9px; color: var(--acc-emerald);">ACTIVE</span>
-                        </div>
-                    `).join('');
+                const strategySidebar = document.getElementById('strategy-toggles');
+                const strategyGrid = document.getElementById('strategy-toggles-grid');
+                
+                let strategies = [];
+                try {
+                    const strategyRes = await apiFetch('/api/strategies');
+                    if (strategyRes.ok) strategies = await strategyRes.json();
+                } catch (e) {
+                    console.error("Failed to load strategy registry", e);
                 }
+                if (strategies.length > 0) {
+                    if (strategySidebar) {
+                        strategySidebar.innerHTML = strategies.map(s => `
+                            <div class="micro-border" style="padding: 8px 12px; background: var(--bg-panel); display: flex; justify-content: space-between; align-items: center; border-left: 2px solid ${s.enabled ? 'var(--acc-cyan)' : 'var(--text-tertiary)'}; margin-bottom: 4px;">
+                                <span class="label-caps" style="color: ${s.enabled ? 'var(--acc-cyan)' : 'var(--text-tertiary)'}; font-size: 10px;">${s.name}</span>
+                                <span class="mono" style="font-size: 9px; color: ${s.enabled ? 'var(--acc-emerald)' : 'var(--acc-crimson)'};">${s.locked ? 'LOCKED' : (s.enabled ? 'ENABLED' : 'DISABLED')}</span>
+                            </div>
+                        `).join('');
+                    }
+                    
+                    if (strategyGrid) {
+                        strategyGrid.innerHTML = strategies.map(s => `
+                            <div class="micro-border" style="padding: 12px; background: var(--bg-surface); display: flex; justify-content: space-between; align-items: center;">
+                                <span class="label-caps" style="font-size: 10px; color: ${s.enabled ? 'var(--acc-cyan)' : 'var(--text-tertiary)'};">${s.name}</span>
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <span class="mono" style="font-size: 8px; color: ${s.enabled ? 'var(--acc-emerald)' : 'var(--acc-crimson)'};">${s.locked ? 'LOCKED' : (s.enabled ? 'ENABLED' : 'DISABLED')}</span>
+                                    <input type="checkbox" ${s.enabled ? 'checked' : ''} ${s.locked ? 'disabled' : ''} onchange="updateStrategyStatus('${s.id}', this.checked)" style="accent-color: var(--acc-cyan); cursor: pointer;">
+                                </div>
+                            </div>
+                        `).join('');
+                    }
+                }
+
 
                 // Update Watchlist
                 const watchlistContainer = document.getElementById('watchlist-container');
@@ -1621,82 +1746,83 @@
         }
     </script>
     <!-- 🏛️ FLASH FORENSICS MODAL -->
-    <div id="forensicsOverlay" class="fixed inset-0 bg-black/90 backdrop-blur-md z-[200] hidden flex items-center justify-center p-4">
-        <div class="bg-[#10141C] border border-cyan-500/30 w-full max-w-6xl h-[85vh] rounded-lg flex flex-col overflow-hidden shadow-[0_0_50px_rgba(0,212,255,0.1)]">
+    <div id="forensicsOverlay" class="hidden">
+        <div>
             <!-- Header -->
-            <div class="p-4 border-b border-white/5 flex justify-between items-center bg-[#161B26]">
-                <div class="flex items-center gap-3">
-                    <div class="w-2 h-2 rounded-full bg-cyan-400"></div>
-                    <h2 class="text-sm font-bold tracking-widest text-[#F0F4FF] uppercase">Flash Forensics — Institutional Execution Replay</h2>
+            <div class="forensic-header">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <div style="width: 8px; height: 8px; border-radius: 50%; background: var(--acc-cyan);"></div>
+                    <h2 class="label-caps" style="color: var(--text-primary); font-size: 14px;">Flash Forensics — Institutional Execution Replay</h2>
                 </div>
-                <button onclick="closeForensics()" class="p-2 hover:bg-white/5 rounded text-[#8B95A8] transition-colors">
+                <button onclick="closeForensics()" class="btn-micro" style="padding: 8px 12px;">
                     <i class="fas fa-times"></i>
                 </button>
             </div>
 
-            <div class="flex-1 flex overflow-hidden">
+            <div class="forensic-body">
                 <!-- Left: Controls & Events -->
-                <div class="w-80 border-r border-white/5 flex flex-col bg-[#0A0C10]/50">
-                    <div class="p-4 border-b border-white/5">
-                        <div class="flex items-center justify-center gap-4 mb-4">
-                            <button id="playbackPrev" class="p-3 bg-white/5 hover:bg-white/10 rounded transition-colors text-cyan-400">
+                <div class="forensic-controls">
+                    <div class="controls-top">
+                        <div class="playback-btns">
+                            <button id="playbackPrev">
                                 <i class="fas fa-step-backward"></i>
                             </button>
-                            <button id="playbackToggle" class="w-12 h-12 flex items-center justify-center bg-cyan-500 hover:bg-cyan-400 text-black rounded-full transition-all">
+                            <button id="playbackToggle" class="play-btn">
                                 <i class="fas fa-play"></i>
                             </button>
-                            <button id="playbackNext" class="p-3 bg-white/5 hover:bg-white/10 rounded transition-colors text-cyan-400">
+                            <button id="playbackNext">
                                 <i class="fas fa-step-forward"></i>
                             </button>
                         </div>
-                        <div class="flex flex-col gap-1">
-                            <label class="text-[10px] text-[#4A5568] uppercase font-bold tracking-tighter">Playback Speed</label>
-                            <input type="range" id="playbackSpeed" min="100" max="2000" step="100" value="800" class="w-full accent-cyan-500">
+                        <div style="display: flex; flex-direction: column; gap: 4px;">
+                            <label class="label-caps" style="font-size: 9px; color: var(--text-tertiary);">Playback Speed</label>
+                            <input type="range" id="playbackSpeed" min="100" max="2000" step="100" value="800" style="width: 100%; accent-color: var(--acc-cyan);">
                         </div>
                     </div>
                     
-                    <div class="flex-1 overflow-y-auto p-4 custom-scrollbar">
-                        <h3 class="text-[10px] text-cyan-400 font-bold uppercase mb-4 tracking-widest">Model Trigger Sequence</h3>
-                        <div id="forensicEventList" class="space-y-4">
+                    <div class="event-list custom-scrollbar">
+                        <h3 class="label-caps" style="color: var(--acc-cyan); margin-bottom: 12px;">Model Trigger Sequence</h3>
+                        <div id="forensicEventList">
                             <!-- Events injected here -->
                         </div>
                     </div>
                 </div>
 
                 <!-- Right: Visualization -->
-                <div class="flex-1 relative bg-[#0A0C10] flex flex-col">
+                <div class="forensic-chart">
                     <!-- Progress Bar -->
-                    <div class="absolute top-0 left-0 right-0 h-1 bg-white/5 z-10">
-                        <div id="playbackProgress" class="h-full bg-cyan-400 w-0 transition-all"></div>
+                    <div class="progress-track">
+                        <div id="playbackProgress" style="height: 100%; background: var(--acc-cyan); width: 0%; transition: width 0.1s linear;"></div>
                     </div>
 
                     <!-- Canvas Area -->
-                    <div class="flex-1 p-8 flex items-center justify-center relative overflow-hidden">
-                        <div id="chartContainer" class="w-full h-full relative cursor-crosshair">
+                    <div class="chart-area">
+                        <div id="chartContainer">
                             <canvas id="forensicCanvas"></canvas>
                         </div>
 
                         <!-- Data Overlay (Current Bar) -->
-                        <div class="absolute top-6 right-6 p-4 bg-[#161B26]/80 border border-white/10 rounded backdrop-blur-md hidden" id="currentBarData">
+                        <div class="bar-overlay hidden" id="currentBarData">
                             <table class="mono" style="font-size: 10px;">
-                                <tr><td class="text-[#8B95A8] pr-4">BAR:</td> <td id="forensicBarIndex" class="text-white">#0</td></tr>
-                                <tr><td class="text-[#8B95A8] pr-4">OHLC:</td> <td id="forensicBarOHLC" class="text-cyan-400">1.0825 / 1.0830 / 1.0820 / 1.0828</td></tr>
+                                <tr><td style="color: var(--text-tertiary); padding-right: 12px;">BAR:</td> <td id="forensicBarIndex" class="text-white">#0</td></tr>
+                                <tr><td style="color: var(--text-tertiary); padding-right: 12px;">OHLC:</td> <td id="forensicBarOHLC" class="text-cyan">1.0825 / 1.0830 / 1.0820 / 1.0828</td></tr>
                             </table>
                         </div>
                     </div>
 
                     <!-- Bottom Metadata -->
-                    <div class="p-4 border-t border-white/5 bg-[#161B26]/30 flex justify-between items-center">
-                        <div id="signalMetadata" class="mono flex gap-6" style="font-size: 11px; color: #8B95A8;">
+                    <div class="chart-footer">
+                        <div id="signalMetadata" class="mono" style="font-size: 11px; color: var(--text-secondary); display: flex; gap: 24px;">
                             <!-- Metadat injected here -->
                         </div>
-                        <div class="mono" style="font-size: 11px; color: #4A5568;">
-                            SOURCE: FORENSIC_ENGINE_v4.0
+                        <div class="mono" style="font-size: 10px; color: var(--text-tertiary);">
+                            SOURCE: FORENSIC_ENGINE_v5.1
                         </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
+
 </body>
 </html>

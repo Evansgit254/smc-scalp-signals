@@ -1,14 +1,14 @@
 import pytest
 from fastapi.testclient import TestClient
 from unittest.mock import patch, MagicMock, AsyncMock
-from admin_server import app, get_current_user
+from admin_server import app, get_current_user, User
 import sqlite3
 import os
 from datetime import datetime, timedelta
 
 # Mock authentication
 def mock_get_current_user():
-    return {"username": "admin"}
+    return User(username="admin")
 
 @pytest.fixture(autouse=True)
 def setup_overrides():
@@ -81,7 +81,7 @@ def test_config_get_db_error():
 
 def test_config_update_db_error():
     with patch('admin_server.get_db_connection', side_effect=Exception("DB Failure")):
-        response = client.post("/api/config", json={"key": "val", "value": "test"})
+        response = client.post("/api/config", json={"key": "risk_per_trade", "value": "2.5"})
         assert response.status_code == 500
 
 def test_client_toggle_signals_db_error():
@@ -346,7 +346,7 @@ def test_get_config_exception(auth_headers):
 
 def test_update_config_exception(auth_headers):
     with patch('admin_server.get_db_connection', side_effect=Exception("Update fail")):
-        response = client.post("/api/config", json={"key": "test", "value": "val"}, headers=auth_headers)
+        response = client.post("/api/config", json={"key": "risk_per_trade", "value": "2.5"}, headers=auth_headers)
         assert response.status_code == 500
 
 def test_admin_pass_warning():

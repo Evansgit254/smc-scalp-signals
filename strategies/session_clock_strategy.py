@@ -34,36 +34,26 @@ from data.news_fetcher import NewsFetcher
 # Format: { symbol: [ (utc_hour, direction, rr_multiplier), ... ] }
 # rr_multiplier: 1.0 = standard 1.5R, 1.5 = 2.25R, 2.0 = 3R
 CLOCK_SIGNALS = {
+    # Now handled dynamically by VolatilityGate and TrailingDrawdown kill-switches.
     "CL=F": [        # OIL
-        # (21, "BUY",  1.5),   # NY Close rally — FAILURE in current regime
-        (7,  "SELL", 1.0),   # Pre-London bear (60.5% bear rate) — 16/16 WR in Run 29
+        (21, "BUY",  2.0),   
+        (7,  "SELL", 2.0),   
     ],
     "BTC-USD": [
         # (21, "BUY",  1.0),   # DISABLED: Inconsistent edge
         # (22, "BUY",  1.0),   # DISABLED: Inconsistent edge
     ],
-    # V36.0 FORENSIC: GC=F BUY REMOVED — 0/31 WR (-31.0R) in Run 29. Gold handled by GoldQuantStrategy.
-    # "GC=F": [
-    #     (16, "BUY",  1.5),   # KILLED: 0% WR in 31 trades
-    #     (11, "BUY",  1.0),   # KILLED: 0% WR in 31 trades
-    # ],
     "EURUSD=X": [
-        (8,  "BUY",  1.0),   # London Open EURUSD (51.9% WR)
-        (16, "SELL", 1.0),   # London Close EURUSD selloff (57.4% bear)
+        (8,  "BUY",  2.0),   # London Open EURUSD
+        (16, "SELL", 2.0),   # London Close EURUSD
     ],
     "AUDUSD=X": [
         # (22, "BUY",  1.0),   # DISABLED: Inconsistent edge
     ],
     "GBPJPY=X": [
-        # (21, "SELL", 1.5),   # DISABLED: Over-filtered
-        (18, "BUY",  1.0),   # Pre-NY close GBPJPY (57.6% WR)
-        (23, "BUY",  1.0),   # Asian open GBPJPY (57.6% WR)
+        (18, "BUY",  2.0),   
+        (23, "BUY",  2.0),   
     ],
-    # V36.0 FORENSIC: USDJPY BUY REMOVED — 0/16 WR (-16.0R) in Run 29.
-    # USDJPY SELL remains available via Advanced Patterns (4/4 WR, +6.0R).
-    # "USDJPY=X": [
-    #     (18, "BUY",  1.0),   # KILLED: 0% WR in 16 trades
-    # ],
 }
 
 # ATR multipliers for SL/TP
@@ -136,10 +126,10 @@ class SessionClockStrategy(BaseStrategy):
             if matched is None:
                 return None
 
-            # V27.0 RELAXED FILTER: Allow patterns with rr_mult >= 1.0 (All defined patterns)
-            # This ensures EURUSD, AUDUSD, BTC, and OIL all fire correctly.
+            # V27.0 STRICT FILTER: Allow only high R:R setups to pass (Base >= 2.0)
+            # This mathematically enforces a ~33% breakeven curve for the portfolio matrix.
             direction, rr_mult = matched
-            if rr_mult < 1.0:
+            if rr_mult < 2.0:
                 return None
 
             # V26.2: NEWS FILTER — Block signals within ±30 min of High-impact events

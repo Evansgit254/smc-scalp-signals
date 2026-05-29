@@ -20,7 +20,7 @@ def sample_data():
 
 @pytest.fixture
 def market_context_dxy_bullish():
-    dates = pd.date_range('2024-01-01', periods=5, freq='1H')
+    dates = pd.date_range('2024-01-01', periods=5, freq='1h')
     df = pd.DataFrame({
         'ema_fast': [105.0] * 5,
         'ema_slow': [104.0] * 5 # Fast > Slow = Bullish DXY
@@ -29,7 +29,7 @@ def market_context_dxy_bullish():
 
 @pytest.fixture
 def market_context_dxy_bearish():
-    dates = pd.date_range('2024-01-01', periods=5, freq='1H')
+    dates = pd.date_range('2024-01-01', periods=5, freq='1h')
     df = pd.DataFrame({
         'ema_fast': [103.0] * 5,
         'ema_slow': [104.0] * 5 # Fast < Slow = Bearish DXY

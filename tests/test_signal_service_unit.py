@@ -18,7 +18,7 @@ def mock_strategy():
         'tp2': 63000,
         'timeframe': 'H1',
         'trade_type': 'SWING',
-        'quality_score': 0.8,
+        'quality_score': 8.5,
         'expected_hold': '4h'
     })])
     return mock
@@ -33,7 +33,10 @@ def mock_telegram():
 @pytest.mark.asyncio
 async def test_signal_service_run(mock_strategy, mock_telegram):
     with patch('signal_service.generate_signals', new=mock_strategy.generate_signals), \
-         patch('signal_service.TelegramService', return_value=mock_telegram):
+         patch('signal_service.TelegramService', return_value=mock_telegram), \
+         patch('signal_service.SignalService._load_dynamic_config'), \
+         patch('signal_service.SignalService._is_duplicate', return_value=False), \
+         patch('signal_service.SignalService._reserve_signal_delivery', return_value=True):
         
         service = SignalService()
         
@@ -66,6 +69,38 @@ async def test_signal_service_no_signals_cycle(mock_telegram):
         service = SignalService()
         await service.run(test_mode=True)
         assert any("No signals generated this cycle" in str(call) for call in mock_print.call_args_list)
+
+@pytest.mark.asyncio
+async def test_signal_service_does_not_broadcast_blocked_signal(mock_telegram):
+    blocked_signal = {
+        'symbol': 'EURUSD=X',
+        'direction': 'BUY',
+        'entry_price': 1.1000,
+        'sl': 1.0950,
+        'tp1': 1.1100,
+        'timeframe': 'H1',
+        'trade_type': 'CRT',
+        'quality_score': 4.0,
+    }
+
+    with patch('signal_service.generate_signals', new=AsyncMock(return_value=[('CRT', blocked_signal)])), \
+         patch('signal_service.TelegramService', return_value=mock_telegram), \
+         patch('signal_service.SignalService._is_duplicate', return_value=False), \
+         patch('signal_service.SignalService._reserve_signal_delivery', return_value=True), \
+         patch('data.fetcher.DataFetcher.fetch_data_async', new=AsyncMock(return_value=None)), \
+         patch('signal_service.SignalService._load_dynamic_config'), \
+         patch('signal_service.SignalService._log_to_database', return_value=123), \
+         patch('core.execution_gate.ExecutionGate.validate_and_reserve', return_value={
+             'status': 'BLOCKED',
+             'reason': 'INSUFFICIENT_QUALITY (4.00)'
+         }):
+
+        service = SignalService()
+        total, sent = await service.run_cycle()
+
+    assert total == 1
+    assert sent == 0
+    assert not mock_telegram.broadcast_personalized_signal.called
 
 @pytest.mark.asyncio
 async def test_signal_service_error_handling(mock_telegram):

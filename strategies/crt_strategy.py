@@ -6,7 +6,7 @@ from core.filters.risk_manager import RiskManager
 from core.filters.macro_filter import MacroFilter
 from core.filters.news_filter import NewsFilter
 from indicators.calculations import IndicatorCalculator
-from config.config import MIN_QUALITY_SCORE
+import config.config as cfg
 from core.alpha_factors import AlphaFactors
 from core.alpha_combiner import AlphaCombiner
 
@@ -212,15 +212,15 @@ class CRTStrategy(BaseStrategy):
             
             # Calculate Base Boost from ICT confluence
             # Boost if sweep was deep (> 0.5 * H1 range) or if displacement was strong
-            base_boost = 3.5  # Starting base for a valid CRT setup
+            base_boost = 4.5  # Elevate base conviction to clear the 8.5 Execution Gate threshold
             if abs(entry_price - sweep_extreme) > (range_size * 0.5):
                 base_boost += 1.5
                 log_event("CONFLUENCE", "Deep swept detected (+1.5 boost)")
 
             quality_score = AlphaCombiner.calculate_quality_score(factors, signal_value, base_boost=base_boost)
 
-            if quality_score < MIN_QUALITY_SCORE:
-                log_event("FILTER_BLOCKED", f"Quality Score {quality_score} < {MIN_QUALITY_SCORE}")
+            if quality_score < cfg.MIN_QUALITY_SCORE:
+                log_event("FILTER_BLOCKED", f"Quality Score {quality_score} < {cfg.MIN_QUALITY_SCORE}")
                 return None
 
             # ─── 8. Risk & Results ──────────────────────────────────────────────

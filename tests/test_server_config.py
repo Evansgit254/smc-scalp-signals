@@ -21,7 +21,8 @@ class TestServerConfig(unittest.TestCase):
         
         # Initialize test database tables
         conn = sqlite3.connect(self.db_path)
-        conn.execute("CREATE TABLE system_config (key TEXT PRIMARY KEY, value TEXT, type TEXT)")
+        conn.execute("CREATE TABLE system_config (key TEXT PRIMARY KEY, value TEXT, type TEXT, updated_at TIMESTAMP, updated_by TEXT, version INTEGER DEFAULT 1)")
+        conn.execute("CREATE TABLE config_audit (id INTEGER PRIMARY KEY AUTOINCREMENT, key TEXT, old_value TEXT, new_value TEXT, updated_at TIMESTAMP, updated_by TEXT, version INTEGER)")
         conn.execute("CREATE TABLE admin_users (username TEXT PRIMARY KEY, password_hash TEXT, last_login TEXT)")
         
         # Add default config
@@ -75,7 +76,7 @@ class TestServerConfig(unittest.TestCase):
     def test_update_config_and_service_load(self):
         """Test updating config via API and verifying service loads it"""
         # 1. Update Config via API
-        new_risk = 5.5
+        new_risk = 4.5
         response = self.client.post("/api/config", json={"key": "risk_per_trade", "value": str(new_risk)}, headers=self.headers)
         if response.status_code != 200:
             print(f"ERROR: {response.json()}")

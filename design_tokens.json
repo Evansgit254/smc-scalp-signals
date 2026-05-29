@@ -1,0 +1,59 @@
+{
+  "project": "Institutional Quant Trading Terminal",
+  "version": "5.1.2-STITCH-SYNC",
+  "baseline_grid": "4px",
+  "tokens": {
+    "colors": {
+      "bg": {
+        "base": "#0F131B",
+        "surface": "#10141C",
+        "panel": "#161B26",
+        "input": "#000000"
+      },
+      "text": {
+        "primary": "#dfe2ee",
+        "secondary": "#859398",
+        "tertiary": "#3c494e",
+        "accent": "#00D4FF"
+      },
+      "intent": {
+        "cyan": "#00D4FF",
+        "emerald": "#00C896",
+        "amber": "#F59E0B",
+        "crimson": "#FF3B5C",
+        "gold": "#FFD700"
+      },
+      "border": {
+        "default": "#262D3D",
+        "subtle": "#1C2331",
+        "focus": "#00D4FF"
+      }
+    },
+    "typography": {
+      "families": {
+        "ui": "Inter, sans-serif",
+        "data": "JetBrains Mono, monospace"
+      },
+      "sizes": {
+        "xs": "10px",
+        "sm": "12px",
+        "base": "14px",
+        "lg": "18px",
+        "xl": "24px",
+        "display": "32px"
+      }
+    },
+    "spacing": {
+        "xxs": "4px",
+        "xs": "8px",
+        "sm": "12px",
+        "md": "16px",
+        "lg": "24px",
+        "xl": "32px"
+    },
+    "shapes": {
+      "radius": "4px",
+      "border_width": "1px"
+    }
+  }
+}

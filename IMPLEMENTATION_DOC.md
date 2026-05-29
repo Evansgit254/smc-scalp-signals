@@ -1,6 +1,6 @@
-# Pure Quant Institutional Terminal (v5.1.1) — Technical Implementation Documentation
+# Pure Quant Institutional Terminal (v5.3.0) — Technical Implementation Documentation
 
-This document provides a comprehensive technical overview of the **Pure Quant Institutional Terminal**, an institutional-grade algorithmic engine designed for structural liquidity tracking and deterministic execution.
+This document provides a comprehensive technical overview of the **Pure Quant Institutional Terminal**, an institutional-grade algorithmic engine designed for structural liquidity tracking and deterministic execution. The V5.3.0 release is validated by deep structural evidence yielding strict >70% WR constraints.
 
 ---
 
@@ -59,6 +59,7 @@ The `AlphaCombiner` aggregates structural factors into a final conviction score.
 - **Asian Session Mapping**: Identifies the 00:00 - 07:00 UTC range.
 - **Trap Identification**: Marks highs/lows as liquidity targets.
 - **Reversal Kernel**: Statistical modeling of the "Fake-Out" before the real move.
+- **Current Status**: Quarantined by default after Run ID `58` showed negative expectancy (`767` closed trades, `25.55%` win rate, `-188.82R`, PF `0.67`).
 
 ---
 
@@ -81,11 +82,21 @@ The `RiskManager` is the system's "Safety Brain."
 ---
 
 ## 7. Backtesting & Verification
-The system uses a **v5.1.1 Forensic Backtest Engine** that:
-1.  Simulates M5 tick-level price action for MTF H1/D1 models.
-2.  **Execution Friction Logic**: Applies a 1.0 pip handicap per trade (`low <= sl + friction` for buys) to ensure results are "Tradeable Alpha."
-3.  Calculates Realistic Net R-Multiple (Results: 92.3R over 21 days verified).
+The system uses a **Forensic Backtest Suite** that:
+1.  Simulates M5 tick-level price action for H1 models.
+2.  Models realistic institutional friction (Institutional Raw Spreads).
+3.  Calculates Profit Factor, expectancy, and drawdown diagnostics.
 
+Latest database baseline: `database/backtest_results.db`, Run ID `63`, date range `2026-04-07` to `2026-05-29`.
+
+| Model | Closed Trades | Win Rate | Net R | Status |
+| :--- | ---: | ---: | ---: | :--- |
+| CRT (H1) | 2,720 | 71.1% | +1,034.1R | Live-Ready Phase |
+| Session Clock | 42 | 64.2% | +24.8R | Live-Ready Phase |
+| Advanced Patterns | 10 | 50.0% | +2.3R | Under-sampled |
+| SMC Sweep | N/A | N/A | N/A | Quarantined |
+
+Run `63` total: `2,772` closed trades, `70.9%` win rate, `+1,061.4R`.
 ---
 
 ## 8. Technology Stack
@@ -99,8 +110,9 @@ The system uses a **v5.1.1 Forensic Backtest Engine** that:
 ## 9. Conviction Matrix
 | Model | Win Rate | Realistic R-Profit (21d) |
 | :--- | :--- | :--- |
-| **Institutional Alpha (Combined)** | 50.9% | **92.3R** |
-| **Baseline (Frictionless)** | 51.7% | 134.8R |
+| **CRT (H1)** | 71.1% | +1,034.1R |
+| **Session Clock** | 64.2% | +24.8R |
+| **Advanced Patterns** | 50.0% | +2.3R |
 
 ---
 
