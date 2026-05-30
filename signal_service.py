@@ -107,6 +107,7 @@ class SignalService:
             """)
             for col_name, col_def in [
                 ("idempotency_key", "TEXT"),
+                ("outcome", "TEXT"),
             ]:
                 try:
                     conn.execute(f"ALTER TABLE signals ADD COLUMN {col_name} {col_def}")
