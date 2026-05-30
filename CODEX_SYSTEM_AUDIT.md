@@ -24,6 +24,17 @@ Strategy-level result for Run `58`:
 | Advanced Patterns | 19 | 73.68% | +15.90 | +0.837 | 4.18 | Promising but under-sampled |
 | SMC Sweep | 767 | 25.55% | -188.82 | -0.246 | 0.67 | Quarantined |
 
+**[Addendum: 2026-05-29] System Overhaul (Version 5.3.0)**
+Following a forensic investigation into Run 58's false-positive trade densities and the subsequent "zero trade" blocking bugs, the ExecutionGate was refactored with strict `run_id` isolation. Run 63 (Deep History: `2026-04-07` to `2026-05-29`) stands as the mathematically clean institutional baseline replacing Run 58.
+
+**Run 63 Final Strategy Breakdown:**
+| Strategy | Trades | Win Rate | Net R | Status |
+| :--- | ---: | ---: | ---: | :--- |
+| CRT H1 | 2,720 | 71.1% | +1,034.1R | Live-Ready Phase |
+| Session Clock | 42 | 64.2% | +24.8R | Live-Ready Phase |
+| Advanced Patterns | 10 | 50.0% | +2.3R | Under-sampled |
+| SMC Sweep | N/A | N/A | N/A | Quarantined |
+
 Engineering actions applied from this audit:
 
 - SMC Sweep is disabled by default in live signal generation config and excluded from default backtests unless explicitly requested.
