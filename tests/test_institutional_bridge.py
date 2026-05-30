@@ -7,6 +7,8 @@ import os
 from fastapi.testclient import TestClient
 from admin_server import app, get_current_user, User
 
+pytestmark = [pytest.mark.integration]
+
 # ── AUTH MOCK ──────────────────────────────────────────────
 async def mock_get_current_user():
     return User(username="admin")

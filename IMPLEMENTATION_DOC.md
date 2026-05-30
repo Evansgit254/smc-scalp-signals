@@ -79,6 +79,12 @@ The `RiskManager` is the system's "Safety Brain."
 - **News Wash Zone**: Automated 30-minute blackout window around Red-Folder events.
 - **Execution Guard**: Ensures 100% alignment between Signal Engine and MT5 Bridge state.
 
+### 6.1 Operational Governance
+- Stripe webhooks require `STRIPE_WEBHOOK_SECRET` by default. An unsigned development bypass is only available when `ALLOW_UNSIGNED_STRIPE_WEBHOOK=true` is set explicitly.
+- Live execution toggles such as `mt5_auto_trade` and `mt5_paper_mode` require `risk_manager` access through the admin API.
+- Signal delivery reservation fails closed if the dedupe database cannot be written, which prevents duplicate broadcast or execution on storage faults.
+- Test coverage is organized with `authentic`, `integration`, and `live` markers so local runs can exclude external dependencies cleanly.
+
 ---
 
 ## 7. Backtesting & Verification

@@ -165,9 +165,9 @@ class SignalService:
         except Exception as e:
             if conn:
                 conn.rollback()
-            print(f"⚠️  Signal delivery gate failed open: {e}")
+            print(f"⚠️  Signal delivery gate failed closed: {e}")
             signal_data["idempotency_key"] = sig_hash
-            return True
+            return False
         finally:
             if conn:
                 conn.close()

@@ -5,6 +5,8 @@ from data.fetcher import DataFetcher
 from data.news_fetcher import NewsFetcher
 from config.config import SYMBOLS, DXY_SYMBOL
 
+pytestmark = [pytest.mark.live]
+
 @pytest.mark.authentic
 def test_yfinance_live_connection():
     """Verify that we can actually fetch live data from yfinance."""

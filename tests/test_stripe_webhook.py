@@ -3,12 +3,14 @@ import sqlite3
 import os
 import sys
 from datetime import datetime
+import pytest
+from fastapi import HTTPException
 from fastapi.testclient import TestClient
 from unittest.mock import patch
 
 # Add project root to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from admin_server import app
+from admin_server import app, stripe_webhook
 
 DB_CLIENTS = "database/clients_test_webhook.db"
 
@@ -43,6 +45,7 @@ def test_stripe_webhook_activation():
     
     with patch('admin_server.DB_CLIENTS', DB_CLIENTS), \
          patch('admin_server.STRIPE_WEBHOOK_SECRET', None), \
+         patch('admin_server.ALLOW_UNSIGNED_STRIPE_WEBHOOK', True), \
          patch('config.config.DB_CLIENTS', DB_CLIENTS):
         
         client = TestClient(app)
@@ -85,6 +88,21 @@ def test_stripe_webhook_activation():
         print("\n✅ Stripe Webhook Activation Test Passed!")
     
     if os.path.exists(DB_CLIENTS): os.remove(DB_CLIENTS)
+
+@pytest.mark.asyncio
+async def test_stripe_webhook_requires_signature_without_dev_bypass():
+    class FakeRequest:
+        headers = {}
+
+        async def body(self):
+            return b'{"type":"checkout.session.completed"}'
+
+    with patch('admin_server.STRIPE_WEBHOOK_SECRET', None), \
+         patch('admin_server.ALLOW_UNSIGNED_STRIPE_WEBHOOK', False):
+        with pytest.raises(HTTPException) as exc:
+            await stripe_webhook(FakeRequest())
+
+    assert exc.value.status_code == 503
 
 if __name__ == "__main__":
     test_stripe_webhook_activation()

@@ -11,7 +11,13 @@ __pycache__/
 outputs/
 logs/
 data/historical/
-database/*.db
+*.db
+*.db-wal
+*.db-shm
+backups/
+database/
+data/*.db
+monitoring/*.db
 fxblue_history.csv
 
 # Test & Coverage

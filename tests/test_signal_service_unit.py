@@ -35,8 +35,13 @@ async def test_signal_service_run(mock_strategy, mock_telegram):
     with patch('signal_service.generate_signals', new=mock_strategy.generate_signals), \
          patch('signal_service.TelegramService', return_value=mock_telegram), \
          patch('signal_service.SignalService._load_dynamic_config'), \
+         patch('data.fetcher.DataFetcher.fetch_data_async', new=AsyncMock(return_value=None)), \
          patch('signal_service.SignalService._is_duplicate', return_value=False), \
-         patch('signal_service.SignalService._reserve_signal_delivery', return_value=True):
+         patch('signal_service.SignalService._reserve_signal_delivery', return_value=True), \
+         patch('core.execution_gate.ExecutionGate.validate_and_reserve', return_value={
+             'status': 'PASSED',
+             'reason': 'VALIDATION_SUCCESS'
+         }):
         
         service = SignalService()
         
@@ -50,6 +55,7 @@ async def test_signal_service_run(mock_strategy, mock_telegram):
 async def test_signal_service_duplicate_skipped(mock_strategy, mock_telegram):
     with patch('signal_service.generate_signals', new=mock_strategy.generate_signals), \
          patch('signal_service.TelegramService', return_value=mock_telegram), \
+         patch('data.fetcher.DataFetcher.fetch_data_async', new=AsyncMock(return_value=None)), \
          patch('builtins.print') as mock_print:
          
         service = SignalService()
@@ -64,6 +70,7 @@ async def test_signal_service_duplicate_skipped(mock_strategy, mock_telegram):
 async def test_signal_service_no_signals_cycle(mock_telegram):
     with patch('signal_service.generate_signals', new=AsyncMock(return_value=[])), \
          patch('signal_service.TelegramService', return_value=mock_telegram), \
+         patch('data.fetcher.DataFetcher.fetch_data_async', new=AsyncMock(return_value=None)), \
          patch('builtins.print') as mock_print:
         
         service = SignalService()
@@ -105,6 +112,7 @@ async def test_signal_service_does_not_broadcast_blocked_signal(mock_telegram):
 @pytest.mark.asyncio
 async def test_signal_service_error_handling(mock_telegram):
     with patch('signal_service.TelegramService', return_value=mock_telegram), \
+         patch('data.fetcher.DataFetcher.fetch_data_async', new=AsyncMock(return_value=None)), \
          patch('builtins.print') as mock_print:
         
         service = SignalService()
@@ -133,9 +141,24 @@ async def test_signal_service_deduplication(mock_telegram):
             assert not service._is_duplicate(sig)
 
 @pytest.mark.asyncio
+async def test_signal_delivery_reservation_fails_closed(mock_telegram):
+    with patch('signal_service.TelegramService', return_value=mock_telegram), \
+         patch('signal_service.connect_sqlite', side_effect=Exception("DB unavailable")):
+        service = SignalService()
+
+        reserved = service._reserve_signal_delivery({
+            'symbol': 'EURUSD=X',
+            'direction': 'BUY',
+            'timeframe': 'M5',
+        })
+
+    assert reserved is False
+
+@pytest.mark.asyncio
 async def test_signal_service_infinite_run_loop(mock_strategy, mock_telegram):
     with patch('signal_service.generate_signals', new=mock_strategy.generate_signals), \
          patch('signal_service.TelegramService', return_value=mock_telegram), \
+         patch('data.fetcher.DataFetcher.fetch_data_async', new=AsyncMock(return_value=None)), \
          patch('signal_service.SignalFormatter.format_personalized_signal', return_value="Test Formatted"):
         
         service = SignalService()
@@ -168,7 +191,8 @@ async def test_signal_service_fatal_config():
         mock_tg.bot = None 
         
         service = SignalService()
-        with patch('builtins.print') as mock_print:
+        with patch('data.fetcher.DataFetcher.fetch_data_async', new=AsyncMock(return_value=None)), \
+             patch('builtins.print') as mock_print:
             await service.run(test_mode=True)
             assert any("FATAL: Telegram not configured" in str(call) for call in mock_print.call_args_list)
 
@@ -176,6 +200,7 @@ async def test_signal_service_fatal_config():
 async def test_signal_service_graceful_shutdown_loop(mock_strategy, mock_telegram):
     with patch('signal_service.TelegramService', return_value=mock_telegram), \
          patch('signal_service.generate_signals', new=mock_strategy.generate_signals), \
+         patch('data.fetcher.DataFetcher.fetch_data_async', new=AsyncMock(return_value=None)), \
          patch('signal_service.SignalFormatter.format_personalized_signal', return_value="Test"):
         
         service = SignalService()
@@ -200,6 +225,7 @@ async def test_signal_service_load_dynamic_config_paused(mock_telegram):
     
     with patch('signal_service.TelegramService', return_value=mock_telegram), \
          patch('config.config.DB_CLIENTS', db_path), \
+         patch('data.fetcher.DataFetcher.fetch_data_async', new=AsyncMock(return_value=None)), \
          patch('builtins.print'):
         
         service = SignalService()

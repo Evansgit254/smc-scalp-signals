@@ -29,6 +29,7 @@ from core.db_utils import connect_sqlite, ensure_base_tables, write_audit_event
 # Stripe Configuration
 stripe.api_key = os.getenv("STRIPE_API_KEY")
 STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET")
+ALLOW_UNSIGNED_STRIPE_WEBHOOK = os.getenv("ALLOW_UNSIGNED_STRIPE_WEBHOOK", "false").lower() == "true"
 
 # Admin Credentials (CRITICAL: Required in Production)
 ADMIN_USER = os.getenv("ADMIN_USER", "admin")
@@ -458,6 +459,8 @@ CONFIG_SCHEMA = {
     "data_provider": {"type": "str", "allowed": {"yfinance", "mt5"}},
 }
 
+LIVE_TRADING_CONFIG_KEYS = {"mt5_auto_trade", "mt5_paper_mode"}
+
 
 def _schema_for_config_key(key: str) -> dict:
     if key.startswith("strategy_"):
@@ -548,6 +551,8 @@ async def get_config(current_user: User = Depends(get_current_user)):
 async def update_config(update: ConfigUpdate, current_user: User = Depends(get_current_user)):
     """Update a specific configuration setting"""
     require_role(current_user, "risk_manager", "operator")
+    if update.key in LIVE_TRADING_CONFIG_KEYS:
+        require_role(current_user, "risk_manager")
     conn = None
     try:
         normalized_value, cfg_type = validate_config_value(update.key, update.value)
@@ -821,6 +826,7 @@ async def get_mt5_positions(current_user: User = Depends(get_current_user)):
 @app.post("/api/mt5/close/{position_id}")
 async def close_mt5_position(position_id: str, current_user: User = Depends(get_current_user)):
     """Close an open MT5 position by ID."""
+    require_role(current_user, "risk_manager")
     try:
         from core.trade_executor import get_executor
         executor = get_executor()
@@ -856,6 +862,7 @@ async def get_clients(current_user: User = Depends(get_current_user)):
 
 @app.post("/api/clients/{chat_id}")
 async def update_client(chat_id: str, update: ClientUpdate, current_user: User = Depends(get_current_user)):
+    require_role(current_user, "risk_manager", "operator")
     conn = None
     try:
         conn = get_db_connection(DB_CLIENTS)
@@ -927,6 +934,7 @@ async def update_client(chat_id: str, update: ClientUpdate, current_user: User =
 @app.post("/api/clients/{chat_id}/toggle-signals")
 async def toggle_signals(chat_id: str, current_user: User = Depends(get_current_user)):
     """Toggle Telegram signal delivery for a client"""
+    require_role(current_user, "operator")
     conn = None
     try:
         conn = get_db_connection(DB_CLIENTS)
@@ -958,6 +966,7 @@ async def toggle_signals(chat_id: str, current_user: User = Depends(get_current_
 @app.post("/api/clients/{chat_id}/toggle-dashboard")
 async def toggle_dashboard(chat_id: str, current_user: User = Depends(get_current_user)):
     """Toggle dashboard access for a client"""
+    require_role(current_user, "admin")
     conn = None
     try:
         conn = get_db_connection(DB_CLIENTS)
@@ -989,6 +998,7 @@ async def toggle_dashboard(chat_id: str, current_user: User = Depends(get_curren
 @app.post("/api/clients/{chat_id}/extend")
 async def quick_extend(chat_id: str, days: int = 30, current_user: User = Depends(get_current_user)):
     """Quick extend subscription by specified days (default 30)"""
+    require_role(current_user, "risk_manager", "operator")
     conn = None
     try:
         conn = get_db_connection(DB_CLIENTS)
@@ -1036,7 +1046,12 @@ async def stripe_webhook(request: Request):
     sig_header = request.headers.get("stripe-signature")
     
     if not STRIPE_WEBHOOK_SECRET:
-        print("⚠️ STRIPE_WEBHOOK_SECRET not set. Webhook bypass for DEBUG only.")
+        if not ALLOW_UNSIGNED_STRIPE_WEBHOOK:
+            raise HTTPException(
+                status_code=503,
+                detail="STRIPE_WEBHOOK_SECRET is required unless ALLOW_UNSIGNED_STRIPE_WEBHOOK=true"
+            )
+        print("⚠️ STRIPE_WEBHOOK_SECRET not set. Unsigned webhook bypass enabled for development.")
     
     try:
         event = None

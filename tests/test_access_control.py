@@ -2,11 +2,23 @@ import pytest
 import os
 import sqlite3
 from unittest.mock import patch
+from fastapi import HTTPException
 from fastapi.testclient import TestClient
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from admin_server import app
+from admin_server import (
+    app,
+    ClientUpdate,
+    ConfigUpdate,
+    User,
+    close_mt5_position,
+    update_config,
+    quick_extend,
+    toggle_dashboard,
+    toggle_signals,
+    update_client,
+)
 
 DB_TEST = "database/clients_test_access_control.db"
 
@@ -141,6 +153,35 @@ def test_quick_extend(test_db):
         result = cursor.execute("SELECT subscription_expiry FROM clients WHERE telegram_chat_id = 'TEST_123'").fetchone()
         assert result[0] is not None
         conn.close()
+
+@pytest.mark.asyncio
+async def test_restricted_client_and_position_actions_reject_viewer():
+    viewer = User(username="viewer", role="viewer")
+
+    restricted_calls = [
+        lambda: close_mt5_position("123", current_user=viewer),
+        lambda: update_client("TEST_123", ClientUpdate(account_balance=1200), current_user=viewer),
+        lambda: toggle_signals("TEST_123", current_user=viewer),
+        lambda: toggle_dashboard("TEST_123", current_user=viewer),
+        lambda: quick_extend("TEST_123", days=30, current_user=viewer),
+    ]
+
+    for call in restricted_calls:
+        with pytest.raises(HTTPException) as exc:
+            await call()
+        assert exc.value.status_code == 403
+
+@pytest.mark.asyncio
+async def test_live_trading_config_rejects_operator():
+    operator = User(username="operator", role="operator")
+
+    with pytest.raises(HTTPException) as exc:
+        await update_config(
+            ConfigUpdate(key="mt5_auto_trade", value="true"),
+            current_user=operator,
+        )
+
+    assert exc.value.status_code == 403
 
 if __name__ == "__main__":
     test_toggle_signals()

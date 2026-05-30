@@ -108,4 +108,12 @@ python run_backtest_cli.py --days 30
 
 Trading financial markets involves significant risk. Current performance metrics are based on local backtest database records. The active execution ledger contains paper orders/fills only; it does not prove live broker fill quality or live profitability.
 
+## 🔐 Operational Safety
+
+- Stripe webhook processing requires `STRIPE_WEBHOOK_SECRET` by default.
+- Unsigned webhook payloads are only accepted when `ALLOW_UNSIGNED_STRIPE_WEBHOOK=true` is set for local development.
+- Live-trading toggles such as `mt5_auto_trade` and `mt5_paper_mode` require `risk_manager` access.
+- Signal delivery reservation fails closed if the dedupe database is unavailable, so a storage fault will block delivery instead of duplicating it.
+- Test markers now separate `integration`, `live`, and `authentic` coverage so local runs can skip external dependencies cleanly.
+
 **System Version: 5.3.0 (Live-Ready Mathematical Update 63)**

@@ -1,14 +1,22 @@
-# Deployment Assurance: v5.2.0-research
+# Deployment Assurance: v5.3.0-stable
 
 This document details exactly what is inside the refactored system being deployed.
 
 ## Current Evidence Boundary
 
-Database audit baseline: `database/backtest_results.db`, Run ID `58`, generated on `2026-05-29`.
+Database audit baseline: `database/backtest_results.db`, Run ID `63`, generated on `2026-05-29`.
 
-- The active ledger shows paper execution only: `7` `PAPER_EXECUTED` orders/fills in `database/signals.db`.
-- No active database record proves live broker fills, live slippage, or live profitability.
-- SMC Sweep is quarantined by default after Run `58` and aggregate historical runs showed negative expectancy.
+- The active ledger shows paper execution only.
+- Run `63` definitively resolved the cross-run ExecutionGate pollution bug.
+- Current win rate baseline: **70.9%** across 2,772 trades.
+- SMC Sweep is quarantined by default.
+
+## Current Safety Controls
+
+- Stripe webhook handling now requires `STRIPE_WEBHOOK_SECRET` unless `ALLOW_UNSIGNED_STRIPE_WEBHOOK=true` is explicitly set for development.
+- `mt5_auto_trade` and `mt5_paper_mode` are treated as live-trading controls and require `risk_manager` access to change through the admin API.
+- Signal delivery reservation now fails closed when the dedupe database is unavailable, preventing duplicate broadcast or execution on storage faults.
+- Test coverage is split into `authentic`, `integration`, and `live` markers so external dependencies can be isolated from default local runs.
 
 ## 1. The Safety Layers (Gates)
 
@@ -47,6 +55,9 @@ We are moving away from "Pips" because they are misleading across different symb
 - [x] Quality Score: **ACTIVE** (`min_quality_score=8.0` in active DB)
 - [x] MT5 Auto-Trade: **PAPER MODE** (Safe Start)
 - [x] Deduplication: **ACTIVE** (45 min window)
+- [x] Stripe webhook signature enforcement: **ACTIVE**
+- [x] Live trading config protection: **ACTIVE**
+- [x] Delivery reservation fail-closed: **ACTIVE**
 - [x] Path Independence: **VERIFIED**
 - [x] SMC Sweep: **QUARANTINED BY DEFAULT**
 - [ ] Live broker fill evidence: **NOT YET VERIFIED**

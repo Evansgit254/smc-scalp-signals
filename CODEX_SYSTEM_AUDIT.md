@@ -79,6 +79,10 @@ Implemented in this pass:
 - Added `idempotency_key` to logged signals and a unique index for deduplication.
 - Hardened `ExecutionGate._get_thresholds()` so a missing optional `weight_overrides` table does not prevent reading `system_config`.
 - Added `execution_events` logging in `TradeExecutor` so execution transitions are append-only, not only reflected in mutable `signals` fields.
+- Stripe webhook handling now requires `STRIPE_WEBHOOK_SECRET` unless `ALLOW_UNSIGNED_STRIPE_WEBHOOK=true` is explicitly enabled for development.
+- Live-trading config keys (`mt5_auto_trade`, `mt5_paper_mode`) now require `risk_manager` access to change through the admin API.
+- Signal delivery reservation now fails closed when the dedupe database is unavailable.
+- Test metadata now distinguishes `integration`, `live`, and `authentic` coverage for clearer local versus external selection.
 
 ## Critical Vulnerabilities And Status
 
@@ -229,6 +233,27 @@ Remaining:
 - Ensure database backups never expose encrypted credentials through casual dashboard download workflows.
 - Add credential rotation metadata.
 
+### 9. Webhook And Live-Trade Governance
+
+**Status:** Improved.
+
+Risk:
+
+- Unsigned payment webhooks can activate subscriptions if the secret is missing.
+- Live-trading toggles should not be writable by broad operator access.
+- Delivery gating should never fail open when the dedupe table cannot be written.
+
+Remediation:
+
+- Stripe webhook processing now rejects unsigned requests unless an explicit development bypass is enabled.
+- Live-trading toggles are restricted to `risk_manager` access.
+- Signal delivery reservation now fails closed on storage faults.
+
+Remaining:
+
+- Keep the unsigned webhook bypass limited to non-production use.
+- Add explicit approval/audit metadata for live-trade toggle changes if the system is expanded to more operators.
+
 ### 8. Permission Model
 
 **Status:** Improved, but incomplete.
@@ -244,7 +269,7 @@ Remaining:
 - Add maker-checker approval for live execution enablement.
 - Audit login success/failure and permission denials.
 
-## Operational Scalability
+## 10. Operational Scalability
 
 Scaling from 1 to 50 symbols still stresses:
 
