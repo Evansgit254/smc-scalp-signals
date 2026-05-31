@@ -21,15 +21,30 @@ class ExecutionGate:
             symbol = signal.get('symbol')
             if not symbol:
                 return {"status": "BLOCKED", "reason": "MISSING_SYMBOL"}
-
+            
             entry_price = signal.get('entry_price')
-            try:
-                if entry_price is None or float(entry_price) <= 0.0:
-                    return {"status": "BLOCKED", "reason": "MISSING_EXECUTABLE_ENTRY"}
-            except (TypeError, ValueError):
+            if entry_price is None or float(entry_price) <= 0.0:
                 return {"status": "BLOCKED", "reason": "MISSING_EXECUTABLE_ENTRY"}
+            
+            # 2. Safety Check: Mandatory Risk Margin
+            sl = signal.get('sl')
+            try:
+                if sl is None:
+                    return {"status": "BLOCKED", "reason": "MISSING_STOP_LOSS"}
+                
+                entry_f = float(entry_price)
+                sl_f = float(sl)
+                risk_dist = abs(entry_f - sl_f)
+                
+                is_crypto = any(coin in symbol for coin in ["BTC", "ETH", "SOL", "BNB"])
+                min_dist = 10.0 if is_crypto else 0.00005 # 10 points for crypto, 0.5 pips for FX
+                
+                if risk_dist < min_dist:
+                    return {"status": "BLOCKED", "reason": f"INSUFFICIENT_RISK_MARGIN: {risk_dist:.5f} < {min_dist}"}
+            except (TypeError, ValueError):
+                return {"status": "BLOCKED", "reason": "INVALID_PRICE_DATA"}
 
-            # 2. Inventory Check (No Pyramiding)
+            # 3. Inventory Check (No Pyramiding)
             run_id = signal.get('run_id')
             if ExecutionGate._has_open_position(symbol, db_signals, table_name, current_ts, run_id):
                 return {"status": "BLOCKED", "reason": f"EXISTING_POSITION_IN_{symbol}"}

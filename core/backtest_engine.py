@@ -195,9 +195,16 @@ class BacktestEngine:
         if future_df.empty:
             return {'result': 'OPEN', 'pips': 0, 'closed_at': None}
 
-        # Conversion: JPY pairs use 0.01 as 1 pip, others use 0.0001
+        # Conversion Logic (V5.3.0 Standard)
         is_jpy = "JPY" in signal.get('symbol', '')
-        pip_value = 0.01 if is_jpy else 0.0001
+        is_crypto = any(coin in signal.get('symbol', '') for coin in ["BTC", "ETH", "SOL", "BNB"])
+        
+        if is_jpy:
+            pip_value = 0.01
+        elif is_crypto:
+            pip_value = 1.0
+        else:
+            pip_value = 0.0001
         
         # Total execution friction in price points
         total_friction = (SPREAD_PIPS + SLIPPAGE_PIPS) * pip_value
