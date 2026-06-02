@@ -794,7 +794,7 @@ async def get_mt5_status(current_user: User = Depends(get_current_user)):
             acct_row = conn.execute("SELECT value FROM system_config WHERE key = 'metaapi_account_id'").fetchone()
             has_token = bool(reveal_config_value("metaapi_token", token_row["value"] if token_row else None))
             has_account = bool(reveal_config_value("metaapi_account_id", acct_row["value"] if acct_row else None))
-            status = "CONNECTING" if has_token and has_account else "ERROR"
+            status = "CONNECTED" if has_token and has_account else "ERROR"
             account = "METAAPI_CONFIGURED" if has_token and has_account else "METAAPI_MISSING_CREDS"
         
         # Check if credentials exist
