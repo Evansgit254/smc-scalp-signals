@@ -1411,10 +1411,14 @@
         function showToast(msg, type = 'success') {
             const t = document.getElementById('toast');
             if (!t) return;
+            // Handle legacy boolean calls e.g., showToast(msg, true) for errors
+            if (type === true) type = 'error';
+            if (type === false) type = 'success';
+            
             t.innerText = msg;
             t.style.borderLeft = type === 'success' ? '4px solid var(--acc-emerald)' : '4px solid var(--acc-crimson)';
-            t.classList.remove('hidden');
-            setTimeout(() => t.classList.add('hidden'), 3500);
+            t.style.display = 'block'; // Override the inline display: none
+            setTimeout(() => { t.style.display = 'none'; }, 3500);
         }
 
         function viewBacktestResults(id) {
