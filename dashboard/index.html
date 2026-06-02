@@ -774,8 +774,22 @@
                 if (res.ok) {
                     showToast("TERMINAL_CONFIG_SAVED");
                     loadMt5Status();
+                    loadSystemConfig();
                 } else { showToast("SAVE_FAILED", true); }
             } catch (e) { showToast("NETWORK_ERROR", true); }
+        }
+
+        async function saveConfig() {
+            // Commit UI state to backend
+            showToast("COMMITTING_CORE_CONFIG...");
+            try {
+                // We reload everything to ensure sync
+                await loadSystemConfig();
+                await loadMt5Status();
+                showToast("CORE_CONFIG_INSTANTIATED");
+            } catch (e) {
+                showToast("SYNC_ERROR", true);
+            }
         }
 
         async function setDataProvider(provider) {
@@ -787,6 +801,9 @@
                 });
                 if (res.ok) {
                     showToast(`SWITCHED_TO: ${provider.toUpperCase()}`);
+                    // Visual feedback
+                    document.getElementById('provider-yfinance').style.border = provider === 'yfinance' ? '1px solid var(--acc-cyan)' : 'default';
+                    document.getElementById('provider-mt5').style.border = provider === 'mt5' ? '1px solid var(--acc-cyan)' : 'default';
                     loadMt5Status();
                 } else { showToast("FAILED_TO_SWITCH_PROVIDER", true); }
             } catch (e) { showToast("NETWORK_ERROR", true); }
