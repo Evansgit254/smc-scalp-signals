@@ -358,8 +358,14 @@
                         <div style="padding: 16px; background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); border-radius: var(--radius);">
                             <label class="label-caps" style="font-size: 9px; color: var(--acc-amber); display: block; margin-bottom: 12px;">System Maintenance</label>
                             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-                                <button class="btn" style="font-size: 9px; background: var(--bg-base); border: 1px solid var(--border-color);" onclick="runSystemManage('backup')">BACKUP_DB</button>
-                                <button class="btn" style="font-size: 9px; background: var(--bg-base); border: 1px solid var(--border-color);" onclick="runSystemManage('rollback')">ROLLBACK</button>
+                                <button class="btn" style="font-size: 9px; background: var(--bg-base); border: 1px solid var(--border-color); color: var(--text-primary); transition: background var(--anim-fast);" 
+                                        onmouseover="this.style.background='var(--bg-panel)'" 
+                                        onmouseout="this.style.background='var(--bg-base)'"
+                                        onclick="runSystemManage('backup')">BACKUP_DB</button>
+                                <button class="btn" style="font-size: 9px; background: var(--bg-base); border: 1px solid var(--border-color); color: var(--text-primary); transition: background var(--anim-fast);" 
+                                        onmouseover="this.style.background='var(--bg-panel)'" 
+                                        onmouseout="this.style.background='var(--bg-base)'"
+                                        onclick="runSystemManage('rollback')">ROLLBACK</button>
                             </div>
                         </div>
                     </div>
