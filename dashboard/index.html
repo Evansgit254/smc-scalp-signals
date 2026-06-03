@@ -348,8 +348,8 @@
                         <div style="margin-bottom: 24px; padding-top: 24px; border-top: 1px solid var(--border-color);">
                             <label class="label-caps" style="font-size: 9px; color: var(--acc-cyan); display: block; margin-bottom: 12px;">Institutional Data Source</label>
                             <div style="display: flex; gap: 8px;">
-                                <button id="provider-yfinance" class="btn btn-primary" style="flex: 1; font-size: 10px; background: var(--bg-surface); border-color: var(--border-color);" onclick="setDataProvider('yfinance')">YFINANCE</button>
-                                <button id="provider-mt5" class="btn btn-primary" style="flex: 1; font-size: 10px; background: var(--bg-surface); border-color: var(--border-color);" onclick="setDataProvider('mt5')">MT5_BRIDGE</button>
+                                <button id="provider-yfinance" class="btn btn-primary" style="flex: 1; font-size: 10px; background: var(--acc-cyan); color: #000; border-color: var(--border-color); cursor: default;">YFINANCE</button>
+                                <button class="btn" style="flex: 1; font-size: 10px; background: rgba(0,0,0,0.2); color: var(--text-tertiary); border: 1px dashed var(--border-color); cursor: not-allowed;" disabled title="Historical data must come from true market feed like yfinance">MT5 DATA DISABLED</button>
                             </div>
                         </div>
 
