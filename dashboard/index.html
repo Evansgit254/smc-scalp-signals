@@ -357,7 +357,7 @@
 
                         <div style="padding: 16px; background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); border-radius: var(--radius);">
                             <label class="label-caps" style="font-size: 9px; color: var(--acc-amber); display: block; margin-bottom: 12px;">System Maintenance</label>
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px;">
                                 <button class="btn" style="font-size: 9px; background: var(--bg-base); border: 1px solid var(--border-color); color: var(--text-primary); transition: background var(--anim-fast);" 
                                         onmouseover="this.style.background='var(--bg-panel)'" 
                                         onmouseout="this.style.background='var(--bg-base)'"
@@ -367,6 +367,12 @@
                                         onmouseout="this.style.background='var(--bg-base)'"
                                         onclick="runSystemManage('rollback')">ROLLBACK</button>
                             </div>
+                            <button id="restart-engine-btn" class="btn" style="width: 100%; font-size: 10px; padding: 10px; background: rgba(0,212,255,0.08); border: 1px solid var(--acc-cyan); color: var(--acc-cyan); font-weight: 600; letter-spacing: 1px; cursor: pointer; transition: all 0.2s ease;" 
+                                    onmouseover="this.style.background='rgba(0,212,255,0.2)'; this.style.boxShadow='0 0 12px rgba(0,212,255,0.15)'" 
+                                    onmouseout="this.style.background='rgba(0,212,255,0.08)'; this.style.boxShadow='none'"
+                                    onclick="restartEngine()">
+                                <i class="fas fa-sync-alt" style="margin-right: 6px;"></i>RESTART ENGINE
+                            </button>
                         </div>
                     </div>
 
@@ -380,6 +386,11 @@
                             <div>
                                 <label class="label-caps" style="font-size: 8px; color: var(--text-secondary); display: block; margin-bottom: 6px;">MT5 Account ID</label>
                                 <input type="text" id="meta-account-id" placeholder="Account UUID..." style="width: 100%; background: var(--bg-surface); border: 1px solid var(--border-color); color: var(--text-primary); padding: 8px; border-radius: var(--radius); font-family: monospace; font-size: 11px;">
+                            </div>
+                            <div>
+                                <label class="label-caps" style="font-size: 8px; color: var(--text-secondary); display: block; margin-bottom: 6px;">MT5 Symbol Suffix</label>
+                                <input type="text" id="meta-symbol-suffix" placeholder="e.g. c for cent accounts, leave blank for standard" style="width: 100%; background: var(--bg-surface); border: 1px solid var(--border-color); color: var(--text-primary); padding: 8px; border-radius: var(--radius); font-family: monospace; font-size: 11px;">
+                                <p class="text-xs text-tertiary" style="margin-top: 4px; font-size: 8px;">XM Standard = blank | XM Cent = c | HFM Cent = c</p>
                             </div>
                             <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 8px;">
                                 <div style="display: flex; align-items: center; gap: 8px;">
@@ -752,6 +763,11 @@
                     mtBtn.style.background = !isYF ? 'var(--acc-cyan)' : 'var(--bg-surface)';
                     mtBtn.style.color = !isYF ? '#000' : 'var(--text-primary)';
                 }
+                // Populate suffix field from API
+                const suffixInput = document.getElementById('meta-symbol-suffix');
+                if (suffixInput && data.symbol_suffix !== undefined) {
+                    suffixInput.value = data.symbol_suffix;
+                }
             } catch (e) { console.error("MT5 Status Fetch Failed", e); }
         }
 
@@ -759,6 +775,7 @@
             const token = document.getElementById('meta-token').value;
             const accountId = document.getElementById('meta-account-id').value;
             const paperMode = document.getElementById('meta-paper-mode').checked;
+            const suffix = document.getElementById('meta-symbol-suffix').value.trim();
             
             if (!token || !accountId) {
                 showToast("TOKEN_AND_ACCOUNT_ID_REQUIRED", true);
@@ -766,10 +783,17 @@
             }
 
             try {
+                // Save MetaAPI credentials
                 const res = await apiFetch('/api/mt5/config', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ token, accountId, paperMode })
+                });
+                // Save MT5 symbol suffix
+                await apiFetch('/api/config', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ key: 'mt5_symbol_suffix', value: suffix })
                 });
                 if (res.ok) {
                     showToast("TERMINAL_CONFIG_SAVED");
@@ -800,13 +824,34 @@
                     body: JSON.stringify({ key: 'data_provider', value: provider })
                 });
                 if (res.ok) {
-                    showToast(`SWITCHED_TO: ${provider.toUpperCase()}`);
+                    showToast(`SWITCHED_TO: ${provider.toUpperCase()} — RESTARTING ENGINE...`);
                     // Visual feedback
                     document.getElementById('provider-yfinance').style.border = provider === 'yfinance' ? '1px solid var(--acc-cyan)' : 'default';
                     document.getElementById('provider-mt5').style.border = provider === 'mt5' ? '1px solid var(--acc-cyan)' : 'default';
                     loadMt5Status();
+                    // Auto-restart engine so the new provider takes effect immediately
+                    await restartEngine(true);
                 } else { showToast("FAILED_TO_SWITCH_PROVIDER", true); }
             } catch (e) { showToast("NETWORK_ERROR", true); }
+        }
+
+        async function restartEngine(silent = false) {
+            if (!silent && !confirm('CONFIRM: Restart Signal Engine and Tracker services?')) return;
+            const btn = document.getElementById('restart-engine-btn');
+            if (btn) { btn.innerHTML = '<i class="fas fa-spinner fa-spin" style="margin-right: 6px;"></i>RESTARTING...'; btn.disabled = true; }
+            try {
+                const res = await apiFetch('/api/system/manage', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'restart' })
+                });
+                if (res.ok) {
+                    showToast('ENGINE_RESTART_INITIATED');
+                } else { showToast('RESTART_FAILED', true); }
+            } catch (e) { showToast('RESTART_API_ERROR', true); }
+            finally {
+                if (btn) { setTimeout(() => { btn.innerHTML = '<i class="fas fa-sync-alt" style="margin-right: 6px;"></i>RESTART ENGINE'; btn.disabled = false; }, 5000); }
+            }
         }
 
         async function runSystemManage(action) {

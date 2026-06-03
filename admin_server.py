@@ -458,6 +458,7 @@ CONFIG_SCHEMA = {
     "mt5_auto_trade": {"type": "bool"},
     "mt5_paper_mode": {"type": "bool"},
     "data_provider": {"type": "str", "allowed": {"yfinance", "mt5"}},
+    "mt5_symbol_suffix": {"type": "str"},
 }
 
 LIVE_TRADING_CONFIG_KEYS = {"mt5_auto_trade", "mt5_paper_mode"}
@@ -800,12 +801,14 @@ async def get_mt5_status(current_user: User = Depends(get_current_user)):
         
         # Check if credentials exist
         has_creds = conn.execute("SELECT value FROM system_config WHERE key = 'metaapi_token' AND value != ''").fetchone()
+        suffix_row = conn.execute("SELECT value FROM system_config WHERE key = 'mt5_symbol_suffix'").fetchone()
         
         return {
             "status": status,
             "mode": mode,
             "account": account,
-            "credentials_set": bool(reveal_config_value("metaapi_token", has_creds["value"] if has_creds else None))
+            "credentials_set": bool(reveal_config_value("metaapi_token", has_creds["value"] if has_creds else None)),
+            "symbol_suffix": suffix_row["value"] if suffix_row else ""
         }
     except Exception as e:
         return {"status": "ERROR", "mode": "UNKNOWN", "detail": str(e)}
@@ -1809,10 +1812,20 @@ class SystemAction(BaseModel):
 @app.post("/api/system/manage")
 async def system_manage(data: SystemAction, current_user: User = Depends(get_current_user)):
     """Handles governance actions (backup, update, rollback)"""
-    valid_actions = ["backup", "update", "rollback"]
+    valid_actions = ["backup", "update", "rollback", "restart"]
     if data.action not in valid_actions:
         raise HTTPException(status_code=400, detail=f"Invalid action: {data.action}")
     
+    if data.action == "restart":
+        try:
+            import subprocess
+            # Restart core services. sudo -n (non-interactive) is key.
+            # We restart in the background to avoid timing out the HTTP response.
+            subprocess.Popen(["sudo", "-n", "systemctl", "restart", "smc-signal-service", "smc-signal-tracker"])
+            return {"status": "success", "detail": "SERVICES_RESTART_INITIATED", "timestamp": datetime.now().isoformat()}
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Restart failed: {str(e)}")
+
     # Implementation logic for backup/update/rollback would go here
     return {"status": "success", "action": data.action, "timestamp": datetime.now().isoformat()}
 

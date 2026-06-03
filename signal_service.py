@@ -203,7 +203,8 @@ class SignalService:
             "min_quality_score_intraday": "MIN_QUALITY_SCORE_INTRADAY",
             "max_concurrent_trades": "MAX_CONCURRENT_TRADES",
             "mt5_auto_trade": "MT5_AUTO_TRADE",
-            "mt5_paper_mode": "MT5_PAPER_MODE"
+            "mt5_paper_mode": "MT5_PAPER_MODE",
+            "mt5_symbol_suffix": "MT5_SYMBOL_SUFFIX"
         }
         
         try:
