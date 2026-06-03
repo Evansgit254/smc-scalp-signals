@@ -178,7 +178,10 @@ class DataFetcher:
                 limit_map = {"5d": 500, "10d": 1000, "25d": 2500, "3mo": 5000, "6mo": 9999}
                 limit = limit_map.get(period, 500)
                 
-                broker_data = await executor.get_historical_data(symbol, timeframe, limit)
+                broker_data = await asyncio.wait_for(
+                    executor.get_historical_data(symbol, timeframe, limit),
+                    timeout=10.0
+                )
                 if broker_data:
                     df = pd.DataFrame(broker_data)
                     df['timestamp'] = pd.to_datetime(df['timestamp'], unit='s')
@@ -188,7 +191,11 @@ class DataFetcher:
                     else:
                         df.index = df.index.tz_convert("UTC")
                     return DataFetcher._drop_incomplete_bar(df, timeframe)
+            except asyncio.TimeoutError:
+                print(f"⚠️  MT5 fetch TIMED OUT for {symbol}, falling back to yfinance.")
+                logging.debug(f"MT5 fetch timed out for {symbol}, falling back.")
             except Exception as e:
+                print(f"⚠️  MT5 fetch failed for {symbol}: {e}. Falling back to yfinance.")
                 logging.debug(f"MT5 fetch failed for {symbol}, falling back to yfinance: {e}")
 
         # 2. Fallback to yfinance (Thread-safe)
