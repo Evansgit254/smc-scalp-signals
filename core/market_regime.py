@@ -91,6 +91,13 @@ def detect_regime(data_source, period=50) -> dict:
     """
     # 1. Normalize input to a single dataframe for local or first in map for global
     if isinstance(data_source, dict):
+        if not data_source:
+            return {
+                'regime': 'LOW_VOL_RANGE', # Neutral fallback
+                'adx': 20.0,
+                'vol_ratio': 1.0,
+                'quality_threshold': 5.0
+            }
         # Global: Process first symbol as proxy or potentially average (Simplified for Phase A)
         symbol = list(data_source.keys())[0]
         df = data_source[symbol]

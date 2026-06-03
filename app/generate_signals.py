@@ -71,9 +71,9 @@ async def generate_signals():
         dxy_data = await fetcher.fetch_data_async(DXY_SYMBOL, "1h", period="60d")
         tnx_data = await fetcher.fetch_data_async(TNX_SYMBOL, "1h", period="60d")
         
-        if not dxy_data.empty:
+        if dxy_data is not None and not dxy_data.empty:
             market_context['DXY'] = IndicatorCalculator.add_indicators(dxy_data, "1h")
-        if not tnx_data.empty:
+        if tnx_data is not None and not tnx_data.empty:
             market_context['^TNX'] = IndicatorCalculator.add_indicators(tnx_data, "1h")
     except Exception as e:
         print(f"⚠️  Warning: Could not fetch macro context: {e}")

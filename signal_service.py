@@ -215,8 +215,12 @@ class SignalService:
             print("⚙️  Loading dynamic configuration...")
             for row in rows:
                 key = row['key']
-                val = row['value']
+                from core.secure_config import reveal_config_value
+                val = reveal_config_value(key, row['value'])
                 
+                if val is None:
+                    continue  # Skip if decryption failed or value is missing
+
                 # Type conversion
                 if row['type'] == 'int': val = int(val)
                 elif row['type'] == 'float': val = float(val)
