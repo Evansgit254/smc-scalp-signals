@@ -35,21 +35,18 @@ async def test_alert_service_main_entry():
 @pytest.mark.asyncio
 async def test_main_system_entry():
     from main import main as system_main
-    with patch('main.generate_signals', new_callable=AsyncMock) as mock_gen, \
-         patch('main.TelegramService') as mock_tel:
-        mock_gen.return_value = []
+    with patch('main.SignalService') as MockService:
+        MockService.return_value.run_cycle = AsyncMock(return_value=(0, 0))
         with patch('builtins.print'):
             await system_main()
-            assert mock_gen.called
+            MockService.return_value.run_cycle.assert_awaited_once()
 
-    # Test with signals but no telegram
-    with patch('main.generate_signals', new_callable=AsyncMock) as mock_gen, \
-         patch('main.TelegramService') as mock_tel:
-        mock_gen.return_value = [('SCALP', {'symbol': 'EURUSD'})]
-        mock_tel.return_value.bot = None
+    # Test with generated signals but no delivered broadcasts
+    with patch('main.SignalService') as MockService:
+        MockService.return_value.run_cycle = AsyncMock(return_value=(1, 0))
         with patch('builtins.print'):
             await system_main()
-            assert mock_gen.called
+            MockService.return_value.run_cycle.assert_awaited_once()
 
 def test_main_module_entry():
     import runpy

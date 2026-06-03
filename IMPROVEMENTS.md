@@ -97,19 +97,15 @@ This document outlines all improvements made to address the identified trade-off
 
 ---
 
-## 6. ✅ Strategy Selectivity (Swing Strategy)
+## 6. ✅ Strategy Selectivity (Archived)
 
 ### Improvements:
-- **Lower Adaptive Thresholds**: Swing strategy now uses:
-  - Trending: 0.4 (very permissive)
-  - Ranging: 0.5 (moderate)
-  - Choppy: 0.7 (selective)
+- Active strategy scope is now CRT plus Advanced Pattern only.
 - **Enhanced Factors**: Added momentum and volatility factors
-- **Quality Threshold Adjustment**: Lower quality bar for swing (MIN_QUALITY_SCORE - 1.0)
-- **Wider R:R Targets**: Swing uses 2.0x multiplier for TP levels
+- **Quality Threshold Adjustment**: Runtime quality floors are controlled from central config.
 
 ### Impact:
-- More active swing strategy (was generating 0 signals)
+- Removed unsupported strategy surfaces from active generation.
 - Better signal generation in trending markets
 - Maintains quality standards while increasing frequency
 
@@ -152,7 +148,7 @@ This document outlines all improvements made to address the identified trade-off
       "CHOPPY": 1.0       # Higher = fewer signals
   }
   ```
-- **Strategy-Specific Adaptation**: Intraday and Swing have different threshold sets
+- **Strategy-Specific Adaptation**: CRT and Advanced Pattern remain the maintained strategy set.
 
 ### Impact:
 - More signals in favorable conditions (trending)
@@ -219,8 +215,7 @@ MIN_QUALITY_SCORE_INTRADAY=5.0    # Optional; same as global for M5
 - `core/alpha_factors.py`: Added momentum and volatility factors
 - `core/alpha_combiner.py`: Added regime adaptation and quality scoring
 - `core/filters/risk_manager.py`: Added Kelly sizing and optimal R:R calculation
-- `strategies/intraday_quant_strategy.py`: Enhanced with all improvements
-- `strategies/swing_quant_strategy.py`: Enhanced with all improvements
+- Active strategy scope is now limited to `strategies/crt_strategy.py` and `strategies/advanced_pattern_strategy.py`.
 - `app/generate_signals.py`: Added market context and news event fetching
 - `.env.template`: Updated with new configuration options
 
@@ -253,7 +248,7 @@ All identified trade-offs (except #7 - Data Dependency) have been addressed:
 ✅ **Simplicity vs Sophistication**: New alpha factors and regime adaptation  
 ✅ **Account Size Optimization**: Fully configurable, scalable system  
 ✅ **Execution Realism**: Enhanced (already good, minor improvements)  
-✅ **Strategy Selectivity**: Improved swing strategy activation  
+✅ **Strategy Selectivity**: Active scope narrowed to CRT and Advanced Pattern
 ✅ **Limited Market Context**: Integrated macro and news filters  
 ✅ **Fixed Thresholds**: Regime-adaptive thresholds  
 ✅ **Risk Management**: Increased limits with better correlation management  

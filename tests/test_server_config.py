@@ -9,13 +9,15 @@ import shutil
 # Add project root to path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from admin_server import app, DB_CLIENTS
+from admin_server import app
 from signal_service import SignalService
-import config.config as cfg
+from config.manager import config_manager
 
 class TestServerConfig(unittest.TestCase):
     def setUp(self):
         self.test_dir = "tests/tmp_config"
+        if os.path.exists(self.test_dir):
+            shutil.rmtree(self.test_dir)
         os.makedirs(self.test_dir, exist_ok=True)
         self.db_path = os.path.join(self.test_dir, "clients_test.db")
         
@@ -45,6 +47,11 @@ class TestServerConfig(unittest.TestCase):
         self.patcher2 = patch('admin_server.DB_CLIENTS', self.db_path)
         self.patcher1.start()
         self.patcher2.start()
+        config_manager.set_runtime_override("db_clients", self.db_path)
+        config_manager.set_runtime_override("mt5_paper_mode", True)
+        config_manager.set_runtime_override("metaapi_token", "")
+        config_manager.set_runtime_override("metaapi_account_id", "")
+        app.state.disable_reconciliation_loop = True
         
         self.client = TestClient(app)
         
@@ -53,17 +60,13 @@ class TestServerConfig(unittest.TestCase):
         self.token = auth_res.json()["access_token"]
         self.headers = {"Authorization": f"Bearer {self.token}"}
         
-        self.original_risk = 2.0
-
     def tearDown(self):
         self.patcher1.stop()
         self.patcher2.stop()
         if os.path.exists(self.test_dir):
             shutil.rmtree(self.test_dir)
-        
-        # Reset in memory config
-        import config.config as cfg
-        cfg.RISK_PER_TRADE_PERCENT = self.original_risk
+        config_manager.clear_runtime_overrides()
+        app.state.disable_reconciliation_loop = False
 
     def test_get_config(self):
         """Test retrieving configuration via API"""
@@ -89,19 +92,12 @@ class TestServerConfig(unittest.TestCase):
         conn.close()
         self.assertEqual(float(val), new_risk)
 
-        # 3. Verify Service loads it
+        # 3. Verify Service refreshes centralized runtime config
         service = SignalService()
-        # Mock telegram to avoid errors during init if not set, 
-        # but SignalService init only sets self.telegram = TelegramService()
-        # We just want to test _load_dynamic_config
-        
-        # Reset config module to default (simulating fresh start or pre-update state)
-        cfg.RISK_PER_TRADE_PERCENT = 2.0 
-        
         service._load_dynamic_config()
         
-        self.assertEqual(cfg.RISK_PER_TRADE_PERCENT, new_risk)
-        print(f"\n✅ Verified: Config module updated to {cfg.RISK_PER_TRADE_PERCENT}% (Expected {new_risk}%)")
+        self.assertEqual(config_manager.get("risk_per_trade_percent"), new_risk)
+        print(f"\n✅ Verified: Config manager updated to {config_manager.get('risk_per_trade_percent')}% (Expected {new_risk}%)")
 
     def test_ensure_defaults(self):
         """Test that missing defaults are inserted even if table exists"""

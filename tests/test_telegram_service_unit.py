@@ -1,14 +1,21 @@
 import pytest
 from unittest.mock import MagicMock, patch, AsyncMock
+from config.manager import config_manager
 from alerts.service import TelegramService
+
+@pytest.fixture(autouse=True)
+def reset_config_overrides():
+    config_manager.clear_runtime_overrides()
+    yield
+    config_manager.clear_runtime_overrides()
 
 @pytest.fixture
 def telegram_service():
-    with patch('alerts.service.TELEGRAM_BOT_TOKEN', 'fake_token'), \
-         patch('alerts.service.TELEGRAM_CHAT_ID', 'fake_id'):
-        service = TelegramService()
-        service.bot = AsyncMock()
-        return service
+    config_manager.set_runtime_override("telegram_bot_token", "fake_token")
+    config_manager.set_runtime_override("telegram_chat_id", "fake_id")
+    service = TelegramService()
+    service.bot = AsyncMock()
+    return service
 
 @pytest.mark.asyncio
 async def test_send_signal_success(telegram_service):
@@ -25,9 +32,9 @@ async def test_send_signal_failure(telegram_service):
 
 @pytest.mark.asyncio
 async def test_broadcast_personalized_signal_single_mode(telegram_service):
-    with patch('config.config.MULTI_CLIENT_MODE', False):
-        await telegram_service.broadcast_personalized_signal({'symbol': 'BTC', 'direction': 'BUY'})
-        assert telegram_service.bot.send_message.called
+    config_manager.set_runtime_override("multi_client_mode", False)
+    await telegram_service.broadcast_personalized_signal({'symbol': 'BTC', 'direction': 'BUY'})
+    assert telegram_service.bot.send_message.called
 
 @pytest.mark.asyncio
 async def test_format_signal_assets(telegram_service):
@@ -54,19 +61,19 @@ async def test_send_text_failure(telegram_service):
 
 @pytest.mark.asyncio
 async def test_broadcast_personalized_signal_skipped_logic(telegram_service):
-    with patch('config.config.MULTI_CLIENT_MODE', True):
-        with patch('core.client_manager.ClientManager') as MockManager:
-            mock_manager_instance = MockManager.return_value
-            # One client active, one inactive
-            mock_manager_instance.get_all_active_clients.return_value = [
-                {'telegram_chat_id': 'active', 'account_balance': 1000.0, 'risk_percent': 2.0},
-                {'telegram_chat_id': 'inactive', 'account_balance': 500.0, 'risk_percent': 2.0}
-            ]
-            mock_manager_instance.is_subscription_active.side_effect = [True, False]
-            
-            await telegram_service.broadcast_personalized_signal({
-                'symbol': 'BTC', 'direction': 'BUY', 'entry_price': 60000, 'sl': 59000, 
-                'tp0': 61000, 'tp1': 62000, 'tp2': 63000, 'timeframe': 'H1', 
-                'trade_type': 'SWING', 'quality_score': 0.8, 'expected_hold': '4h'
-            })
-            assert telegram_service.bot.send_message.call_count == 1
+    config_manager.set_runtime_override("multi_client_mode", True)
+    with patch('core.client_manager.ClientManager') as MockManager:
+        mock_manager_instance = MockManager.return_value
+        # One client active, one inactive
+        mock_manager_instance.get_all_active_clients.return_value = [
+            {'telegram_chat_id': 'active', 'account_balance': 1000.0, 'risk_percent': 2.0},
+            {'telegram_chat_id': 'inactive', 'account_balance': 500.0, 'risk_percent': 2.0}
+        ]
+        mock_manager_instance.is_subscription_active.side_effect = [True, False]
+
+        await telegram_service.broadcast_personalized_signal({
+            'symbol': 'BTC', 'direction': 'BUY', 'entry_price': 60000, 'sl': 59000,
+            'tp0': 61000, 'tp1': 62000, 'tp2': 63000, 'timeframe': 'H1',
+            'trade_type': 'CRT', 'quality_score': 0.8, 'expected_hold': '4h'
+        })
+        assert telegram_service.bot.send_message.call_count == 1

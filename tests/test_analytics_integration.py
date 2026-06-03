@@ -49,14 +49,12 @@ def setup_test_db():
     
     # Insert Mock Signals
     signals = [
-        # Win Scalp
-        (today, 'EURUSD=X', 'BUY', 1.0800, 'SCALP', 8.5, 'TP3', 3),
-        # Loss Scalp
-        (today, 'GBPUSD=X', 'SELL', 1.2500, 'SCALP', 6.0, 'SL', 0),
-        # Win Swing
-        (today, 'NZDUSD=X', 'BUY', 0.6100, 'SWING', 9.0, 'TP2', 2),
-        # Open Swing
-        (today, 'AUDUSD=X', 'SELL', 0.6500, 'SWING', 7.5, 'OPEN', 0),
+        # CRT win/loss
+        (today, 'EURUSD=X', 'BUY', 1.0800, 'CRT', 8.5, 'TP3', 3),
+        (today, 'GBPUSD=X', 'SELL', 1.2500, 'CRT', 6.0, 'SL', 0),
+        # Advanced Pattern win/open
+        (today, 'NZDUSD=X', 'BUY', 0.6100, 'ADVANCED_PATTERN', 9.0, 'TP2', 2),
+        (today, 'AUDUSD=X', 'SELL', 0.6500, 'ADVANCED_PATTERN', 7.5, 'OPEN', 0),
     ]
     
     for s in signals:
@@ -91,16 +89,16 @@ def test_analytics_api():
         print("\n📊 API RESPONSE VERIFICATION:")
         print(json.dumps(data, indent=2))
         
-        # Verify Scalp Stats
-        scalp = data['stats_by_type']['SCALP']
-        assert scalp['total'] == 2
-        assert scalp['wins'] == 1
-        assert scalp['losses'] == 1
+        # Verify CRT Stats
+        crt = data['stats_by_type']['CRT']
+        assert crt['total'] == 2
+        assert crt['wins'] == 1
+        assert crt['losses'] == 1
         
-        # Verify CRT Stats (Formerly SWING)
-        swing = data['stats_by_type']['CRT']
-        assert swing['total'] == 2
-        assert swing['wins'] == 1 # NZDUSD Win
+        # Verify Advanced Pattern Stats
+        advanced = data['stats_by_type']['ADVANCED_PATTERN']
+        assert advanced['total'] == 2
+        assert advanced['wins'] == 1
         
         # Verify Top Performer
         assert data['top_performer'] is not None

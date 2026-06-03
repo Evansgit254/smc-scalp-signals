@@ -1,5 +1,7 @@
-from mt5_bridge.signal_exporter import SignalExporter
+import json
+import os
 from datetime import datetime
+from mt5_bridge.signal_exporter import SignalExporter
 
 def test_bridge_export():
     mock_signal = {
@@ -13,7 +15,7 @@ def test_bridge_export():
         "lots": 0.05,
         "quality": "A",
         "regime": "TRENDING",
-        "strategy": "INTRADAY"
+        "strategy": "CRT"
     }
     
     print("🚀 Simulating signal export...")
@@ -29,6 +31,4 @@ def test_bridge_export():
         print("❌ Bridge file NOT found!")
 
 if __name__ == "__main__":
-    import json
-    import os
     test_bridge_export()

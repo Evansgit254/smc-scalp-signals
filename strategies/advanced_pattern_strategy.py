@@ -19,7 +19,7 @@ DOW_SIGNALS = {
     (2, 21, "GBPJPY=X"): ("SELL", 9.5, "1 hour (DOW-WED-BEAR)"),
     # V35.1r: CL=F REMOVED — 15/17 losses (-14R) in Run 26 forensic audit
     # (4, 21, "CL=F"):     ("BUY",  9.0, "1 hour (DOW-FRI-OIL-BULL)"),
-    # V36.0: GC=F BUY REMOVED — 0/4 WR (-4.0R) in Run 29. Gold exclusive to GoldQuantStrategy.
+    # V36.0: GC=F BUY REMOVED — 0/4 WR (-4.0R) in Run 29.
     # (1, 13, "GC=F"):     ("BUY",  8.8, "1 hour (DOW-TUE-GOLD-BID)"),
 }
 

@@ -6,34 +6,20 @@ from config.config import SYMBOLS, DXY_SYMBOL, TNX_SYMBOL
 from data.fetcher import DataFetcher
 from indicators.calculations import IndicatorCalculator
 
-# Production Strategy Imports
 from strategies.crt_strategy import CRTStrategy
-from strategies.session_clock_strategy import SessionClockStrategy
 from strategies.advanced_pattern_strategy import AdvancedPatternStrategy
-from strategies.gold_quant_strategy import GoldQuantStrategy
-from strategies.statistical_arbitrage_strategy import StatisticalArbitrageStrategy
-from strategies.smc_liquidity_sweep import SMCLiquiditySweepStrategy
-from strategies.anchored_poc_strategy import AnchoredPOCStrategy
-from strategies.pre_news_quant_strategy import PreNewsQuantStrategy
-from strategies.news_edge_strategy import NewsEdgeStrategy
 
 async def run_production_backtest(days=30):
-    print(f"🏛️  V28.1 INSTITUTIONAL PRODUCTION BACKTEST")
+    print(f"🏛️  CRT + ADVANCED PATTERN PRODUCTION BACKTEST")
     print("="*80)
     print(f"Window: Last {days} days")
-    print(f"Models: Active Alpha Modules (SMC Sweep quarantined by default)")
+    print(f"Models: CRT_ALGORITHM, ADV_PATTERN_ENGINE")
     print("="*80)
     
     fetcher = DataFetcher()
     strategies = {
         'CRT_ALGORITHM':     CRTStrategy(),
         'ADV_PATTERN_ENGINE': AdvancedPatternStrategy(),
-        'SESSION_CLOCK_TRAP': SessionClockStrategy(),
-        'GOLD_PRECISION_MDL': GoldQuantStrategy(),
-        'STAT_ARB_KERNEL':    StatisticalArbitrageStrategy(),
-        'POC_REVERSION_PRO':  AnchoredPOCStrategy(),
-        'PRE_NEWS_QUANT':     PreNewsQuantStrategy(),
-        'NEWS_EDGE_STRATEGY': NewsEdgeStrategy()
     }
     
     start_date = (datetime.now() - timedelta(days=days + 60)).strftime("%Y-%m-%d") # Extra buffer for 200-period EMAs
@@ -97,10 +83,6 @@ async def run_production_backtest(days=30):
             data_bundle = {'h1': h1_state, 'd1': d1_state, 'm15': m15_state, 'm5': m5_state}
             
             for name, strat in strategies.items():
-                # Symbol routing logic
-                if symbol == "GC=F" and name != "GOLD_PRECISION_MDL": continue
-                if symbol != "GC=F" and name == "GOLD_PRECISION_MDL": continue
-                
                 signal = await strat.analyze(symbol, data_bundle, [], market_context)
                 
                 if signal:

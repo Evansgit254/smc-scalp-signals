@@ -10,8 +10,8 @@ VERSION_STATUS = "stable"
 
 RELEASE_NAME = "Live-Ready Mathematical Update 63"
 RELEASE_NOTES = [
-    "Run 61 & 63 proven to yield >70% universal WR across deep history.",
-    "Session Clock mapped identically at strictly 2.0R setups.",
+    "Active strategy scope narrowed to CRT and Advanced Pattern.",
+    "Run 61 & 63 retained as historical CRT baseline evidence.",
     "Alpha Combiner suppression decoupled from structural mechanics.",
     "ExecutionGate perfectly isolated against cross-run DB pollution.",
 ]

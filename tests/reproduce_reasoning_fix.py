@@ -41,7 +41,7 @@ class TestReasoningFix(unittest.TestCase):
         }
         
         # generate_signals returns a list of tuples (type, data)
-        mock_generate.return_value = [('INTRADAY', sample_signal)]
+        mock_generate.return_value = [('CRT', sample_signal)]
         
         # Setup database mock
         mock_conn = MagicMock()

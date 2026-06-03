@@ -60,10 +60,10 @@ def mock_signals_db(tmp_path):
     # Add variety of signals to hit all branches
     now = datetime.utcnow()
     signals = [
-        ("EURUSD", "LONG", "SCALP", "TP1", 0, 85, now),
-        ("GBPUSD", "SHORT", "SWING", "SL", 0, 70, now - timedelta(hours=2)),
-        ("USDJPY", "LONG", "SCALP", "OPEN", 0, 75, now - timedelta(hours=10)),
-        ("AUDUSD", "SHORT", "SCALP", "TP3", 3, 90, now - timedelta(hours=15))
+        ("EURUSD", "LONG", "CRT", "TP1", 0, 85, now),
+        ("GBPUSD", "SHORT", "ADVANCED_PATTERN", "SL", 0, 70, now - timedelta(hours=2)),
+        ("USDJPY", "LONG", "CRT", "OPEN", 0, 75, now - timedelta(hours=10)),
+        ("AUDUSD", "SHORT", "CRT", "TP3", 3, 90, now - timedelta(hours=15))
     ]
     for s in signals:
         conn.execute("INSERT INTO signals (symbol, direction, trade_type, result, max_tp_reached, quality_score, timestamp) VALUES (?,?,?,?,?,?,?)", s)

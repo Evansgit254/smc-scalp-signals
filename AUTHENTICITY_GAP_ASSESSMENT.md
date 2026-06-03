@@ -4,6 +4,8 @@ System version: `5.2.0-research`
 
 Assessment date: 2026-05-29
 
+Engineering update: 2026-06-03
+
 Baseline evidence:
 
 - Backtest baseline: `database/backtest_results.db`, Run ID `58`
@@ -28,11 +30,11 @@ The system has a MetaAPI bridge and order/fill tables, but the active ledger onl
 
 ### 2. Backtest Validity
 
-Run `63` (Max deep history window) finalized the baseline logic. It definitively resolved the ExecutionGate cross-run temporal pollution bug, decoupling CRT and Session Clock edge from macro noise. The resulting 70.9% universal Win Rate over ~60 days stands as robust evidence of mathematical capability. The previous high-density false-positive clusters (e.g. Run 58) were confirmed as database isolation violations and have been excised.
+Run `63` (Max deep history window) finalized the historical baseline logic. It definitively resolved the ExecutionGate cross-run temporal pollution bug. The previous high-density false-positive clusters (e.g. Run 58) were confirmed as database isolation violations and have been excised. Active development is now narrowed to CRT and Advanced Pattern only.
 
 ### 3. Strategy Quality
 
-CRT has the strongest current evidence (>71% WR in Run 63). Advanced Patterns is promising but structurally under-sampled without strict PA mappings. Session Clock was re-enabled with strict 2.0R targets and yielded a stable mathematically proven edge. SMC Sweep is quarantined by default.
+CRT has the strongest current evidence (>71% WR in Run 63). Advanced Patterns is promising but structurally under-sampled without strict PA mappings. All other strategy engines have been removed from active generation and dashboard strategy surfaces.
 
 ### 4. Data Fidelity
 
@@ -40,11 +42,11 @@ The system can fall back to `yfinance`. That is acceptable for research, but not
 
 ### 5. Risk And Portfolio Controls
 
-Current controls are improving, but the system still needs correlated exposure management: USD basket, JPY basket, metals, oil, crypto, max risk per session, max risk per strategy, and realized-drawdown kill switches.
+Current controls now include configurable correlated exposure, strategy exposure, and session exposure gates in `ExecutionGate`. Remaining work is live calibration of those limits against broker-side open risk and realized drawdown.
 
 ### 6. Execution Governance
 
-There is no maker-checker workflow before live trading is enabled. Live enablement should require explicit approval, audit logging, credential checks, dry-run checks, and broker reconciliation readiness.
+Live execution now fails closed unless `live_trading_approved=true`, MetaAPI credentials exist, and broker data mode is active when `require_broker_data_for_live=true`. A full maker-checker workflow is still not implemented; approval is currently a governed config key, not a two-person release process.
 
 ### 7. Ledger Quality
 
@@ -60,11 +62,11 @@ SQLite is acceptable for local research and a single-process bot. It is not idea
 
 ### 10. Monitoring And Reconciliation
 
-Monitoring infrastructure exists, but the system still needs robust reconciliation for broker positions vs local signals, stale reservations, unclosed paper trades, execution latency, data latency, and slippage drift.
+Monitoring infrastructure exists. Broker reconciliation now records reconciliation runs and broker reconciliation events, and unmatched broker deals can populate the order/fill ledger. Remaining work is proving this against real broker traffic and extending drift metrics for stale reservations, execution latency, data latency, and slippage.
 
 ## Honest Classification
 
-The system is an authentic engineering prototype and quant research terminal with paper-execution support. It is not yet an authenticated live trading product.
+The system is an authentic engineering prototype and quant research terminal with paper-execution support plus live-execution guardrails. It is not yet an authenticated live trading product until real broker fills and reconciliation runs are captured.
 
 ## Documentation Rule
 

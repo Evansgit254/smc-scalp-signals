@@ -6,6 +6,7 @@ except ImportError:
     import requests as requests_cffi
 from typing import Dict, Optional
 from config.config import SYMBOLS, NARRATIVE_TF, STRUCTURE_TF, ENTRY_TF, INSTITUTIONAL_TF
+from config.manager import config_manager
 from indicators.calculations import IndicatorCalculator
 import warnings
 import logging
@@ -21,16 +22,8 @@ class DataFetcher:
 
     @staticmethod
     def _get_provider() -> str:
-        """Fetch current data provider from database."""
-        from config.config import DB_CLIENTS
-        import sqlite3
-        try:
-            conn = sqlite3.connect(DB_CLIENTS)
-            row = conn.execute("SELECT value FROM system_config WHERE key = 'data_provider'").fetchone()
-            conn.close()
-            return row[0] if row and row[0] else "yfinance"
-        except:
-            return "yfinance"
+        """Fetch current data provider from the centralized config manager."""
+        return config_manager.get("data_provider", "yfinance", refresh=True)
 
     @staticmethod
     def _get_session():

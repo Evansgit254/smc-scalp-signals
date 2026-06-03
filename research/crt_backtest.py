@@ -5,27 +5,19 @@ from datetime import datetime, timedelta
 from config.config import SYMBOLS, SPREAD_PIPS, DXY_SYMBOL, TNX_SYMBOL
 from data.fetcher import DataFetcher
 from indicators.calculations import IndicatorCalculator
-from strategies.intraday_quant_strategy import IntradayQuantStrategy
-from strategies.swing_quant_strategy import SwingQuantStrategy
-from strategies.session_clock_strategy import SessionClockStrategy
 from strategies.advanced_pattern_strategy import AdvancedPatternStrategy
-from strategies.gold_quant_strategy import GoldQuantStrategy
-from strategies.statistical_arbitrage_strategy import StatisticalArbitrageStrategy
-from strategies.smc_liquidity_sweep import SMCLiquiditySweepStrategy
-from strategies.anchored_poc_strategy import AnchoredPOCStrategy
-from strategies.pre_news_quant_strategy import PreNewsQuantStrategy
-from strategies.news_edge_strategy import NewsEdgeStrategy
 
 import warnings
 from strategies.crt_strategy import CRTStrategy
 
 async def run_master_backtest(days=60):
-    print(f"🚀 CRT (CANDLE RANGE THEORY) BACKTEST V1.0 (Last {days} days)")
+    print(f"🚀 CRT + ADVANCED PATTERN BACKTEST (Last {days} days)")
     print("="*80)
     
     fetcher = DataFetcher()
     strategies = {
-        'CRT': CRTStrategy()
+        'CRT': CRTStrategy(),
+        'ADVANCED': AdvancedPatternStrategy(),
     }
     
     start_date = (datetime.now() - timedelta(days=days + 15)).strftime("%Y-%m-%d")
@@ -49,7 +41,7 @@ async def run_master_backtest(days=60):
         print("❌ No data loaded.")
         return
 
-    # Load macro context for Stat Arb and Gold strategies
+    # Load macro context for the active strategies.
     market_context = {}
     try:
         dxy_df = fetcher.fetch_range(DXY_SYMBOL, "1h", start_date, end_date)
@@ -78,11 +70,6 @@ async def run_master_backtest(days=60):
             data_bundle = {'h1': h1_state, 'm5': m5_state}
             
             for name, strat in strategies.items():
-                if symbol == "GC=F" and name != "GOLD_Q":
-                    continue
-                if symbol != "GC=F" and name == "GOLD_Q":
-                    continue
-                    
                 signal = await strat.analyze(symbol, data_bundle, [], market_context)
                 
                 if signal:
@@ -93,9 +80,6 @@ async def run_master_backtest(days=60):
                     sl_dist = abs(entry - sl)
                     if sl_dist == 0: continue
                     
-                    # V26.2: SESSION_CLOCK now uses TP/SL simulation like all strategies.
-                    # Time-exit was masking the fact that TPs were never being hit.
-                    # With tighter 1.5 ATR SL and 1.5:1 TP, we now test if the TP is reachable.
                     hit = None
                     pnl_r = 0.0
                     lookahead = 200  # ~16 hours of M5 bars max hold

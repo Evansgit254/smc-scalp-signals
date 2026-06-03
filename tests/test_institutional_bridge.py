@@ -6,6 +6,7 @@ import pytest
 import os
 from fastapi.testclient import TestClient
 from admin_server import app, get_current_user, User
+from config.manager import config_manager
 
 pytestmark = [pytest.mark.integration]
 
@@ -15,9 +16,15 @@ async def mock_get_current_user():
 
 @pytest.fixture(autouse=True)
 def auth_override():
+    app.state.disable_reconciliation_loop = True
+    config_manager.set_runtime_override("mt5_paper_mode", True)
+    config_manager.set_runtime_override("metaapi_token", "")
+    config_manager.set_runtime_override("metaapi_account_id", "")
     app.dependency_overrides[get_current_user] = mock_get_current_user
     yield
     app.dependency_overrides.clear()
+    config_manager.clear_runtime_overrides()
+    app.state.disable_reconciliation_loop = False
 client = TestClient(app)
 
 

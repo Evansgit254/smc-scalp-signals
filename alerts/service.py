@@ -4,7 +4,7 @@ Telegram Service for sending trading signals.
 from typing import Optional
 from telegram import Bot
 from telegram.error import TelegramError
-from config.config import TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID, TELEGRAM_EXTRA_CHAT_IDS
+from config.manager import config_manager
 from core.signal_formatter import SignalFormatter
 
 
@@ -14,10 +14,11 @@ class TelegramService:
     """
     
     def __init__(self):
-        self.bot_token = TELEGRAM_BOT_TOKEN
-        self.chat_id = TELEGRAM_CHAT_ID
+        settings = config_manager.refresh()
+        self.bot_token = settings.telegram_bot_token
+        self.chat_id = settings.telegram_chat_id
         # All destinations: primary + any extras from TELEGRAM_EXTRA_CHAT_IDS env var
-        self.all_chat_ids = [self.chat_id] + TELEGRAM_EXTRA_CHAT_IDS if self.chat_id else TELEGRAM_EXTRA_CHAT_IDS
+        self.all_chat_ids = [self.chat_id] + settings.telegram_extra_chat_ids if self.chat_id else settings.telegram_extra_chat_ids
         self.bot = None
         
         if self.bot_token and self.all_chat_ids:
@@ -158,9 +159,9 @@ TP2 (20% Exit):   {tp2:.5f} ({'+' if direction == 'BUY' else '-'}{tp2_pips:.1f} 
         Broadcasts personalized signals to all active clients.
         """
         from core.client_manager import ClientManager
-        from config.config import MULTI_CLIENT_MODE
+        settings = config_manager.refresh()
         
-        if not MULTI_CLIENT_MODE:
+        if not settings.multi_client_mode:
             # Fallback to single user
             message = self.format_signal(signal_data)
             await self.send_signal(message)
@@ -171,11 +172,10 @@ TP2 (20% Exit):   {tp2:.5f} ({'+' if direction == 'BUY' else '-'}{tp2_pips:.1f} 
         
         # V11.2 Auto-Register Primary Chat if Database is Empty
         if not clients and self.chat_id:
-            from config.config import ACCOUNT_BALANCE
-            print(f"⚙️ Auto-registering primary chat {self.chat_id} with ${ACCOUNT_BALANCE} balance...")
+            print(f"⚙️ Auto-registering primary chat {self.chat_id} with ${settings.account_balance} balance...")
             manager.register_client(
                 telegram_chat_id=self.chat_id,
-                account_balance=ACCOUNT_BALANCE,
+                account_balance=settings.account_balance,
                 risk_percent=2.0
             )
             clients = manager.get_all_active_clients()

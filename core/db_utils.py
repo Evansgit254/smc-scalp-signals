@@ -58,6 +58,28 @@ def ensure_base_tables(conn: sqlite3.Connection) -> None:
             FOREIGN KEY(order_id) REFERENCES orders(order_id)
         )
     """)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS reconciliation_runs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            status TEXT NOT NULL,
+            deals_count INTEGER DEFAULT 0,
+            positions_count INTEGER DEFAULT 0,
+            error TEXT,
+            started_at TEXT NOT NULL,
+            completed_at TEXT
+        )
+    """)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS broker_reconciliation_events (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            broker_order_id TEXT,
+            broker_position_id TEXT,
+            symbol TEXT,
+            event_type TEXT NOT NULL,
+            payload_json TEXT DEFAULT '{}',
+            created_at TEXT NOT NULL
+        )
+    """)
 
 
 def write_audit_event(

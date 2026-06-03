@@ -57,7 +57,7 @@ class NewsFetcher:
         V26.2: Returns True if a high-impact news event is scheduled within
         ±wash_minutes of check_hour_utc for the currencies related to symbol.
         
-        This is the primary guard against SESSION_CLOCK firing into NFP/CPI/FOMC.
+        This is the primary guard against strategy signals firing into NFP/CPI/FOMC.
         
         Args:
             check_hour_utc:  The UTC hour the strategy wants to trade (e.g. 8, 13, 16)

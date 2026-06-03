@@ -14,11 +14,10 @@ class BacktestEngine:
     Engineered for high-fidelity signal verification and data integrity.
     """
     
-    def __init__(self, start_date: str, end_date: str, symbols: List[str] = SYMBOLS, include_smc_sweep: bool = False):
+    def __init__(self, start_date: str, end_date: str, symbols: List[str] = SYMBOLS):
         self.start_date = start_date
         self.end_date = end_date
         self.symbols = symbols
-        self.include_smc_sweep = include_smc_sweep
         self.results_db = "database/backtest_results.db"
         self._initialize_database()
         
@@ -76,19 +75,14 @@ class BacktestEngine:
         if not all_data:
             return {"error": "Insufficient data available for this range."}
 
-        # Initialize institutional strategies
+        # Initialize the active institutional baseline only.
         from strategies.crt_strategy import CRTStrategy
-        from strategies.smc_liquidity_sweep import SMCLiquiditySweepStrategy
         from strategies.advanced_pattern_strategy import AdvancedPatternStrategy
-        from strategies.session_clock_strategy import SessionClockStrategy
 
         strategies = [
             CRTStrategy(),
             AdvancedPatternStrategy(),
-            SessionClockStrategy()
         ]
-        if self.include_smc_sweep:
-            strategies.append(SMCLiquiditySweepStrategy())
         
         run_id = self._create_run_header()
         performance = {"total_pips": 0.0, "wins": 0, "signals": []}

@@ -105,21 +105,21 @@ class SignalFormatter:
         quality_score = signal.get('quality_score', 0)
         is_high_prob = quality_score >= 8.0
         
-        # Theme Determination (V17.0: Visual Intensity)
-        is_swing = "H1" in signal.get('timeframe', '') or "swing" in signal.get('strategy_id', '').lower()
-        
-        if is_swing:
-            # 💎 INSTITUTIONAL SWING THEME
+        # Theme Determination: CRT is the default active structural signal;
+        # Advanced Pattern gets a separate high-conviction presentation.
+        strategy_key = f"{signal.get('trade_type', '')} {signal.get('strategy_id', '')}".lower()
+        is_advanced = "advanced" in strategy_key
+
+        if not is_advanced:
             border = "█" * 45
-            header_text = f"🏛️ INSTITUTIONAL SWING POSITION 🏛️"
+            header_text = f"🏛️ CRT STRUCTURE SIGNAL 🏛️"
             intensity_emoji = "💎💎💎"
             theme_color = "GOLD" # Conceptual
             main_icon = "🏆"
             bullet = "🧱"
         else:
-            # ⚡ FLASH SCALP THEME
             border = "≈" * 60
-            header_text = f"⚡ QUANT INTRADAY SCALP ⚡"
+            header_text = f"⚡ ADVANCED PATTERN SIGNAL ⚡"
             intensity_emoji = "🏎️💨"
             theme_color = "BLUE" # Conceptual
             main_icon = "🏹"

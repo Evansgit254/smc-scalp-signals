@@ -353,6 +353,80 @@
                             </div>
                         </div>
 
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;">
+                            <div>
+                                <label class="label-caps" style="font-size: 8px; color: var(--text-secondary); display: block; margin-bottom: 6px;">System Status</label>
+                                <select id="cfg-system-status" style="width: 100%; background: var(--bg-surface); border: 1px solid var(--border-color); color: var(--text-primary); padding: 8px; border-radius: var(--radius); font-family: monospace; font-size: 11px;">
+                                    <option value="ACTIVE">ACTIVE</option>
+                                    <option value="PAUSED">PAUSED</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="label-caps" style="font-size: 8px; color: var(--text-secondary); display: block; margin-bottom: 6px;">Risk Per Trade %</label>
+                                <input type="number" id="cfg-risk-per-trade" min="0" max="5" step="0.1" style="width: 100%; background: var(--bg-surface); border: 1px solid var(--border-color); color: var(--text-primary); padding: 8px; border-radius: var(--radius); font-family: monospace; font-size: 11px;">
+                            </div>
+                            <div>
+                                <label class="label-caps" style="font-size: 8px; color: var(--text-secondary); display: block; margin-bottom: 6px;">Max Concurrent Trades</label>
+                                <input type="number" id="cfg-max-concurrent" min="0" max="50" step="1" style="width: 100%; background: var(--bg-surface); border: 1px solid var(--border-color); color: var(--text-primary); padding: 8px; border-radius: var(--radius); font-family: monospace; font-size: 11px;">
+                            </div>
+                            <div>
+                                <label class="label-caps" style="font-size: 8px; color: var(--text-secondary); display: block; margin-bottom: 6px;">Quality Floor</label>
+                                <input type="number" id="cfg-min-quality" min="0" max="10" step="0.1" style="width: 100%; background: var(--bg-surface); border: 1px solid var(--border-color); color: var(--text-primary); padding: 8px; border-radius: var(--radius); font-family: monospace; font-size: 11px;">
+                            </div>
+                            <div>
+                                <label class="label-caps" style="font-size: 8px; color: var(--text-secondary); display: block; margin-bottom: 6px;">Intraday Quality Floor</label>
+                                <input type="number" id="cfg-min-quality-intraday" min="0" max="10" step="0.1" style="width: 100%; background: var(--bg-surface); border: 1px solid var(--border-color); color: var(--text-primary); padding: 8px; border-radius: var(--radius); font-family: monospace; font-size: 11px;">
+                            </div>
+                            <div>
+                                <label class="label-caps" style="font-size: 8px; color: var(--text-secondary); display: block; margin-bottom: 6px;">Daily Loss Stop %</label>
+                                <input type="number" id="cfg-max-daily-loss" min="0" max="20" step="0.1" style="width: 100%; background: var(--bg-surface); border: 1px solid var(--border-color); color: var(--text-primary); padding: 8px; border-radius: var(--radius); font-family: monospace; font-size: 11px;">
+                            </div>
+                            <div>
+                                <label class="label-caps" style="font-size: 8px; color: var(--text-secondary); display: block; margin-bottom: 6px;">News Filter Min</label>
+                                <input type="number" id="cfg-news-filter" min="0" max="240" step="1" style="width: 100%; background: var(--bg-surface); border: 1px solid var(--border-color); color: var(--text-primary); padding: 8px; border-radius: var(--radius); font-family: monospace; font-size: 11px;">
+                            </div>
+                            <div>
+                                <label class="label-caps" style="font-size: 8px; color: var(--text-secondary); display: block; margin-bottom: 6px;">Max Spread Pips</label>
+                                <input type="number" id="cfg-max-spread" min="0" max="100" step="0.1" style="width: 100%; background: var(--bg-surface); border: 1px solid var(--border-color); color: var(--text-primary); padding: 8px; border-radius: var(--radius); font-family: monospace; font-size: 11px;">
+                            </div>
+                            <div>
+                                <label class="label-caps" style="font-size: 8px; color: var(--text-secondary); display: block; margin-bottom: 6px;">Correlated Exposure</label>
+                                <input type="number" id="cfg-max-correlated" min="0" max="50" step="1" style="width: 100%; background: var(--bg-surface); border: 1px solid var(--border-color); color: var(--text-primary); padding: 8px; border-radius: var(--radius); font-family: monospace; font-size: 11px;">
+                            </div>
+                            <div>
+                                <label class="label-caps" style="font-size: 8px; color: var(--text-secondary); display: block; margin-bottom: 6px;">Strategy Exposure</label>
+                                <input type="number" id="cfg-max-strategy" min="0" max="50" step="1" style="width: 100%; background: var(--bg-surface); border: 1px solid var(--border-color); color: var(--text-primary); padding: 8px; border-radius: var(--radius); font-family: monospace; font-size: 11px;">
+                            </div>
+                            <div>
+                                <label class="label-caps" style="font-size: 8px; color: var(--text-secondary); display: block; margin-bottom: 6px;">Session Exposure</label>
+                                <input type="number" id="cfg-max-session" min="0" max="50" step="1" style="width: 100%; background: var(--bg-surface); border: 1px solid var(--border-color); color: var(--text-primary); padding: 8px; border-radius: var(--radius); font-family: monospace; font-size: 11px;">
+                            </div>
+                        </div>
+
+                        <div style="display: grid; grid-template-columns: 1fr; gap: 10px; margin-bottom: 16px;">
+                            <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px; background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); border-radius: var(--radius);">
+                                <div>
+                                    <label class="label-caps" style="font-size: 8px; color: var(--acc-amber); display: block;">Live Trading Approved</label>
+                                    <p class="text-xs text-tertiary" style="font-size: 8px; margin-top: 4px;">Required before non-paper execution can be enabled.</p>
+                                </div>
+                                <input type="checkbox" id="cfg-live-approved" style="accent-color: var(--acc-amber); cursor: pointer;">
+                            </div>
+                            <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px; background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); border-radius: var(--radius);">
+                                <div>
+                                    <label class="label-caps" style="font-size: 8px; color: var(--acc-cyan); display: block;">Require Broker Data For Live</label>
+                                    <p class="text-xs text-tertiary" style="font-size: 8px; margin-top: 4px;">Blocks live orders unless the data provider is MT5.</p>
+                                </div>
+                                <input type="checkbox" id="cfg-require-broker-data" style="accent-color: var(--acc-cyan); cursor: pointer;">
+                            </div>
+                            <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px; background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); border-radius: var(--radius);">
+                                <div>
+                                    <label class="label-caps" style="font-size: 8px; color: var(--acc-crimson); display: block;">Live Auto Trade</label>
+                                    <p class="text-xs text-tertiary" style="font-size: 8px; margin-top: 4px;">Requires risk-manager access and readiness checks.</p>
+                                </div>
+                                <input type="checkbox" id="cfg-mt5-auto-trade" style="accent-color: var(--acc-crimson); cursor: pointer;">
+                            </div>
+                        </div>
+
                         <button class="btn btn-primary" style="width: 100%; margin-bottom: 16px;" onclick="saveConfig()">COMMIT CORE CONFIG</button>
 
                         <div style="padding: 16px; background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); border-radius: var(--radius);">
@@ -708,6 +782,7 @@
             if (view === 'performance') loadAnalytics();
             if (view === 'monitor') loadLogs();
             if (view === 'backtest') loadBacktestRuns();
+            if (view === 'settings') loadConfigForm();
         }
 
         // DATA SYNC ENGINE
@@ -783,36 +858,103 @@
             }
 
             try {
-                // Save MetaAPI credentials
                 const res = await apiFetch('/api/mt5/config', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ token, accountId, paperMode })
                 });
-                // Save MT5 symbol suffix
-                await apiFetch('/api/config', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ key: 'mt5_symbol_suffix', value: suffix })
-                });
-                if (res.ok) {
-                    showToast("TERMINAL_CONFIG_SAVED");
-                    loadMt5Status();
-                    loadSystemConfig();
-                } else { showToast("SAVE_FAILED", true); }
-            } catch (e) { showToast("NETWORK_ERROR", true); }
+                if (!res.ok) {
+                    let detail = "SAVE_FAILED";
+                    try {
+                        const data = await res.json();
+                        detail = data.detail || detail;
+                    } catch {}
+                    throw new Error(detail);
+                }
+                await postConfigValue('mt5_symbol_suffix', suffix);
+                showToast("TERMINAL_CONFIG_SAVED");
+                loadMt5Status();
+                loadSystemConfig();
+            } catch (e) { showToast(e.message || "NETWORK_ERROR", true); }
+        }
+
+        async function postConfigValue(key, value) {
+            const res = await apiFetch('/api/config', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ key, value: String(value) })
+            });
+            if (!res.ok) {
+                let detail = `FAILED_${key}`;
+                try {
+                    const data = await res.json();
+                    detail = data.detail || detail;
+                } catch {}
+                throw new Error(detail);
+            }
+            return res.json();
+        }
+
+        async function loadConfigForm() {
+            try {
+                const res = await apiFetch('/api/config');
+                if (!res.ok) return;
+                const cfg = await res.json();
+                const setValue = (id, value) => {
+                    const el = document.getElementById(id);
+                    if (el && value !== undefined && value !== null) el.value = value;
+                };
+                const setChecked = (id, value) => {
+                    const el = document.getElementById(id);
+                    if (el) el.checked = value === true || String(value).toLowerCase() === 'true';
+                };
+                setValue('cfg-system-status', (cfg.system_status || 'ACTIVE').toUpperCase());
+                setValue('cfg-risk-per-trade', cfg.risk_per_trade ?? cfg.risk_per_trade_percent ?? 2.0);
+                setValue('cfg-max-concurrent', cfg.max_concurrent_trades ?? 4);
+                setValue('cfg-min-quality', cfg.min_quality_score ?? 5.0);
+                setValue('cfg-min-quality-intraday', cfg.min_quality_score_intraday ?? 5.0);
+                setValue('cfg-max-daily-loss', cfg.max_daily_loss_pct ?? 2.0);
+                setValue('cfg-news-filter', cfg.news_filter_minutes ?? cfg.news_wash_zone ?? 30);
+                setValue('cfg-max-spread', cfg.max_pretrade_spread_pips ?? 3.0);
+                setValue('cfg-max-correlated', cfg.max_correlated_exposure ?? 2);
+                setValue('cfg-max-strategy', cfg.max_strategy_exposure ?? 3);
+                setValue('cfg-max-session', cfg.max_session_exposure ?? 4);
+                setChecked('cfg-live-approved', cfg.live_trading_approved);
+                setChecked('cfg-require-broker-data', cfg.require_broker_data_for_live !== false);
+                setChecked('cfg-mt5-auto-trade', cfg.mt5_auto_trade);
+                setChecked('meta-paper-mode', cfg.mt5_paper_mode !== false);
+            } catch (e) {
+                console.error("Failed to load editable config", e);
+            }
         }
 
         async function saveConfig() {
-            // Commit UI state to backend
             showToast("COMMITTING_CORE_CONFIG...");
+            const values = [
+                ['system_status', document.getElementById('cfg-system-status').value],
+                ['risk_per_trade', document.getElementById('cfg-risk-per-trade').value],
+                ['max_concurrent_trades', document.getElementById('cfg-max-concurrent').value],
+                ['min_quality_score', document.getElementById('cfg-min-quality').value],
+                ['min_quality_score_intraday', document.getElementById('cfg-min-quality-intraday').value],
+                ['max_daily_loss_pct', document.getElementById('cfg-max-daily-loss').value],
+                ['news_filter_minutes', document.getElementById('cfg-news-filter').value],
+                ['max_pretrade_spread_pips', document.getElementById('cfg-max-spread').value],
+                ['max_correlated_exposure', document.getElementById('cfg-max-correlated').value],
+                ['max_strategy_exposure', document.getElementById('cfg-max-strategy').value],
+                ['max_session_exposure', document.getElementById('cfg-max-session').value],
+                ['require_broker_data_for_live', document.getElementById('cfg-require-broker-data').checked ? 'true' : 'false'],
+                ['live_trading_approved', document.getElementById('cfg-live-approved').checked ? 'true' : 'false'],
+                ['mt5_paper_mode', document.getElementById('meta-paper-mode').checked ? 'true' : 'false'],
+                ['mt5_auto_trade', document.getElementById('cfg-mt5-auto-trade').checked ? 'true' : 'false'],
+            ];
             try {
-                // We reload everything to ensure sync
+                for (const [key, value] of values) await postConfigValue(key, value);
+                await loadConfigForm();
                 await loadSystemConfig();
                 await loadMt5Status();
-                showToast("CORE_CONFIG_INSTANTIATED");
+                showToast("CORE_CONFIG_SAVED");
             } catch (e) {
-                showToast("SYNC_ERROR", true);
+                showToast(e.message || "SYNC_ERROR", true);
             }
         }
 
@@ -831,7 +973,14 @@
                     loadMt5Status();
                     // Auto-restart engine so the new provider takes effect immediately
                     await restartEngine(true);
-                } else { showToast("FAILED_TO_SWITCH_PROVIDER", true); }
+                } else {
+                    let detail = "FAILED_TO_SWITCH_PROVIDER";
+                    try {
+                        const data = await res.json();
+                        detail = data.detail || detail;
+                    } catch {}
+                    showToast(detail, true);
+                }
             } catch (e) { showToast("NETWORK_ERROR", true); }
         }
 
@@ -847,7 +996,14 @@
                 });
                 if (res.ok) {
                     showToast('ENGINE_RESTART_INITIATED');
-                } else { showToast('RESTART_FAILED', true); }
+                } else {
+                    let detail = "RESTART_FAILED";
+                    try {
+                        const data = await res.json();
+                        detail = data.detail || detail;
+                    } catch {}
+                    showToast(detail, true);
+                }
             } catch (e) { showToast('RESTART_API_ERROR', true); }
             finally {
                 if (btn) { setTimeout(() => { btn.innerHTML = '<i class="fas fa-sync-alt" style="margin-right: 6px;"></i>RESTART ENGINE'; btn.disabled = false; }, 5000); }
@@ -865,7 +1021,14 @@
                 if (res.ok) {
                     const data = await res.json();
                     showToast(`${action.toUpperCase()}_SUCCESSFUL`);
-                } else { showToast("ACTION_REJECTED", true); }
+                } else {
+                    let detail = "ACTION_REJECTED";
+                    try {
+                        const data = await res.json();
+                        detail = data.detail || detail;
+                    } catch {}
+                    showToast(detail, true);
+                }
             } catch (e) { showToast("MANAGEMENT_API_TIMEOUT", true); }
         }
 

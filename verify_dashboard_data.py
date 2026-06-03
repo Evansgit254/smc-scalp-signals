@@ -32,35 +32,35 @@ print(f"   Total in database: {total_signals}")
 print(f"   Last 24 hours: {signals_24h}")
 
 # Strategy breakdown (24h filtered - matching dashboard)
-scalp_total_24h = conn.execute(
-    "SELECT COUNT(*) FROM signals WHERE timestamp >= ? AND UPPER(TRIM(trade_type)) = 'SCALP'",
+crt_total_24h = conn.execute(
+    "SELECT COUNT(*) FROM signals WHERE timestamp >= ? AND UPPER(TRIM(trade_type)) = 'CRT'",
     (last_24h,)
 ).fetchone()[0]
 
-scalp_wins_24h = conn.execute("""
+crt_wins_24h = conn.execute("""
     SELECT COUNT(*) FROM signals 
     WHERE timestamp >= ? 
-    AND UPPER(TRIM(trade_type)) = 'SCALP' 
+    AND UPPER(TRIM(trade_type)) = 'CRT'
     AND (result IN ('TP1', 'TP2', 'TP3') OR max_tp_reached > 0)
 """, (last_24h,)).fetchone()[0]
 
-swing_total_24h = conn.execute(
-    "SELECT COUNT(*) FROM signals WHERE timestamp >= ? AND UPPER(TRIM(trade_type)) = 'SWING'",
+advanced_total_24h = conn.execute(
+    "SELECT COUNT(*) FROM signals WHERE timestamp >= ? AND UPPER(TRIM(trade_type)) = 'ADVANCED_PATTERN'",
     (last_24h,)
 ).fetchone()[0]
 
-swing_wins_24h = conn.execute("""
+advanced_wins_24h = conn.execute("""
     SELECT COUNT(*) FROM signals 
     WHERE timestamp >= ? 
-    AND UPPER(TRIM(trade_type)) = 'SWING' 
+    AND UPPER(TRIM(trade_type)) = 'ADVANCED_PATTERN'
     AND (result IN ('TP1', 'TP2', 'TP3') OR max_tp_reached > 0)
 """, (last_24h,)).fetchone()[0]
 
 print(f"\n📈 STRATEGY BREAKDOWN (Last 24h):")
-print(f"   SCALP: {scalp_wins_24h}/{scalp_total_24h} " +
-      f"({100*scalp_wins_24h/scalp_total_24h if scalp_total_24h > 0 else 0:.0f}% WR)")
-print(f"   SWING: {swing_wins_24h}/{swing_total_24h} " +
-      f"({100*swing_wins_24h/swing_total_24h if swing_total_24h > 0 else 0:.0f}% WR)")
+print(f"   CRT: {crt_wins_24h}/{crt_total_24h} " +
+      f"({100*crt_wins_24h/crt_total_24h if crt_total_24h > 0 else 0:.0f}% WR)")
+print(f"   ADVANCED_PATTERN: {advanced_wins_24h}/{advanced_total_24h} " +
+      f"({100*advanced_wins_24h/advanced_total_24h if advanced_total_24h > 0 else 0:.0f}% WR)")
 
 # Top performer (24h)
 top_24h = conn.execute('''

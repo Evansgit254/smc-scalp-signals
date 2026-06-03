@@ -22,6 +22,7 @@ from data.news_fetcher import NewsFetcher
 from indicators.calculations import IndicatorCalculator
 from core.filters.macro_filter import MacroFilter
 from config.config import DXY_SYMBOL, TNX_SYMBOL, SYMBOLS, DB_CLIENTS, DB_SIGNALS
+from config.manager import config_manager
 from core.client_manager import ClientManager
 from core.secure_config import protect_config_value, reveal_config_value, redact_config_value, encryption_available
 from core.db_utils import connect_sqlite, ensure_base_tables, write_audit_event
@@ -74,6 +75,12 @@ async def reconciliation_loop():
 
 @app.on_event("startup")
 async def startup_event():
+    if getattr(app.state, "disable_reconciliation_loop", False):
+        return
+    if os.getenv("DISABLE_RECONCILIATION_LOOP", "").lower() == "true":
+        return
+    if "PYTEST_CURRENT_TEST" in os.environ:
+        return
     asyncio.create_task(reconciliation_loop())
 
 def ensure_db_schema():
@@ -256,12 +263,13 @@ def ensure_config_table():
             ("min_quality_score", "5.0", "float"),
             ("max_daily_loss_pct", "2.0", "float"),
             ("news_filter_minutes", "30", "int"),
-            ("strategy_session_clock", "true", "bool"),
-            ("strategy_smc_sweep", "false", "bool"),
-            ("strategy_poc_edge", "true", "bool"),
-            ("strategy_stat_arb", "true", "bool"),
-            ("strategy_pre_news", "true", "bool"),
-            ("strategy_news_edge", "true", "bool"),
+            ("active_strategies", '["crt", "advanced_pattern"]', "list"),
+            ("live_trading_approved", "false", "bool"),
+            ("require_broker_data_for_live", "true", "bool"),
+            ("max_pretrade_spread_pips", "3.0", "float"),
+            ("max_correlated_exposure", "2", "int"),
+            ("max_strategy_exposure", "3", "int"),
+            ("max_session_exposure", "4", "int"),
         ]
         
         cursor = conn.cursor()
@@ -457,16 +465,20 @@ CONFIG_SCHEMA = {
     "news_filter_minutes": {"type": "int", "min": 0, "max": 240},
     "mt5_auto_trade": {"type": "bool"},
     "mt5_paper_mode": {"type": "bool"},
+    "live_trading_approved": {"type": "bool"},
+    "require_broker_data_for_live": {"type": "bool"},
+    "max_pretrade_spread_pips": {"type": "float", "min": 0.0, "max": 100.0},
+    "max_correlated_exposure": {"type": "int", "min": 0, "max": 50},
+    "max_strategy_exposure": {"type": "int", "min": 0, "max": 50},
+    "max_session_exposure": {"type": "int", "min": 0, "max": 50},
     "data_provider": {"type": "str", "allowed": {"yfinance", "mt5"}},
     "mt5_symbol_suffix": {"type": "str"},
 }
 
-LIVE_TRADING_CONFIG_KEYS = {"mt5_auto_trade", "mt5_paper_mode"}
+LIVE_TRADING_CONFIG_KEYS = {"mt5_auto_trade", "mt5_paper_mode", "live_trading_approved"}
 
 
 def _schema_for_config_key(key: str) -> dict:
-    if key.startswith("strategy_"):
-        return {"type": "bool"}
     if key in CONFIG_SCHEMA:
         return CONFIG_SCHEMA[key]
     raise HTTPException(status_code=400, detail=f"Unknown config key: {key}")
@@ -514,6 +526,25 @@ def validate_config_value(key: str, value: str) -> tuple[str, str]:
         raise HTTPException(status_code=400, detail=f"{key} must be <= {spec['max']}")
     return str(parsed), cfg_type
 
+
+def _live_enablement_errors(proposed: dict[str, str]) -> list[str]:
+    settings = config_manager.refresh()
+    data_provider = proposed.get("data_provider", settings.data_provider)
+    paper_raw = proposed.get("mt5_paper_mode", str(settings.mt5_paper_mode).lower())
+    approved_raw = proposed.get("live_trading_approved", str(settings.live_trading_approved).lower())
+    paper_mode = str(paper_raw).lower() == "true"
+    approved = str(approved_raw).lower() == "true"
+    errors = []
+    if paper_mode:
+        return errors
+    if not approved:
+        errors.append("live_trading_approved must be true")
+    if settings.require_broker_data_for_live and data_provider != "mt5":
+        errors.append("data_provider must be mt5")
+    if not settings.metaapi_token or not settings.metaapi_account_id:
+        errors.append("MetaAPI credentials must be configured")
+    return errors
+
 from fastapi.responses import FileResponse
 import os
 
@@ -522,6 +553,10 @@ async def download_db(db_name: str, current_user: User = Depends(get_current_use
     """Securely download database files for forensic analysis and backup"""
     if db_name not in ["signals", "clients"]:
         raise HTTPException(status_code=400, detail="Invalid database requested")
+    if db_name == "clients":
+        require_role(current_user, "admin")
+    else:
+        require_role(current_user, "risk_manager", "operator")
     
     file_path = f"database/{db_name}.db"
     if os.path.exists(file_path):
@@ -534,20 +569,19 @@ async def get_config(current_user: User = Depends(get_current_user)):
     conn = None
     try:
         conn = get_db_connection(DB_CLIENTS)
-        rows = conn.execute("SELECT key, value, type FROM system_config").fetchall()
-        config = {}
-        for row in rows:
-            val = redact_config_value(row['key'], row['value'])
-            if row['type'] == 'int': val = int(val)
-            elif row['type'] == 'float': val = float(val)
-            elif row['type'] == 'bool': val = (str(val).lower() == 'true')
-            config[row['key']] = val
-        return config
+        conn.close()
+        data = config_manager.as_public_dict(include_unknown_db=True)
+        # Backward-compatible API alias for older dashboard/tests. The runtime
+        # config field remains risk_per_trade_percent internally.
+        if "risk_per_trade_percent" in data:
+            data["risk_per_trade"] = data["risk_per_trade_percent"]
+        return data
     except Exception as e:
         print(f"Error fetching config: {e}")
         return {}
     finally:
-        if conn: conn.close()
+        if conn:
+            conn.close()
 
 @app.post("/api/config")
 async def update_config(update: ConfigUpdate, current_user: User = Depends(get_current_user)):
@@ -558,6 +592,14 @@ async def update_config(update: ConfigUpdate, current_user: User = Depends(get_c
     conn = None
     try:
         normalized_value, cfg_type = validate_config_value(update.key, update.value)
+        proposed = {update.key: normalized_value}
+        live_errors = _live_enablement_errors(proposed)
+        if (
+            update.key == "mt5_paper_mode" and normalized_value == "false" and live_errors
+        ) or (
+            update.key == "mt5_auto_trade" and normalized_value == "true" and live_errors
+        ):
+            raise HTTPException(status_code=400, detail="Live enablement blocked: " + "; ".join(live_errors))
         conn = get_db_connection(DB_CLIENTS)
         existing = conn.execute("SELECT value, type FROM system_config WHERE key = ?", (update.key,)).fetchone()
         new_value = protect_config_value(update.key, normalized_value)
@@ -591,6 +633,7 @@ async def update_config(update: ConfigUpdate, current_user: User = Depends(get_c
             after_value=redact_config_value(update.key, new_value),
         )
         conn.commit()
+        config_manager.refresh()
         return {"status": "success", "key": update.key, "value": redact_config_value(update.key, normalized_value)}
     except Exception as e:
         if conn:
@@ -607,6 +650,9 @@ async def set_data_provider(update: ConfigUpdate, current_user: User = Depends(g
     require_role(current_user, "operator")
     if update.value not in ["yfinance", "mt5"]:
         raise HTTPException(status_code=400, detail="Invalid data provider")
+    settings = config_manager.refresh()
+    if settings.mt5_auto_trade and not settings.mt5_paper_mode and update.value != "mt5":
+        raise HTTPException(status_code=400, detail="Live execution requires data_provider=mt5")
     
     conn = None
     try:
@@ -631,8 +677,7 @@ async def set_data_provider(update: ConfigUpdate, current_user: User = Depends(g
             after_value=update.value,
         )
         conn.commit()
-        # Sync env mode
-        os.environ["DATA_MODE"] = "YFINANCE" if update.value == "yfinance" else "MT5_BRIDGE"
+        config_manager.refresh()
         return {"status": "success", "provider": update.value}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -643,6 +688,17 @@ async def set_data_provider(update: ConfigUpdate, current_user: User = Depends(g
 async def update_mt5_config(config: MetaAPIConfig, current_user: User = Depends(get_current_user)):
     """Update MetaAPI credentials in DB"""
     require_role(current_user, "risk_manager")
+    settings = config_manager.refresh()
+    if not config.paperMode:
+        errors = []
+        if not settings.live_trading_approved:
+            errors.append("live_trading_approved must be true")
+        if settings.require_broker_data_for_live and settings.data_provider != "mt5":
+            errors.append("data_provider must be mt5")
+        if not config.token or not config.accountId:
+            errors.append("MetaAPI credentials must be configured")
+        if errors:
+            raise HTTPException(status_code=400, detail="Live enablement blocked: " + "; ".join(errors))
     if not encryption_available():
         raise HTTPException(
             status_code=503,
@@ -687,24 +743,18 @@ async def update_mt5_config(config: MetaAPIConfig, current_user: User = Depends(
                 after_value=redact_config_value(key, value),
             )
         conn.commit()
+        config_manager.refresh()
         return {"status": "success"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     finally:
         if conn: conn.close()
 
-# ── Strategy Toggle API ────────────────────────────────────────────────────────
-# CRT and ADVANCED_PATTERN are always active. All others can be toggled.
+# ── Strategy API ───────────────────────────────────────────────────────────────
+# CRT and Advanced Pattern are the only active strategies.
 ALWAYS_ON_STRATEGIES = {"crt", "advanced_pattern"}
 
 STRATEGY_META = {
-    "session_clock":  {"name": "Session Clock",       "key": "strategy_session_clock"},
-    "smc_sweep":      {"name": "SMC Liquidity Sweep",  "key": "strategy_smc_sweep"},
-    "poc_edge":       {"name": "Anchored POC Edge",    "key": "strategy_poc_edge"},
-    "stat_arb":       {"name": "Statistical Arb",      "key": "strategy_stat_arb"},
-    "pre_news":       {"name": "Pre-News Quant",       "key": "strategy_pre_news"},
-    "news_edge":      {"name": "News Edge",            "key": "strategy_news_edge"},
-    # Always-on (no toggle key needed)
     "crt":            {"name": "CRT Strategy",         "key": None, "locked": True},
     "advanced_pattern":{"name": "Advanced Pattern",   "key": None, "locked": True},
 }
@@ -712,9 +762,7 @@ STRATEGY_META = {
 @app.get("/api/strategies")
 async def get_strategies(current_user: User = Depends(get_current_user)):
     """Get list of all strategies with their enabled/locked status."""
-    conn = None
     try:
-        conn = get_db_connection(DB_CLIENTS)
         result = []
         for strategy_id, meta in STRATEGY_META.items():
             locked = meta.get("locked", False)
@@ -726,10 +774,7 @@ async def get_strategies(current_user: User = Depends(get_current_user)):
                     "locked": True
                 })
             else:
-                row = conn.execute(
-                    "SELECT value FROM system_config WHERE key = ?", (meta["key"],)
-                ).fetchone()
-                enabled = (row["value"].lower() == "true") if row else True
+                enabled = bool(config_manager.get(meta["key"], True, refresh=True))
                 result.append({
                     "id": strategy_id,
                     "name": meta["name"],
@@ -739,81 +784,49 @@ async def get_strategies(current_user: User = Depends(get_current_user)):
         return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-    finally:
-        if conn: conn.close()
 
 @app.post("/api/strategies/{strategy_id}/toggle")
 async def toggle_strategy(strategy_id: str, current_user: User = Depends(get_current_user)):
-    """Toggle a strategy on or off. CRT and ADVANCED_PATTERN cannot be toggled."""
-    if strategy_id in ALWAYS_ON_STRATEGIES:
-        raise HTTPException(
-            status_code=403,
-            detail=f"Strategy '{strategy_id}' is locked and cannot be disabled."
-        )
-    meta = STRATEGY_META.get(strategy_id)
-    if not meta:
+    """Strategy toggles are disabled because only CRT and Advanced Pattern are active."""
+    if strategy_id not in STRATEGY_META:
         raise HTTPException(status_code=404, detail=f"Strategy '{strategy_id}' not found.")
-
-    conn = None
-    try:
-        conn = get_db_connection(DB_CLIENTS)
-        row = conn.execute(
-            "SELECT value FROM system_config WHERE key = ?", (meta["key"],)
-        ).fetchone()
-        current = (row["value"].lower() == "true") if row else True
-        new_val = "false" if current else "true"
-        conn.execute(
-            "UPDATE system_config SET value = ? WHERE key = ?", (new_val, meta["key"])
-        )
-        conn.commit()
-        return {
-            "status": "success",
-            "strategy": strategy_id,
-            "enabled": new_val == "true"
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-    finally:
-        if conn: conn.close()
+    raise HTTPException(
+        status_code=403,
+        detail="Strategy toggles are disabled. CRT and Advanced Pattern are locked on."
+    )
 
 
 @app.get("/api/mt5/status")
 async def get_mt5_status(current_user: User = Depends(get_current_user)):
     """Returns MT5 connection heartbeat status from persistent DB config"""
-    conn = None
     try:
-        conn = get_db_connection(DB_CLIENTS)
-        row = conn.execute("SELECT value FROM system_config WHERE key = 'data_provider'").fetchone()
-        env_mode = os.getenv("DATA_MODE")
-        mode = env_mode.upper() if env_mode else (row[0].upper() if row else "YFINANCE")
+        settings = config_manager.refresh()
+        env_mode = os.environ.get("DATA_MODE")
+        if env_mode:
+            raw_mode = env_mode.upper()
+            mode = "MT5_BRIDGE" if raw_mode in {"MT5", "MT5_BRIDGE"} else "YFINANCE"
+        else:
+            mode = settings.data_provider.upper()
         if mode == "MT5":
             mode = "MT5_BRIDGE"
         
         status = "DISCONNECTED"
         account = "YFINANCE_REST"
         if mode == "MT5_BRIDGE":
-            token_row = conn.execute("SELECT value FROM system_config WHERE key = 'metaapi_token'").fetchone()
-            acct_row = conn.execute("SELECT value FROM system_config WHERE key = 'metaapi_account_id'").fetchone()
-            has_token = bool(reveal_config_value("metaapi_token", token_row["value"] if token_row else None))
-            has_account = bool(reveal_config_value("metaapi_account_id", acct_row["value"] if acct_row else None))
+            has_token = bool(settings.metaapi_token)
+            has_account = bool(settings.metaapi_account_id)
             status = "CONNECTED" if has_token and has_account else "ERROR"
             account = "METAAPI_CONFIGURED" if has_token and has_account else "METAAPI_MISSING_CREDS"
-        
-        # Check if credentials exist
-        has_creds = conn.execute("SELECT value FROM system_config WHERE key = 'metaapi_token' AND value != ''").fetchone()
-        suffix_row = conn.execute("SELECT value FROM system_config WHERE key = 'mt5_symbol_suffix'").fetchone()
-        
+
         return {
             "status": status,
             "mode": mode,
             "account": account,
-            "credentials_set": bool(reveal_config_value("metaapi_token", has_creds["value"] if has_creds else None)),
-            "symbol_suffix": suffix_row["value"] if suffix_row else ""
+            "credentials_set": bool(settings.metaapi_token),
+            "symbol_suffix": settings.mt5_symbol_suffix
         }
     except Exception as e:
         return {"status": "ERROR", "mode": "UNKNOWN", "detail": str(e)}
-    finally:
-        if conn: conn.close()
 
 # ── MT5 Position Management API ───────────────────────────────────────────────
 @app.get("/api/mt5/positions")
@@ -1048,15 +1061,7 @@ async def quick_extend(chat_id: str, days: int = 30, current_user: User = Depend
 async def stripe_webhook(request: Request):
     payload = await request.body()
     sig_header = request.headers.get("stripe-signature")
-    
-    if not STRIPE_WEBHOOK_SECRET:
-        if not ALLOW_UNSIGNED_STRIPE_WEBHOOK:
-            raise HTTPException(
-                status_code=503,
-                detail="STRIPE_WEBHOOK_SECRET is required unless ALLOW_UNSIGNED_STRIPE_WEBHOOK=true"
-            )
-        print("⚠️ STRIPE_WEBHOOK_SECRET not set. Unsigned webhook bypass enabled for development.")
-    
+
     try:
         event = None
         if STRIPE_WEBHOOK_SECRET:
@@ -1064,15 +1069,23 @@ async def stripe_webhook(request: Request):
                 payload, sig_header, STRIPE_WEBHOOK_SECRET
             )
         else:
-            # Fallback for debug if secret is missing
             event = json.loads(payload)
             
     except Exception as e:
         print(f"⚠️ Webhook signature verification failed: {e}")
         raise HTTPException(status_code=400, detail="Invalid signature")
 
+    if not STRIPE_WEBHOOK_SECRET and not ALLOW_UNSIGNED_STRIPE_WEBHOOK:
+        if event.get("type") == "checkout.session.completed":
+            raise HTTPException(
+                status_code=503,
+                detail="STRIPE_WEBHOOK_SECRET is required unless ALLOW_UNSIGNED_STRIPE_WEBHOOK=true"
+            )
+    elif not STRIPE_WEBHOOK_SECRET:
+        print("⚠️ STRIPE_WEBHOOK_SECRET not set. Unsigned webhook bypass enabled for development.")
+
     # Handle the checkout.session.completed event
-    if event["type"] == "checkout.session.completed":
+    if event.get("type") == "checkout.session.completed":
         session = event["data"]["object"]
         
         # Extract metadata
@@ -1198,10 +1211,7 @@ async def get_basic_stats(current_user: User = Depends(get_current_user)):
         mctx = await get_market_context()
 
         # V23.1: System Status Switch
-        conn_config = get_db_connection(DB_CLIENTS)
-        status_row = conn_config.execute("SELECT value FROM system_config WHERE key = 'system_status'").fetchone()
-        system_status = status_row['value'] if status_row else "UNKNOWN"
-        conn_config.close()
+        system_status = config_manager.get("system_status", "UNKNOWN", refresh=True)
         
         return {
             "active_clients": active_clients,
@@ -1809,55 +1819,74 @@ async def get_backtest_results(run_id: int, current_user: User = Depends(get_cur
 class SystemAction(BaseModel):
     action: str
 
+def _run_management_command(action: str) -> dict:
+    script_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "manage.sh")
+    if action in {"update", "rollback"}:
+        return {
+            "status": "accepted",
+            "action": action,
+            "detail": f"{action} is not implemented in manage.sh yet.",
+            "timestamp": datetime.now().isoformat(),
+        }
+
+    if action == "backup" and os.path.exists(script_path):
+        result = subprocess.run(
+            [script_path, action],
+            cwd=os.path.dirname(os.path.abspath(__file__)),
+            capture_output=True,
+            text=True,
+            timeout=120,
+        )
+        if result.returncode != 0:
+            raise HTTPException(
+                status_code=500,
+                detail=(result.stderr or result.stdout or f"{action} failed").strip(),
+            )
+        return {
+            "status": "success",
+            "action": action,
+            "output": result.stdout.strip()[-4000:],
+            "timestamp": datetime.now().isoformat(),
+        }
+
+    if action == "restart":
+        commands = [
+            ["systemctl", "--user", "restart", "smc-signal-service.service"],
+            ["systemctl", "--user", "restart", "smc-signal-tracker.service"],
+        ]
+        outputs = []
+        for cmd in commands:
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+            outputs.append((cmd, result))
+
+        failures = [r for _, r in outputs if r.returncode != 0]
+        if failures:
+            details = "\n".join((r.stderr or r.stdout or "unknown restart failure").strip() for r in failures)
+            raise HTTPException(status_code=500, detail=details)
+
+        return {
+            "status": "success",
+            "detail": "SERVICES_RESTARTED",
+            "timestamp": datetime.now().isoformat(),
+        }
+
+    raise HTTPException(status_code=400, detail=f"Unsupported management action: {action}")
+
 @app.post("/api/system/manage")
 async def system_manage(data: SystemAction, current_user: User = Depends(get_current_user)):
     """Handles governance actions (backup, update, rollback)"""
+    require_role(current_user, "risk_manager")
     valid_actions = ["backup", "update", "rollback", "restart"]
     if data.action not in valid_actions:
         raise HTTPException(status_code=400, detail=f"Invalid action: {data.action}")
-    
-    if data.action == "restart":
-        try:
-            import subprocess
-            # Restart core services. sudo -n (non-interactive) is key.
-            # We restart in the background to avoid timing out the HTTP response.
-            subprocess.Popen(["sudo", "-n", "systemctl", "restart", "smc-signal-service", "smc-signal-tracker"])
-            return {"status": "success", "detail": "SERVICES_RESTART_INITIATED", "timestamp": datetime.now().isoformat()}
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=f"Restart failed: {str(e)}")
-
-    # Implementation logic for backup/update/rollback would go here
-    return {"status": "success", "action": data.action, "timestamp": datetime.now().isoformat()}
+    return _run_management_command(data.action)
 
 @app.get("/api/system/config")
 async def get_system_config(current_user: User = Depends(get_current_user)):
     """Returns the list of active symbols and strategies for the dashboard sidebar."""
-    clean_symbols = [s.replace("=X", "").replace("=F", "").replace("-USD", "/USD") for s in SYMBOLS]
-    # Core Institutional Modules (Always Visible)
-    core_modules = ['CRT_ALGORITHM', 'ADV_PATTERN_ENGINE']
-    
-    # Official Institutional Strategy Registry (V28.1 Compliance)
-    official_map = {
-        'CRT': 'CRT_ALGORITHM',
-        'SMC_SWEEP': 'SMC_SWEEP_MODULE',
-        'ADVANCED': 'ADV_PATTERN_ENGINE',
-        'STAT_ARB': 'STAT_ARB_KERNEL',
-        'POC_EDGE': 'POC_REVERSION_PRO',
-        'SESSION_CLOCK': 'SESSION_CLOCK_TRAP',
-        'GOLD_QUANT': 'GOLD_PRECISION_MDL'
-    }
-
-    strategies = core_modules.copy()
-    try:
-        conn = get_db_connection(DB_SIGNALS)
-        rows = conn.execute("SELECT DISTINCT trade_type FROM signals").fetchall()
-        if rows:
-            db_strategies = [r['trade_type'] for r in rows if r['trade_type']]
-            # Map DB keys to official names and merge with Core
-            mapped_db = [official_map.get(s, s) for s in db_strategies]
-            strategies = list(set(strategies + mapped_db))
-        conn.close()
-    except: pass
+    symbols = config_manager.get("symbols", SYMBOLS, refresh=True)
+    clean_symbols = [s.replace("=X", "").replace("=F", "").replace("-USD", "/USD") for s in symbols]
+    strategies = ['CRT_ALGORITHM', 'ADV_PATTERN_ENGINE']
 
     return {
         "symbols": clean_symbols,

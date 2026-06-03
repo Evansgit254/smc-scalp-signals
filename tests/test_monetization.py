@@ -63,7 +63,7 @@ async def test_signal_gating(client_manager, telegram_service):
         'tp1': 62000,
         'tp2': 63000,
         'timeframe': 'H1',
-        'trade_type': 'SWING',
+        'trade_type': 'CRT',
         'reasoning': 'Test signal',
         'quality_score': 0.8,
         'expected_hold': '4h'

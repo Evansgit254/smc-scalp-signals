@@ -9,7 +9,7 @@ Database audit baseline: `database/backtest_results.db`, Run ID `63`, generated 
 - The active ledger shows paper execution only.
 - Run `63` definitively resolved the cross-run ExecutionGate pollution bug.
 - Current win rate baseline: **70.9%** across 2,772 trades.
-- SMC Sweep is quarantined by default.
+- Active strategy scope is limited to CRT and Advanced Pattern.
 
 ## Current Safety Controls
 
@@ -30,7 +30,7 @@ We are deploying a **Triple-Gate** system. A signal must pass all three to reach
 
 ## 2. Why this is "Safer" than the old VM System
 
-- **Old VM System**: Used a simpler Swing strategy that often ignored the broader H1 trend and lacked a rigorous quality scoring mechanism. It was prone to "price bounce flooding."
+- **Old VM System**: Used broader legacy strategy surfaces that often ignored the tighter CRT/Advanced Pattern evidence boundary.
 - **Refactored System**:
     - **Deduplication**: Uses an MD5 hash of (Symbol + Direction + Timeframe) to ensure you don't get 5 alerts for the same trade.
     - **Regime Awareness**: Detects if the market is "Trending" or "Ranging" and adjusts weights dynamically.
@@ -59,5 +59,5 @@ We are moving away from "Pips" because they are misleading across different symb
 - [x] Live trading config protection: **ACTIVE**
 - [x] Delivery reservation fail-closed: **ACTIVE**
 - [x] Path Independence: **VERIFIED**
-- [x] SMC Sweep: **QUARANTINED BY DEFAULT**
+- [x] Strategy scope: **CRT + ADVANCED PATTERN ONLY**
 - [ ] Live broker fill evidence: **NOT YET VERIFIED**

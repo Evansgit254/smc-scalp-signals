@@ -45,7 +45,7 @@ async def simulate_guidance():
         'tp1': 2630.0,
         'tp2': 2650.0,
         'timeframe': 'H1',
-        'trade_type': 'SWING',
+        'trade_type': 'CRT',
         'quality_score': 7.5,
         'confidence': 1.4,
         'regime': 'TRENDING'

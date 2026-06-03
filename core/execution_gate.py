@@ -64,6 +64,10 @@ class ExecutionGate:
             if max_daily_loss is not None and ExecutionGate._daily_loss_breached(db_signals, max_daily_loss, current_ts):
                 return {"status": "BLOCKED", "reason": f"DAILY_LOSS_LIMIT_REACHED ({max_daily_loss:.2f}%)"}
 
+            exposure_block = ExecutionGate._exposure_limit_breached(signal, db_signals, table_name, thresholds, run_id)
+            if exposure_block:
+                return exposure_block
+
             # 5. Volatility (ATR) Gate
             current_atr = signal.get('current_atr')
             avg_atr = signal.get('avg_atr')
@@ -290,9 +294,98 @@ class ExecutionGate:
                         thresholds["MIN_EXECUTION_QUALITY"] = float(row["value"])
                     elif key == "MAX_DAILY_LOSS_PCT":
                         thresholds["MAX_DAILY_LOSS_PCT"] = float(row["value"])
+                    elif key == "MAX_CORRELATED_EXPOSURE":
+                        thresholds["MAX_CORRELATED_EXPOSURE"] = float(row["value"])
+                    elif key == "MAX_CURRENCY_EXPOSURE":
+                        thresholds["MAX_CORRELATED_EXPOSURE"] = float(row["value"])
+                    elif key == "MAX_STRATEGY_EXPOSURE":
+                        thresholds["MAX_STRATEGY_EXPOSURE"] = float(row["value"])
+                    elif key == "MAX_SESSION_EXPOSURE":
+                        thresholds["MAX_SESSION_EXPOSURE"] = float(row["value"])
         except Exception:
             pass
         return thresholds
+
+    @staticmethod
+    def _exposure_limit_breached(signal: Dict, db_path: str, table_name: str,
+                                 thresholds: Dict[str, float], run_id: Optional[int]) -> Optional[Dict[str, str]]:
+        max_corr = int(thresholds.get("MAX_CORRELATED_EXPOSURE", 2) or 0)
+        max_strategy = int(thresholds.get("MAX_STRATEGY_EXPOSURE", 3) or 0)
+        max_session = int(thresholds.get("MAX_SESSION_EXPOSURE", 4) or 0)
+        if max_corr <= 0 and max_strategy <= 0 and max_session <= 0:
+            return None
+
+        symbol = signal.get("symbol", "")
+        groups = ExecutionGate._exposure_groups(symbol)
+        strategy = signal.get("trade_type") or signal.get("strategy_name") or signal.get("strategy") or ""
+        session = signal.get("session") or signal.get("market_session") or ""
+
+        try:
+            with connect_sqlite(db_path) as conn:
+                cols = conn.execute(f"PRAGMA table_info({table_name})").fetchall()
+                col_names = {row["name"] for row in cols}
+                strategy_col = "strategy_name" if "strategy_name" in col_names else "strategy" if "strategy" in col_names else "trade_type"
+                has_session = "session" in col_names or "market_session" in col_names
+                session_col = "session" if "session" in col_names else "market_session"
+                run_id_clause = " AND run_id = ? " if run_id is not None and "run_id" in col_names else ""
+
+                sql = f"""
+                    SELECT symbol,
+                           {strategy_col if strategy_col in col_names else "''"} AS strategy_value
+                           {"," + session_col + " AS session_value" if has_session else ", '' AS session_value"}
+                    FROM {table_name}
+                    WHERE COALESCE(gate_status, 'PASSED') != 'BLOCKED'
+                    AND (
+                        closed_at IS NULL
+                        OR closed_at = ''
+                        OR COALESCE(result, 'OPEN') = 'OPEN'
+                        OR COALESCE(status, 'OPEN') IN (
+                            'OPEN', 'PENDING_EXECUTION', 'PAPER_EXECUTED',
+                            'LIVE_EXECUTED', 'EXECUTED', 'PARTIAL'
+                        )
+                    )
+                    {run_id_clause}
+                """
+                params = tuple([run_id] if run_id is not None and "run_id" in col_names else [])
+                rows = conn.execute(sql, params).fetchall()
+        except Exception:
+            return None
+
+        if max_corr > 0 and groups:
+            correlated = 0
+            for row in rows:
+                if groups.intersection(ExecutionGate._exposure_groups(row["symbol"] or "")):
+                    correlated += 1
+            if correlated >= max_corr:
+                return {"status": "BLOCKED", "reason": f"CORRELATED_EXPOSURE_LIMIT ({','.join(sorted(groups))})"}
+
+        if max_strategy > 0 and strategy:
+            strategy_count = sum(1 for row in rows if str(row["strategy_value"] or "") == str(strategy))
+            if strategy_count >= max_strategy:
+                return {"status": "BLOCKED", "reason": f"STRATEGY_EXPOSURE_LIMIT ({strategy})"}
+
+        if max_session > 0 and session:
+            session_count = sum(1 for row in rows if str(row["session_value"] or "") == str(session))
+            if session_count >= max_session:
+                return {"status": "BLOCKED", "reason": f"SESSION_EXPOSURE_LIMIT ({session})"}
+
+        return None
+
+    @staticmethod
+    def _exposure_groups(symbol: str) -> set[str]:
+        raw = (symbol or "").upper()
+        cleaned = raw.replace("=X", "").replace("-USD", "USD").replace("GC=F", "XAUUSD").replace("CL=F", "USOIL")
+        groups = set()
+        if "XAU" in cleaned or "GOLD" in cleaned:
+            groups.add("METALS")
+        if "OIL" in cleaned or "CL" == cleaned:
+            groups.add("OIL")
+        if any(token in cleaned for token in ("BTC", "ETH", "SOL", "BNB", "CRYPTO")):
+            groups.add("CRYPTO")
+        for ccy in ("USD", "EUR", "GBP", "JPY", "AUD", "NZD", "CAD", "CHF"):
+            if ccy in cleaned:
+                groups.add(ccy)
+        return groups
 
     @staticmethod
     def _daily_loss_breached(db_path: str, max_loss_pct: float, current_ts: Optional[datetime]) -> bool:

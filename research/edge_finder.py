@@ -24,9 +24,6 @@ def load_signals():
 def find_edges():
     df = load_signals()
     
-    # Base filter: remove Gold (it's fixed by a dedicated engine now)
-    df = df[df['symbol'] != 'GC=F']
-    
     qualities = [6.0, 7.0, 7.5, 8.0, 8.5]
     regime_blocks = [
         [],
@@ -42,8 +39,8 @@ def find_edges():
     ]
     type_filters = [
         None, # all
-        ['SESSION_CLOCK', 'ADVANCED_PATTERN'],
-        ['SESSION_CLOCK', 'ADVANCED_PATTERN', 'SCALP']
+        ['CRT'],
+        ['CRT', 'ADVANCED_PATTERN']
     ]
 
     results = []

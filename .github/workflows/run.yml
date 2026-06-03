@@ -28,7 +28,6 @@ jobs:
           PYTHONPATH: .
         run: |
           python3 -m pytest tests/
-        continue-on-error: true
 
       - name: Run Signal Engine
         env:
@@ -37,4 +36,4 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           PYTHONPATH: .
         run: |
-          python3 main.py
+          python3 signal_service.py --test

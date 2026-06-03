@@ -81,7 +81,7 @@ def test_gate_blocks_backtest_positions_until_closed_at(tmp_path):
     conn.close()
 
     blocked = ExecutionGate.validate(
-        {'symbol': 'EURUSD=X', 'quality_score': 8.5, 'entry_price': 1.1000},
+        {'symbol': 'EURUSD=X', 'quality_score': 8.5, 'entry_price': 1.1000, 'sl': 1.0950},
         str(db_signals),
         str(db_clients),
         table_name='backtest_signals',
@@ -91,7 +91,7 @@ def test_gate_blocks_backtest_positions_until_closed_at(tmp_path):
     assert blocked['reason'] == 'EXISTING_POSITION_IN_EURUSD=X'
 
     passed = ExecutionGate.validate(
-        {'symbol': 'EURUSD=X', 'quality_score': 8.5, 'entry_price': 1.1000},
+        {'symbol': 'EURUSD=X', 'quality_score': 8.5, 'entry_price': 1.1000, 'sl': 1.0950},
         str(db_signals),
         str(db_clients),
         table_name='backtest_signals',
@@ -177,6 +177,7 @@ def test_gate_live_strategy_column_kill_switch(tmp_path):
             'trade_type': 'CRT',
             'quality_score': 8.5,
             'entry_price': 1.1000,
+            'sl': 1.0950,
         },
         str(db_signals),
         str(db_clients),
@@ -184,6 +185,59 @@ def test_gate_live_strategy_column_kill_switch(tmp_path):
     )
     assert blocked['status'] == 'BLOCKED'
     assert blocked['reason'].startswith('REGIME_BLEED_KILL_SWITCH')
+
+def test_gate_blocks_correlated_currency_exposure(tmp_path):
+    db_signals = tmp_path / "signals.db"
+    db_clients = tmp_path / "clients.db"
+
+    import sqlite3
+    conn = sqlite3.connect(db_signals)
+    conn.execute("""
+        CREATE TABLE signals (
+            symbol TEXT,
+            trade_type TEXT,
+            timestamp TEXT,
+            closed_at TEXT,
+            gate_status TEXT,
+            result TEXT,
+            status TEXT
+        )
+    """)
+    conn.execute("""
+        INSERT INTO signals VALUES (
+            'GBPUSD=X',
+            'CRT',
+            '2026-05-29T08:00:00',
+            NULL,
+            'PASSED',
+            'OPEN',
+            'LIVE_EXECUTED'
+        )
+    """)
+    conn.commit()
+    conn.close()
+
+    conn = sqlite3.connect(db_clients)
+    conn.execute("CREATE TABLE system_config (key TEXT, value TEXT)")
+    conn.execute("INSERT INTO system_config VALUES ('min_quality_score', '5.0')")
+    conn.execute("INSERT INTO system_config VALUES ('max_correlated_exposure', '1')")
+    conn.commit()
+    conn.close()
+
+    blocked = ExecutionGate.validate(
+        {
+            'symbol': 'EURUSD=X',
+            'trade_type': 'CRT',
+            'quality_score': 8.5,
+            'entry_price': 1.1000,
+            'sl': 1.0950,
+        },
+        str(db_signals),
+        str(db_clients),
+    )
+
+    assert blocked['status'] == 'BLOCKED'
+    assert blocked['reason'].startswith('CORRELATED_EXPOSURE_LIMIT')
 
 # 3. SIMULATION OUTCOME INTEGRITY
 def test_simulation_exit_logic():

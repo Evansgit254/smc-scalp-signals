@@ -147,7 +147,7 @@ class DukascopyLoader:
     ) -> Optional[pd.DataFrame]:
         """
         Load a slice of data centred around a specific news event.
-        Drop-in replacement for fetch_event_price_window() in news_edge_research.py.
+        Fetches an event-centered price window for historical research.
 
         Args:
             symbol:         yfinance-style ticker

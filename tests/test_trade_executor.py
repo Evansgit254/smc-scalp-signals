@@ -1,14 +1,59 @@
 import pytest
 import asyncio
-from unittest.mock import patch, MagicMock
+import sqlite3
+from unittest.mock import patch, MagicMock, AsyncMock
+from config.manager import config_manager
 from core.trade_executor import TradeExecutor
+from core.db_utils import ensure_base_tables
+
+@pytest.fixture(autouse=True)
+def reset_config_overrides():
+    config_manager.clear_runtime_overrides()
+    yield
+    config_manager.clear_runtime_overrides()
 
 @pytest.fixture
 def executor():
+    config_manager.set_runtime_override("mt5_auto_trade", True)
+    config_manager.set_runtime_override("mt5_paper_mode", True)
     ex = TradeExecutor()
-    ex.paper_mode = True
-    ex.auto_trade = True
     return ex
+
+@pytest.fixture
+def temp_signals_db(tmp_path):
+    db_path = tmp_path / "signals.db"
+    conn = sqlite3.connect(db_path)
+    ensure_base_tables(conn)
+    conn.execute("""
+        CREATE TABLE signals (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            signal_uid TEXT,
+            symbol TEXT,
+            direction TEXT,
+            entry_price REAL,
+            sl REAL,
+            tp1 REAL,
+            trade_type TEXT,
+            timestamp TEXT,
+            status TEXT,
+            result TEXT,
+            execution_status TEXT,
+            broker_order_id TEXT,
+            broker_position_id TEXT,
+            requested_price REAL,
+            requested_lot_size REAL,
+            fill_price REAL,
+            filled_lot_size REAL,
+            slippage_pips REAL,
+            execution_error TEXT,
+            score_details TEXT DEFAULT '{}',
+            closed_at TEXT
+        )
+    """)
+    conn.commit()
+    conn.close()
+    config_manager.set_runtime_override("db_signals", str(db_path))
+    return db_path
 
 @pytest.mark.asyncio
 async def test_paper_trade_execution(executor):
@@ -22,10 +67,10 @@ async def test_paper_trade_execution(executor):
         "timestamp": "2026-04-20T12:00:00Z"
     }
     
+    config_manager.set_runtime_override("mt5_symbol_suffix", "c")
     with patch("core.trade_executor._executor", executor):
-        with patch("config.config.MT5_SYMBOL_SUFFIX", "c"): # Ensure suffix test passes
-            with patch.object(executor, "_log_paper_trade") as mock_log:
-                result = await executor.execute_trade(signal)
+        with patch.object(executor, "_log_paper_trade") as mock_log:
+            result = await executor.execute_trade(signal)
             
             assert result["status"] == "paper"
             assert result["symbol"] == "EURUSDc"  # Testing the suffix addition
@@ -34,7 +79,7 @@ async def test_paper_trade_execution(executor):
 
 @pytest.mark.asyncio
 async def test_auto_trade_disabled(executor):
-    executor.auto_trade = False
+    config_manager.set_runtime_override("mt5_auto_trade", False)
     
     signal = {"symbol": "EURUSD=X"}
     result = await executor.execute_trade(signal)
@@ -58,3 +103,73 @@ async def test_missing_entry_price_blocks_execution(executor):
     assert result["status"] == "error"
     assert "entry_price" in result["reason"]
     mock_persist.assert_called_once()
+
+@pytest.mark.asyncio
+async def test_live_execution_requires_approval_and_broker_data(temp_signals_db):
+    config_manager.set_runtime_override("mt5_auto_trade", True)
+    config_manager.set_runtime_override("mt5_paper_mode", False)
+    config_manager.set_runtime_override("live_trading_approved", False)
+    config_manager.set_runtime_override("data_provider", "yfinance")
+    config_manager.set_runtime_override("metaapi_token", "token")
+    config_manager.set_runtime_override("metaapi_account_id", "account")
+    executor = TradeExecutor()
+
+    result = await executor.execute_trade({
+        "symbol": "EURUSD=X",
+        "direction": "BUY",
+        "entry_price": 1.0550,
+        "lot_size": 0.05,
+        "sl": 1.0500,
+        "tp1": 1.0600,
+        "timestamp": "2026-04-20T12:00:00Z",
+    })
+
+    assert result["status"] == "blocked"
+    assert "live_trading_approved=false" in result["reason"]
+    assert "data_provider must be mt5" in result["reason"]
+
+@pytest.mark.asyncio
+async def test_reconciliation_inserts_unmatched_broker_deal(temp_signals_db):
+    config_manager.set_runtime_override("mt5_auto_trade", True)
+    config_manager.set_runtime_override("mt5_paper_mode", False)
+    config_manager.set_runtime_override("live_trading_approved", True)
+    config_manager.set_runtime_override("data_provider", "mt5")
+    config_manager.set_runtime_override("metaapi_token", "token")
+    config_manager.set_runtime_override("metaapi_account_id", "account")
+    executor = TradeExecutor()
+
+    connection = MagicMock()
+    connection.connect = AsyncMock()
+    connection.wait_synchronized = AsyncMock()
+    connection.get_deals_by_id = AsyncMock(return_value=[{
+        "id": "deal-1",
+        "orderId": "broker-order-1",
+        "positionId": "broker-position-1",
+        "symbol": "EURUSD",
+        "type": "DEAL_TYPE_BUY",
+        "volume": 0.05,
+        "price": 1.0575,
+        "commission": -0.25,
+        "swap": -0.01,
+        "time": "2026-06-03T09:00:00Z",
+    }])
+    connection.get_positions = AsyncMock(return_value=[])
+    executor._account = MagicMock()
+    executor._account.get_rpc_connection.return_value = connection
+
+    with patch.object(executor, "_connect", AsyncMock(return_value=True)):
+        await executor.reconcile_with_broker()
+
+    conn = sqlite3.connect(temp_signals_db)
+    order = conn.execute("SELECT status FROM orders WHERE order_id='broker-order-1'").fetchone()
+    fill = conn.execute("""
+        SELECT filled_price, commission, swap FROM fills WHERE order_id='broker-order-1'
+    """).fetchone()
+    run = conn.execute("SELECT status, deals_count, positions_count FROM reconciliation_runs").fetchone()
+    event_count = conn.execute("SELECT COUNT(*) FROM broker_reconciliation_events").fetchone()[0]
+    conn.close()
+
+    assert order == ("BROKER_RECONCILED",)
+    assert fill == (1.0575, -0.25, -0.01)
+    assert run == ("OK", 1, 0)
+    assert event_count == 1

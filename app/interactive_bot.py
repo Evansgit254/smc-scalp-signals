@@ -72,7 +72,7 @@ class InteractiveBot:
         """Show payment details for subscription."""
         await update.message.reply_html(
             "💎 <b>UPGRADE TO QUANT PREMIUM</b> 💎\n\n"
-            "Get high-probability Institutional Swing and Intraday signals directly to your Telegram.\n\n"
+            "Get high-probability CRT and Advanced Pattern signals directly to your Telegram.\n\n"
             "💳 <b>PAYMENT METHODS:</b>\n"
             "• <b>M-Pesa:</b> +254 XXX XXX XXX (Evans)\n"
             "• <b>Bank:</b> KCB Bank - Acc: XXXXXXXX\n"

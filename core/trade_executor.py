@@ -19,11 +19,7 @@ import asyncio
 from datetime import datetime, timedelta
 from typing import Optional, Dict, List
 
-from config.config import (
-    METAAPI_TOKEN, METAAPI_ACCOUNT_ID,
-    MT5_AUTO_TRADE, MT5_PAPER_MODE, DB_SIGNALS
-)
-from core.secure_config import reveal_config_value
+from config.manager import config_manager
 from core.db_utils import connect_sqlite
 
 # Symbol mapping: yfinance → MT5 broker symbol
@@ -47,37 +43,23 @@ class TradeExecutor:
     """
 
     def __init__(self):
-        self.paper_mode = MT5_PAPER_MODE
-        self.auto_trade = MT5_AUTO_TRADE
+        settings = config_manager.snapshot()
+        self.paper_mode = settings.mt5_paper_mode
+        self.auto_trade = settings.mt5_auto_trade
         self._api = None
         self._account = None
         self._account_id = None
         self._token_hash = None
         self._connect_lock = asyncio.Lock()
 
-    def _get_db_config(self, key: str) -> Optional[str]:
-        """Fetch config from system_config table."""
-        from config.config import DB_CLIENTS
-        try:
-            conn = connect_sqlite(DB_CLIENTS)
-            row = conn.execute("SELECT value FROM system_config WHERE key = ?", (key,)).fetchone()
-            conn.close()
-            return reveal_config_value(key, row[0]) if row else None
-        except Exception:
-            return None
-
     def _load_runtime_config(self):
-        paper_conf = self._get_db_config("mt5_paper_mode")
-        if paper_conf is not None:
-            self.paper_mode = str(paper_conf).lower() == "true"
-        auto_conf = self._get_db_config("mt5_auto_trade")
-        if auto_conf is not None:
-            self.auto_trade = str(auto_conf).lower() == "true"
+        settings = config_manager.refresh()
+        self.paper_mode = settings.mt5_paper_mode
+        self.auto_trade = settings.mt5_auto_trade
 
     def _get_credentials(self):
-        token = METAAPI_TOKEN or self._get_db_config("metaapi_token")
-        account_id = METAAPI_ACCOUNT_ID or self._get_db_config("metaapi_account_id")
-        return token, account_id
+        settings = config_manager.snapshot()
+        return settings.metaapi_token, settings.metaapi_account_id
 
     def _has_live_credentials(self) -> bool:
         token, account_id = self._get_credentials()
@@ -126,14 +108,13 @@ class TradeExecutor:
                 return False
 
     def _map_symbol(self, yf_symbol: str) -> str:
-        from config.config import MT5_SYMBOL_SUFFIX
         base_sym = SYMBOL_MAP.get(yf_symbol, yf_symbol.replace("=X", "").replace("-", ""))
-        return f"{base_sym}{MT5_SYMBOL_SUFFIX}"
+        return f"{base_sym}{config_manager.get('mt5_symbol_suffix')}"
 
     def _log_paper_trade(self, action: str, signal_data: dict, result: dict):
         """Write paper trade to DB for tracking."""
         try:
-            conn = connect_sqlite(DB_SIGNALS)
+            conn = connect_sqlite(config_manager.get("db_signals"))
             conn.execute("""
                 UPDATE signals SET
                     status = ?,
@@ -169,26 +150,56 @@ class TradeExecutor:
         if not self.auto_trade:
             return {"status": "skipped", "reason": "MT5_AUTO_TRADE=false"}
 
-        symbol    = signal_data.get("symbol", "")
-        direction = signal_data.get("direction", "BUY").upper()
-        lot_size  = signal_data.get("lot_size", 0.01)
-        sl        = signal_data.get("sl")
-        tp        = signal_data.get("tp1")  # Use TP1 as conservative target
-        mt5_sym   = self._map_symbol(symbol)
-        order_type = "ORDER_TYPE_BUY" if direction == "BUY" else "ORDER_TYPE_SELL"
+        symbol = str(signal_data.get("symbol") or "").strip()
+        direction = str(signal_data.get("direction") or "").upper()
+        lot_size = signal_data.get("lot_size")
+        if lot_size is None and isinstance(signal_data.get("risk_details"), dict):
+            lot_size = signal_data["risk_details"].get("lots")
+        sl = signal_data.get("sl")
+        tp = signal_data.get("tp1")  # Use TP1 as conservative target
         requested_price = signal_data.get("entry_price")
+
+        validation_errors = []
+        if not symbol:
+            validation_errors.append("symbol missing")
+        if direction not in {"BUY", "SELL"}:
+            validation_errors.append("direction must be BUY or SELL")
+        try:
+            lot_size = float(lot_size)
+        except (TypeError, ValueError):
+            lot_size = None
+        if lot_size is None or lot_size <= 0.0:
+            validation_errors.append("lot_size missing or invalid")
+        try:
+            sl = float(sl)
+        except (TypeError, ValueError):
+            sl = None
+        if sl is None or sl <= 0.0:
+            validation_errors.append("sl missing or invalid")
+        try:
+            tp = float(tp)
+        except (TypeError, ValueError):
+            tp = None
+        if tp is None or tp <= 0.0:
+            validation_errors.append("tp1 missing or invalid")
         try:
             requested_price = float(requested_price)
         except (TypeError, ValueError):
             requested_price = None
         if requested_price is None or requested_price <= 0.0:
+            validation_errors.append("entry_price missing or invalid")
+
+        if validation_errors:
+            reason = "; ".join(validation_errors)
             self._persist_execution_state(signal_data, {
                 "status": "ERROR",
                 "result": "ERROR",
                 "execution_status": "ERROR",
-                "execution_error": "Missing executable entry_price",
+                "execution_error": reason,
             })
-            return {"status": "error", "reason": "Missing executable entry_price"}
+            return {"status": "error", "reason": reason}
+
+        mt5_sym = self._map_symbol(symbol)
         self._persist_execution_state(signal_data, {
             "execution_status": "PENDING_EXECUTION",
             "requested_price": requested_price,
@@ -230,6 +241,17 @@ class TradeExecutor:
             return result
 
         # Live execution
+        readiness_errors = await self._live_readiness_errors(symbol)
+        if readiness_errors:
+            reason = "; ".join(readiness_errors)
+            self._persist_execution_state(signal_data, {
+                "status": "BLOCKED",
+                "result": "BLOCKED",
+                "execution_status": "LIVE_READINESS_BLOCKED",
+                "execution_error": reason,
+            })
+            return {"status": "blocked", "reason": reason}
+
         connected = await self._connect()
         if not connected:
             self._persist_execution_state(signal_data, {
@@ -244,6 +266,16 @@ class TradeExecutor:
             connection = self._account.get_rpc_connection()
             await connection.connect()
             await connection.wait_synchronized()
+
+            spread_check = await self._pretrade_spread_check(connection, mt5_sym, symbol)
+            if spread_check is not None:
+                self._persist_execution_state(signal_data, {
+                    "status": "BLOCKED",
+                    "result": "BLOCKED",
+                    "execution_status": "SPREAD_BLOCKED",
+                    "execution_error": spread_check,
+                })
+                return {"status": "blocked", "reason": spread_check}
 
             order_result = await connection.create_market_buy_order(
                 mt5_sym, lot_size, sl, tp,
@@ -319,7 +351,7 @@ class TradeExecutor:
         if self.paper_mode or not self._has_live_credentials():
             # Return paper trades from DB
             try:
-                conn = connect_sqlite(DB_SIGNALS)
+                conn = connect_sqlite(config_manager.get("db_signals"))
                 rows = conn.execute("""
                     SELECT id, signal_uid, symbol, direction, entry_price, sl, tp1, trade_type, timestamp,
                            execution_status, fill_price, filled_lot_size
@@ -365,14 +397,14 @@ class TradeExecutor:
         self._load_runtime_config()
         if self.paper_mode or not self._has_live_credentials():
             try:
-                conn = connect_sqlite(DB_SIGNALS)
+                conn = connect_sqlite(config_manager.get("db_signals"))
                 row = conn.execute("SELECT symbol, signal_uid FROM signals WHERE id=?", (position_id,)).fetchone()
                 conn.execute("UPDATE signals SET status='PAPER_CLOSED', execution_status='PAPER_CLOSED', result='CLOSED', closed_at=? WHERE id=?", (datetime.utcnow().isoformat(), position_id))
                 conn.commit()
                 conn.close()
                 if row:
                     from core.execution_gate import ExecutionGate
-                    ExecutionGate.release_reservation(row[0], DB_SIGNALS, row[1], status="CLOSED")
+                    ExecutionGate.release_reservation(row[0], config_manager.get("db_signals"), row[1], status="CLOSED")
             except Exception:
                 pass
             return {"status": "paper_closed", "position_id": position_id}
@@ -397,8 +429,26 @@ class TradeExecutor:
         if self.paper_mode or not self._has_live_credentials():
             return
 
-        connected = await self._connect()
-        if not connected: return
+        run_id = None
+        started_at = datetime.utcnow().isoformat()
+        with connect_sqlite(config_manager.get("db_signals")) as conn:
+            self._ensure_execution_events(conn)
+            cur = conn.execute("""
+                INSERT INTO reconciliation_runs (status, started_at)
+                VALUES ('RUNNING', ?)
+            """, (started_at,))
+            run_id = cur.lastrowid
+            conn.commit()
+
+        try:
+            connected = await asyncio.wait_for(self._connect(), timeout=10)
+        except asyncio.TimeoutError:
+            print("⚠️  Reconciliation skipped: MetaAPI connection timed out")
+            self._finish_reconciliation_run(run_id, "ERROR", 0, 0, "MetaAPI connection timed out")
+            return
+        if not connected:
+            self._finish_reconciliation_run(run_id, "ERROR", 0, 0, "MetaAPI not connected")
+            return
 
         try:
             connection = self._account.get_rpc_connection()
@@ -409,11 +459,16 @@ class TradeExecutor:
             # Fetch deals from last 24 hours to capture commissions/swaps/slippage
             start_time = datetime.utcnow() - timedelta(days=1)
             deals = await connection.get_deals_by_id(start_time, datetime.utcnow())
+            deals = deals or []
 
-            with connect_sqlite(DB_SIGNALS) as conn:
+            with connect_sqlite(config_manager.get("db_signals")) as conn:
+                self._ensure_execution_events(conn)
                 for deal in deals:
+                    order_id = str(deal.get('orderId') or deal.get('order_id') or deal.get('id') or "")
+                    if not order_id:
+                        continue
                     # Sync комиссии and swap to our fills table
-                    conn.execute("""
+                    cur = conn.execute("""
                         UPDATE fills SET
                             commission = ?,
                             swap = ?,
@@ -425,15 +480,62 @@ class TradeExecutor:
                         deal.get('swap', 0),
                         deal.get('price'),
                         deal.get('time'),
-                        deal.get('orderId')
+                        order_id
+                    ))
+                    if cur.rowcount == 0:
+                        symbol = deal.get("symbol") or "UNKNOWN"
+                        direction = self._direction_from_deal(deal)
+                        conn.execute("""
+                            INSERT OR IGNORE INTO orders (
+                                order_id, symbol, direction, requested_lots, requested_price,
+                                status, raw_request, created_at
+                            ) VALUES (?, ?, ?, ?, ?, 'BROKER_RECONCILED', ?, ?)
+                        """, (
+                            order_id,
+                            symbol,
+                            direction,
+                            float(deal.get("volume") or deal.get("filledVolume") or 0),
+                            deal.get("price"),
+                            json.dumps({"reconciled_deal": deal}, default=str),
+                            datetime.utcnow().isoformat(),
+                        ))
+                        conn.execute("""
+                            INSERT INTO fills (
+                                order_id, symbol, direction, filled_lots, filled_price,
+                                commission, swap, broker_time, raw_response, created_at
+                            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        """, (
+                            order_id,
+                            symbol,
+                            direction,
+                            float(deal.get("volume") or deal.get("filledVolume") or 0),
+                            float(deal.get("price") or 0),
+                            deal.get("commission", 0),
+                            deal.get("swap", 0),
+                            deal.get("time"),
+                            json.dumps(deal, default=str),
+                            datetime.utcnow().isoformat(),
+                        ))
+                    conn.execute("""
+                        INSERT INTO broker_reconciliation_events (
+                            broker_order_id, broker_position_id, symbol, event_type, payload_json, created_at
+                        ) VALUES (?, ?, ?, 'DEAL_SYNCED', ?, ?)
+                    """, (
+                        order_id,
+                        deal.get("positionId") or deal.get("position_id"),
+                        deal.get("symbol"),
+                        json.dumps(deal, default=str),
+                        datetime.utcnow().isoformat(),
                     ))
                 conn.commit()
 
             # 2. Sync Positions (Open Signals)
             broker_positions = await connection.get_positions()
+            broker_positions = broker_positions or []
             broker_pos_ids = [p['id'] for p in broker_positions]
 
-            with connect_sqlite(DB_SIGNALS) as conn:
+            with connect_sqlite(config_manager.get("db_signals")) as conn:
+                self._ensure_execution_events(conn)
                 # Find local signals marked as LIVE_EXECUTED that are NOT in broker positions
                 local_active = conn.execute("""
                     SELECT id, symbol, signal_uid, broker_order_id, broker_position_id
@@ -455,13 +557,26 @@ class TradeExecutor:
 
                         # Release risk reservation
                         from core.execution_gate import ExecutionGate
-                        ExecutionGate.release_reservation(row['symbol'], DB_SIGNALS, row['signal_uid'], status="CLOSED")
+                        ExecutionGate.release_reservation(row['symbol'], config_manager.get("db_signals"), row['signal_uid'], status="CLOSED")
+                        conn.execute("""
+                            INSERT INTO broker_reconciliation_events (
+                                broker_order_id, broker_position_id, symbol, event_type, payload_json, created_at
+                            ) VALUES (?, ?, ?, 'POSITION_CLOSED', ?, ?)
+                        """, (
+                            row['broker_order_id'],
+                            row['broker_position_id'],
+                            row['symbol'],
+                            json.dumps({"signal_id": row["id"]}, default=str),
+                            datetime.utcnow().isoformat(),
+                        ))
                 conn.commit()
 
+            self._finish_reconciliation_run(run_id, "OK", len(deals), len(broker_positions), None)
             print(f"✅ Full Reconciliation Complete: Audited {len(deals)} deals and {len(broker_positions)} positions.")
 
         except Exception as e:
             print(f"❌ Reconciliation failed: {e}")
+            self._finish_reconciliation_run(run_id, "ERROR", 0, 0, str(e))
 
     async def get_historical_data(self, symbol: str, timeframe: str, limit: int = 100) -> Optional[List[Dict]]:
         """ Fetch candles directly from the broker bridge. """
@@ -541,7 +656,7 @@ class TradeExecutor:
                 signal_data.get("symbol"),
                 signal_data.get("timestamp"),
             ])
-            with connect_sqlite(DB_SIGNALS) as conn:
+            with connect_sqlite(config_manager.get("db_signals")) as conn:
                 self._ensure_execution_events(conn)
                 conn.execute(f"""
                     UPDATE signals SET {", ".join(set_parts)}
@@ -579,9 +694,79 @@ class TradeExecutor:
             )
         """)
 
+    async def _live_readiness_errors(self, symbol: str) -> List[str]:
+        settings = config_manager.refresh()
+        errors = []
+        if not settings.live_trading_approved:
+            errors.append("live_trading_approved=false")
+        if settings.require_broker_data_for_live and settings.data_provider != "mt5":
+            errors.append("data_provider must be mt5 for live execution")
+        if not settings.metaapi_token or not settings.metaapi_account_id:
+            errors.append("MetaAPI credentials missing")
+        if not symbol:
+            errors.append("symbol missing")
+        return errors
+
+    async def _pretrade_spread_check(self, connection, mt5_sym: str, original_symbol: str) -> Optional[str]:
+        max_spread = float(config_manager.get("max_pretrade_spread_pips", 3.0, refresh=True) or 0)
+        if max_spread <= 0:
+            return None
+        try:
+            tick = await connection.get_tick(mt5_sym)
+            bid = float(tick["bid"])
+            ask = float(tick["ask"])
+            spread_pips = abs(ask - bid) / self._pip_size(original_symbol)
+            if spread_pips > max_spread:
+                return f"Spread too wide: {spread_pips:.2f} pips > {max_spread:.2f}"
+        except Exception as e:
+            return f"Broker tick validation failed: {e}"
+        return None
+
+    def _pip_size(self, symbol: str) -> float:
+        raw = (symbol or "").upper()
+        if "JPY" in raw:
+            return 0.01
+        if "BTC" in raw:
+            return 1.0
+        if "XAU" in raw or "GC=F" in raw or "GOLD" in raw:
+            return 0.1
+        if "OIL" in raw or "CL=F" in raw:
+            return 0.01
+        return 0.0001
+
+    def _direction_from_deal(self, deal: dict) -> str:
+        raw = str(deal.get("type") or deal.get("entryType") or deal.get("direction") or "").upper()
+        if "SELL" in raw:
+            return "SELL"
+        return "BUY"
+
+    def _finish_reconciliation_run(self, run_id: Optional[int], status: str,
+                                   deals_count: int, positions_count: int,
+                                   error: Optional[str]) -> None:
+        if run_id is None:
+            return
+        try:
+            with connect_sqlite(config_manager.get("db_signals")) as conn:
+                self._ensure_execution_events(conn)
+                conn.execute("""
+                    UPDATE reconciliation_runs
+                    SET status = ?, deals_count = ?, positions_count = ?, error = ?, completed_at = ?
+                    WHERE id = ?
+                """, (
+                    status,
+                    deals_count,
+                    positions_count,
+                    error,
+                    datetime.utcnow().isoformat(),
+                    run_id,
+                ))
+                conn.commit()
+        except Exception as e:
+            print(f"⚠️  Reconciliation run update failed: {e}")
+
     def _write_order(self, signal_data: dict, order_data: dict):
         try:
-            with connect_sqlite(DB_SIGNALS) as conn:
+            with connect_sqlite(config_manager.get("db_signals")) as conn:
                 self._ensure_execution_events(conn)
                 conn.execute("""
                     INSERT OR REPLACE INTO orders (
@@ -605,7 +790,7 @@ class TradeExecutor:
 
     def _write_fill(self, order_id: str, fill_data: dict):
         try:
-            with connect_sqlite(DB_SIGNALS) as conn:
+            with connect_sqlite(config_manager.get("db_signals")) as conn:
                 self._ensure_execution_events(conn)
                 conn.execute("""
                     INSERT INTO fills (

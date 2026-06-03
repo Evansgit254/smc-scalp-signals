@@ -66,16 +66,16 @@ async def diagnose_alpha_levels():
         print(f"{r['symbol']:<12} | {r['m5_signal']:>10.3f} | {r['h1_signal']:>10.3f} | {m5_status:<15} | {h1_status:<15}")
     
     print("=" * 70)
-    print(f"\nIntraday Threshold: |Signal| > 1.0")
-    print(f"Swing Threshold: |Signal| > 1.3")
+    print(f"\nAdvanced Pattern Threshold: |Signal| > 1.0")
+    print(f"CRT Threshold: |Signal| > 1.3")
     
     # Stats
     m5_ready = sum(1 for r in results if abs(r['m5_signal']) > 1.0)
     h1_ready = sum(1 for r in results if abs(r['h1_signal']) > 1.3)
     
     print(f"\nCurrent State:")
-    print(f"  Intraday Ready: {m5_ready}/{len(results)}")
-    print(f"  Swing Ready: {h1_ready}/{len(results)}")
+    print(f"  Advanced Pattern Ready: {m5_ready}/{len(results)}")
+    print(f"  CRT Ready: {h1_ready}/{len(results)}")
 
 if __name__ == "__main__":
     asyncio.run(diagnose_alpha_levels())

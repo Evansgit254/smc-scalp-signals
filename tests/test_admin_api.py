@@ -216,15 +216,15 @@ def test_daily_analytics(client, tmp_path, auth_headers):
             symbol TEXT,
             direction TEXT,
             quality_score REAL,
-            trade_type TEXT DEFAULT 'SCALP',
+            trade_type TEXT DEFAULT 'CRT',
             result TEXT DEFAULT 'OPEN',
             max_tp_reached INTEGER DEFAULT 0
         )
     """)
     today = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    conn.execute("INSERT INTO signals (timestamp, symbol, direction, quality_score, trade_type) VALUES (?, ?, ?, ?, ?)", (today, 'EURUSD', 'BUY', 8.5, 'SCALP'))
-    conn.execute("INSERT INTO signals (timestamp, symbol, direction, quality_score, trade_type) VALUES (?, ?, ?, ?, ?)", (today, 'EURUSD', 'BUY', 7.5, 'SCALP'))
-    conn.execute("INSERT INTO signals (timestamp, symbol, direction, quality_score, trade_type) VALUES (?, ?, ?, ?, ?)", (today, 'GBPUSD', 'SELL', 6.0, 'SWING'))
+    conn.execute("INSERT INTO signals (timestamp, symbol, direction, quality_score, trade_type) VALUES (?, ?, ?, ?, ?)", (today, 'EURUSD', 'BUY', 8.5, 'CRT'))
+    conn.execute("INSERT INTO signals (timestamp, symbol, direction, quality_score, trade_type) VALUES (?, ?, ?, ?, ?)", (today, 'EURUSD', 'BUY', 7.5, 'CRT'))
+    conn.execute("INSERT INTO signals (timestamp, symbol, direction, quality_score, trade_type) VALUES (?, ?, ?, ?, ?)", (today, 'GBPUSD', 'SELL', 6.0, 'ADVANCED_PATTERN'))
     conn.commit()
     conn.close()
 
@@ -281,4 +281,3 @@ async def test_ensure_db_schema_success(tmp_path):
         cols = [row[1] for row in cursor.fetchall()]
         assert 'trade_type' in cols
         conn.close()
-

@@ -17,7 +17,7 @@ The system is optimized for **H1/H4 Macro Trends** and **M5/M15 Institutional Ex
 
 ---
 
-## 🚀 Key Alpha Modules
+## 🚀 Active Alpha Modules
 
 ### 1. CRT (Candle Range Theory)
 Authentic implementation of institutional range mechanics.
@@ -25,15 +25,16 @@ Authentic implementation of institutional range mechanics.
 *   **Killzone Logic**: Precise execution windows (London/NY).
 *   **Range Forensics**: H1/H4 reference range tracking with M5 Market Structure Shifts (MSS).
 
-### 2. SMC Liquidity Models
-*   **Asian Range Traps**: Identification of liquidity pools above/below the consolidation.
-*   **Displacement Detection**: Algorithmic discovery of institutional "fingerprints" (FVGs/OBs).
-*   **Sweep + Reversal**: Statistical modeling of liquidity hunts followed by trend resumption.
+### 2. Advanced Pattern
+Maintained pattern-extension engine for strict price-action setups.
+*   **Day-of-Week Context**: Pattern scoring respects recurring weekday behavior.
+*   **Pin-Bar Stop Hunts**: Reversal detection around stop-run candle structures.
+*   **Locked Scope**: CRT and Advanced Pattern are the only active signal engines.
 
-### 3. Structural Alpha Kernel
+### 3. Shared Structural Alpha Kernel
 *   **Velocity Alpha**: Normalized momentum measurement for volatility-adjusted trend strength.
-*   **POC Edge**: Volume-weighted mean reversion relative to the Point of Control.
 *   **Regime-Adaptive Filters**: Dynamic logic shifts between trending and mean-reverting states.
+*   **Active Strategy Scope**: CRT and Advanced Pattern only.
 
 ---
 
@@ -41,14 +42,14 @@ Authentic implementation of institutional range mechanics.
 
 Latest audited benchmark: `database/backtest_results.db`, Run ID `58`, date range `2026-05-01` to `2026-05-29`.
 
-| Metric | CRT Strategy (H1) | Advanced Patterns | SMC Sweep |
+| Metric | CRT Strategy (H1) | Advanced Patterns |
 | :--- | :--- | :--- |
-| **Closed Trades** | 2,720 | 10 | 42 |
-| **Win Rate** | 71.1% | 50.0% | 64.2% |
-| **Net Profit** | +1,034.1R | +2.3R | +24.8R |
-| **Status** | Live-Ready Phase | Under-sampled | Live-Ready Phase |
+| **Closed Trades** | 2,720 | 10 |
+| **Win Rate** | 71.1% | 50.0% |
+| **Net Profit** | +1,034.1R | +2.3R |
+| **Status** | Core baseline | Active research extension |
 
-Run `63` total closed-trade result: `2,772` trades, `70.9%` win rate, `+1,061.4R`. These results reflect 60-day structural edge with backtest isolation perfectly intact.
+Run `63` is retained as historical evidence. Going forward, active signal generation is limited to CRT and Advanced Pattern.
 
 ---
 
@@ -96,7 +97,7 @@ python run_backtest_cli.py --days 30
 │   └── alpha_combiner.py
 ├── strategies/         # Institutional Model Implementations
 │   ├── crt_strategy.py
-│   └── smc_sweep_strategy.py
+│   └── advanced_pattern_strategy.py
 ├── research/           # Quantitative Backtesting & Labs
 ├── tests/              # Unit/integration tests; not a 100% proof suite
 └── dashboard/          # Institutional Grid UI (HTML/CSS)
@@ -112,6 +113,8 @@ Trading financial markets involves significant risk. Current performance metrics
 
 - Stripe webhook processing requires `STRIPE_WEBHOOK_SECRET` by default.
 - Unsigned webhook payloads are only accepted when `ALLOW_UNSIGNED_STRIPE_WEBHOOK=true` is set for local development.
+- Runtime configuration is centralized through `config/manager.py`, with `config/config.py` exposing compatibility snapshots for modules that still import constants.
+- Admin config updates refresh the runtime config manager immediately, so service reads stay aligned with the database state within the same process.
 - Live-trading toggles such as `mt5_auto_trade` and `mt5_paper_mode` require `risk_manager` access.
 - Signal delivery reservation fails closed if the dedupe database is unavailable, so a storage fault will block delivery instead of duplicating it.
 - Test markers now separate `integration`, `live`, and `authentic` coverage so local runs can skip external dependencies cleanly.

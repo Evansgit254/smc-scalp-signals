@@ -17,7 +17,7 @@ mock_full_signal = {
     'tp1': 63000.0,
     'tp2': 60000.0,
     'timeframe': 'H1',
-    'trade_type': 'SWING',
+    'trade_type': 'CRT',
     'confidence': 0.85,
     'quality_score': 9.2,
     'regime': 'TRENDING_DOWN',
@@ -78,7 +78,7 @@ def verify_full_fidelity():
     row_dict = dict(zip(columns, row))
     
     print("\n🧐 Verifying Data Integrity:")
-    if row_dict['trade_type'] == 'SWING':
+    if row_dict['trade_type'] == 'CRT':
         print("✅ trade_type verified")
     else:
         print(f"❌ trade_type mismatch: {row_dict.get('trade_type')}")

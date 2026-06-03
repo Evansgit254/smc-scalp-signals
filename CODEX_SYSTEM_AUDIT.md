@@ -22,7 +22,6 @@ Strategy-level result for Run `58`:
 | :--- | ---: | ---: | ---: | ---: | ---: | :--- |
 | CRT H1 | 8,115 | 61.77% | +1,029.52 | +0.127 | 1.33 | Research-active |
 | Advanced Patterns | 19 | 73.68% | +15.90 | +0.837 | 4.18 | Promising but under-sampled |
-| SMC Sweep | 767 | 25.55% | -188.82 | -0.246 | 0.67 | Quarantined |
 
 **[Addendum: 2026-05-29] System Overhaul (Version 5.3.0)**
 Following a forensic investigation into Run 58's false-positive trade densities and the subsequent "zero trade" blocking bugs, the ExecutionGate was refactored with strict `run_id` isolation. Run 63 (Deep History: `2026-04-07` to `2026-05-29`) stands as the mathematically clean institutional baseline replacing Run 58.
@@ -30,14 +29,12 @@ Following a forensic investigation into Run 58's false-positive trade densities 
 **Run 63 Final Strategy Breakdown:**
 | Strategy | Trades | Win Rate | Net R | Status |
 | :--- | ---: | ---: | ---: | :--- |
-| CRT H1 | 2,720 | 71.1% | +1,034.1R | Live-Ready Phase |
-| Session Clock | 42 | 64.2% | +24.8R | Live-Ready Phase |
-| Advanced Patterns | 10 | 50.0% | +2.3R | Under-sampled |
-| SMC Sweep | N/A | N/A | N/A | Quarantined |
+| CRT H1 | 2,720 | 71.1% | +1,034.1R | Core baseline |
+| Advanced Patterns | 10 | 50.0% | +2.3R | Active research extension |
 
 Engineering actions applied from this audit:
 
-- SMC Sweep is disabled by default in live signal generation config and excluded from default backtests unless explicitly requested.
+- Active signal generation and default backtests are limited to CRT and Advanced Patterns.
 - Backtests now use a timestamp-aware open-position check in `ExecutionGate`, so simulated trades remain blocking until their `closed_at` time has passed.
 - Documentation now distinguishes backtest evidence from paper/live execution evidence.
 
@@ -100,8 +97,8 @@ Remediation:
 
 - Config updates are now validated by key and type.
 - Config rows are versioned and audited.
-- Risk sizing and key strategies now read from `config.config` at decision time.
-- Signal service maps DB keys to runtime config names during `_load_dynamic_config()`.
+- Risk sizing and key strategies now read from the centralized `config_manager` at decision time, with `config/config.py` retained as a compatibility snapshot.
+- Signal service refreshes the centralized config manager during `_load_dynamic_config()` and maps DB keys into runtime fields through that layer.
 
 Remaining:
 
@@ -152,8 +149,9 @@ Remediation:
 
 Remaining:
 
-- Add correlated exposure groups, for example USD, JPY, metals, oil, crypto.
-- Add configurable per-symbol and per-strategy burst budgets instead of only no-pyramiding.
+- Correlated exposure groups are now enforced for major currencies, metals, oil, and crypto.
+- Configurable strategy and session exposure budgets now supplement no-pyramiding.
+- Add per-symbol burst budgets if the system later needs multiple valid liquidity events on the same symbol.
 
 ### 4. MetaAPI Execution Reliability
 
@@ -179,8 +177,7 @@ Remediation:
 
 Remaining:
 
-- Add explicit `orders` and `fills` tables.
-- Reconcile open broker positions on a timer.
+- Prove `orders`, `fills`, reconciliation runs, and broker reconciliation events against real broker traffic.
 - Persist request payload, raw broker response, latency, commission, swap, and residual volume.
 - Add retry policy with idempotent client order identifiers.
 
@@ -199,6 +196,8 @@ Required:
 - Broker-side pre-trade bid/ask validation before live order submission.
 - Broker tick/position reconciliation for SL/TP and open risk.
 - Slippage and partial-fill analytics by symbol/session/provider.
+
+Update: live execution now performs a pre-trade broker spread check and refuses live orders when explicit approval, credentials, or broker data mode are missing. Broker reconciliation is scheduled and records auditable reconciliation runs/events, but still needs real broker evidence.
 
 ### 6. Data Fidelity And Regime Drift
 
@@ -288,13 +287,12 @@ Recommended next steps:
 
 ## Next Engineering Priorities
 
-1. Add `orders` and `fills` tables plus raw MetaAPI request/response persistence.
-2. Add scheduled broker reconciliation using MetaAPI positions and deals.
-3. Replace yfinance-based live tracking with broker quotes for executable instruments.
-4. Move schema changes out of runtime code into migrations.
-5. Add maker-checker workflow before `MT5_AUTO_TRADE=true` can be enabled.
-6. Add Postgres migration plan for `system_config`, `signals`, `trade_reservations`, `execution_events`, `orders`, `fills`, and `audit_events`.
+1. Run a controlled live-broker proof cycle and archive orders, fills, reconciliation runs, slippage, commission, swap, and rejection evidence.
+2. Add retry policy with idempotent client order identifiers and latency capture.
+3. Move schema changes out of runtime code into migrations.
+4. Add maker-checker workflow before `MT5_AUTO_TRADE=true` can be enabled for non-paper trading.
+5. Add Postgres migration plan for `system_config`, `signals`, `trade_reservations`, `execution_events`, `orders`, `fills`, `reconciliation_runs`, `broker_reconciliation_events`, and `audit_events`.
 
 ## Readiness Verdict
 
-The terminal is materially safer after this pass, especially around config governance, exact signal idempotency, and execution auditability. It is still not fully institutional 24/5-ready until broker reconciliation, order/fill ledgers, and Postgres-backed state are implemented.
+The terminal is materially safer after this pass, especially around config governance, exact signal idempotency, live-readiness blocking, exposure controls, and execution auditability. It is still not fully institutional 24/5-ready until real broker evidence, maker-checker approval, retry/idempotency policy, and Postgres-backed state are implemented.

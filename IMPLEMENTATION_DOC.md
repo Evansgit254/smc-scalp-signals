@@ -55,11 +55,10 @@ The `AlphaCombiner` aggregates structural factors into a final conviction score.
 3.  **Displacement Entry**: Waits for MSS + FVG formation back inside the range.
 4.  **Targeting**: Surgical TP hits at Equilibrium, Opposite Extreme, and Extended Deviation.
 
-### B. SMC Liquidity Sweep
-- **Asian Session Mapping**: Identifies the 00:00 - 07:00 UTC range.
-- **Trap Identification**: Marks highs/lows as liquidity targets.
-- **Reversal Kernel**: Statistical modeling of the "Fake-Out" before the real move.
-- **Current Status**: Quarantined by default after Run ID `58` showed negative expectancy (`767` closed trades, `25.55%` win rate, `-188.82R`, PF `0.67`).
+### B. Advanced Pattern Alpha
+- **Day-of-Week Context**: Scores recurring weekday behavior without enabling retired engines.
+- **Pin-Bar Stop Hunts**: Detects strict stop-run reversal structures.
+- **Current Status**: Maintained as the only active extension beside CRT.
 
 ---
 
@@ -81,9 +80,12 @@ The `RiskManager` is the system's "Safety Brain."
 
 ### 6.1 Operational Governance
 - Stripe webhooks require `STRIPE_WEBHOOK_SECRET` by default. An unsigned development bypass is only available when `ALLOW_UNSIGNED_STRIPE_WEBHOOK=true` is set explicitly.
+- Runtime config is owned by `config/manager.py`. `config/config.py` remains as a compatibility snapshot for modules that still import constants, while live reads use the manager directly.
+- Admin updates call `config_manager.refresh()` so config changes are visible immediately inside the running process.
 - Live execution toggles such as `mt5_auto_trade` and `mt5_paper_mode` require `risk_manager` access through the admin API.
 - Signal delivery reservation fails closed if the dedupe database cannot be written, which prevents duplicate broadcast or execution on storage faults.
 - Test coverage is organized with `authentic`, `integration`, and `live` markers so local runs can exclude external dependencies cleanly.
+- Test startup disables the background reconciliation loop when requested, preventing TestClient runs from starting broker-facing tasks.
 
 ---
 
@@ -97,12 +99,10 @@ Latest database baseline: `database/backtest_results.db`, Run ID `63`, date rang
 
 | Model | Closed Trades | Win Rate | Net R | Status |
 | :--- | ---: | ---: | ---: | :--- |
-| CRT (H1) | 2,720 | 71.1% | +1,034.1R | Live-Ready Phase |
-| Session Clock | 42 | 64.2% | +24.8R | Live-Ready Phase |
-| Advanced Patterns | 10 | 50.0% | +2.3R | Under-sampled |
-| SMC Sweep | N/A | N/A | N/A | Quarantined |
+| CRT (H1) | 2,720 | 71.1% | +1,034.1R | Core baseline |
+| Advanced Patterns | 10 | 50.0% | +2.3R | Active research extension |
 
-Run `63` total: `2,772` closed trades, `70.9%` win rate, `+1,061.4R`.
+Run `63` total remains historical evidence. Active signal generation is now intentionally limited to CRT and Advanced Patterns.
 ---
 
 ## 8. Technology Stack
@@ -117,7 +117,6 @@ Run `63` total: `2,772` closed trades, `70.9%` win rate, `+1,061.4R`.
 | Model | Win Rate | Realistic R-Profit (21d) |
 | :--- | :--- | :--- |
 | **CRT (H1)** | 71.1% | +1,034.1R |
-| **Session Clock** | 64.2% | +24.8R |
 | **Advanced Patterns** | 50.0% | +2.3R |
 
 ---

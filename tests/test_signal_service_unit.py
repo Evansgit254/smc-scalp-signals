@@ -4,11 +4,18 @@ from signal_service import SignalService, main
 import asyncio
 import sys
 import os
+from config.manager import config_manager
+
+@pytest.fixture(autouse=True)
+def reset_config_overrides():
+    config_manager.clear_runtime_overrides()
+    yield
+    config_manager.clear_runtime_overrides()
 
 @pytest.fixture
 def mock_strategy():
     mock = MagicMock()
-    mock.generate_signals = AsyncMock(return_value=[('SWING', {
+    mock.generate_signals = AsyncMock(return_value=[('CRT', {
         'symbol': 'BTC/USD', 
         'direction': 'BUY',
         'entry_price': 60000,
@@ -17,7 +24,7 @@ def mock_strategy():
         'tp1': 62000,
         'tp2': 63000,
         'timeframe': 'H1',
-        'trade_type': 'SWING',
+        'trade_type': 'CRT',
         'quality_score': 8.5,
         'expected_hold': '4h'
     })])
@@ -224,10 +231,10 @@ async def test_signal_service_load_dynamic_config_paused(mock_telegram):
     conn.close()
     
     with patch('signal_service.TelegramService', return_value=mock_telegram), \
-         patch('config.config.DB_CLIENTS', db_path), \
          patch('data.fetcher.DataFetcher.fetch_data_async', new=AsyncMock(return_value=None)), \
          patch('builtins.print'):
-        
+        config_manager.set_runtime_override("db_clients", db_path)
+
         service = SignalService()
         service._load_dynamic_config()
         assert service.is_paused == True

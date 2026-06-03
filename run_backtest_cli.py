@@ -14,8 +14,6 @@ async def main():
                        help="Custom start date (YYYY-MM-DD)")
     parser.add_argument("--end", type=str, default=None,
                        help="Custom end date (YYYY-MM-DD)")
-    parser.add_argument("--include-smc-sweep", action="store_true",
-                       help="Include quarantined SMC Sweep model in research backtests")
     args = parser.parse_args()
 
     if args.start and args.end:
@@ -33,13 +31,11 @@ async def main():
     print(get_system_banner())
     print(f"🕵️  STARTING INSTITUTIONAL BACKTEST")
     print(f"📅 Range: {start_date} to {end_date}")
-    active_models = "CRT + Session Clock + Advanced Patterns"
-    if args.include_smc_sweep:
-        active_models += " + SMC Sweep (quarantined research)"
+    active_models = "CRT + Advanced Pattern"
     print(f"⚙️  Alpha Core: {active_models}")
     print("=" * 50)
     
-    engine = BacktestEngine(start_date, end_date, include_smc_sweep=args.include_smc_sweep)
+    engine = BacktestEngine(start_date, end_date)
     
     def progress_bar(p):
         cols = 40

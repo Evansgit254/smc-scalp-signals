@@ -11,24 +11,22 @@ def client():
     yield TestClient(app)
     app.dependency_overrides.clear()
 
-@patch("admin_server.get_db_connection")
-def test_toggle_strategy_endpoint_success(mock_get_db, client):
-    # Mock DB
-    mock_conn = MagicMock()
-    mock_cursor = MagicMock()
-    mock_conn.cursor.return_value = mock_cursor
-    mock_get_db.return_value = mock_conn
-    mock_cursor.fetchone.return_value = {"value": "0"}  # Currently disabled
-    
-    response = client.post("/api/strategies/smc_sweep/toggle")
+def test_strategy_list_only_crt_and_advanced_pattern(client):
+    response = client.get("/api/strategies")
     assert response.status_code == 200
-    assert response.json()["enabled"] == True
+    strategies = response.json()
+    assert {s["id"] for s in strategies} == {"crt", "advanced_pattern"}
+    assert all(s["enabled"] is True and s["locked"] is True for s in strategies)
+
+def test_retired_strategy_toggle_not_found(client):
+    response = client.post("/api/strategies/retired_strategy/toggle")
+    assert response.status_code == 404
 
 def test_toggle_strategy_rejects_crt(client):
     response = client.post("/api/strategies/crt/toggle")
     assert response.status_code == 403
-    assert "cannot be disabled" in response.json()["detail"]
+    assert "locked on" in response.json()["detail"]
 
     response2 = client.post("/api/strategies/advanced_pattern/toggle")
     assert response2.status_code == 403
-    assert "cannot be disabled" in response2.json()["detail"]
+    assert "locked on" in response2.json()["detail"]

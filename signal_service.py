@@ -20,6 +20,7 @@ from alerts.service import TelegramService
 from core.signal_formatter import SignalFormatter
 from core.market_regime import detect_regime, apply_regime_filter
 from core.db_utils import connect_sqlite
+from config.manager import config_manager
 
 # Configuration
 SIGNAL_INTERVAL = 300  # 5 minutes in seconds
@@ -89,8 +90,7 @@ class SignalService:
             return
         conn = None
         try:
-            from config.config import DB_SIGNALS
-            conn = connect_sqlite(DB_SIGNALS)
+            conn = connect_sqlite(config_manager.get("db_signals"))
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS signal_gate (
                     signal_hash TEXT PRIMARY KEY,
@@ -130,8 +130,7 @@ class SignalService:
         cutoff = datetime.utcnow() - timedelta(hours=DEDUP_WINDOW_HOURS)
         conn = None
         try:
-            from config.config import DB_SIGNALS
-            conn = connect_sqlite(DB_SIGNALS)
+            conn = connect_sqlite(config_manager.get("db_signals"))
             conn.execute("BEGIN IMMEDIATE")
             existing = conn.execute("SELECT reserved_at FROM signal_gate WHERE signal_hash = ?", (sig_hash,)).fetchone()
             if existing:
@@ -176,8 +175,7 @@ class SignalService:
         sig_hash = signal_data.get("idempotency_key") or self._signal_hash(signal_data)
         conn = None
         try:
-            from config.config import DB_SIGNALS
-            conn = connect_sqlite(DB_SIGNALS)
+            conn = connect_sqlite(config_manager.get("db_signals"))
             conn.execute(
                 "UPDATE signal_gate SET status='SENT', sent_at=? WHERE signal_hash=?",
                 (datetime.utcnow().isoformat(), sig_hash),
@@ -190,54 +188,11 @@ class SignalService:
                 conn.close()
 
     def _load_dynamic_config(self):
-        """Load configuration overrides from database"""
-        import sqlite3
-        import config.config as cfg
-        from config.config import DB_CLIENTS
-        
-        # Mapping for keys that don't match config variable names exactly
-        key_mapping = {
-            "risk_per_trade": "RISK_PER_TRADE_PERCENT",
-            "news_filter_minutes": "NEWS_WASH_ZONE",
-            "min_quality_score": "MIN_QUALITY_SCORE",
-            "min_quality_score_intraday": "MIN_QUALITY_SCORE_INTRADAY",
-            "max_concurrent_trades": "MAX_CONCURRENT_TRADES",
-            "mt5_auto_trade": "MT5_AUTO_TRADE",
-            "mt5_paper_mode": "MT5_PAPER_MODE",
-            "mt5_symbol_suffix": "MT5_SYMBOL_SUFFIX"
-        }
-        
+        """Refresh centralized runtime configuration."""
         try:
-            conn = connect_sqlite(DB_CLIENTS)
-            rows = conn.execute("SELECT key, value, type FROM system_config").fetchall()
-            conn.close()
-            
-            print("⚙️  Loading dynamic configuration...")
-            for row in rows:
-                key = row['key']
-                from core.secure_config import reveal_config_value
-                val = reveal_config_value(key, row['value'])
-                
-                if val is None:
-                    continue  # Skip if decryption failed or value is missing
-
-                # Type conversion
-                if row['type'] == 'int': val = int(val)
-                elif row['type'] == 'float': val = float(val)
-                elif row['type'] == 'bool': val = (val.lower() == 'true')
-                
-                # Determine target variable name
-                target_var = key_mapping.get(key, key.upper())
-                
-                # Apply to config module if exists
-                if hasattr(cfg, target_var):
-                    setattr(cfg, target_var, val)
-                    print(f"   🔹 {target_var} = {val}")
-                
-                # Special handling for system status
-                if key == 'system_status':
-                    self.is_paused = (val != 'ACTIVE')
-                        
+            settings = config_manager.refresh()
+            self.is_paused = (settings.system_status.upper() != "ACTIVE")
+            print("⚙️  Runtime configuration refreshed")
         except Exception as e:
             print(f"⚠️  Failed to load dynamic config: {e}")
     
@@ -255,12 +210,12 @@ class SignalService:
         try:
             from data.fetcher import DataFetcher
             from indicators.calculations import IndicatorCalculator
-            from config.config import SYMBOLS, DB_CLIENTS
             import asyncio as _aio
             fetcher = DataFetcher()
             h1_map = {}
             # Sample first 4 symbols for speed (representative)
-            for sym in list(SYMBOLS)[:4]:
+            settings = config_manager.snapshot()
+            for sym in list(settings.symbols)[:4]:
                 try:
                     raw = await fetcher.fetch_data_async(sym, "1h", period="30d")
                     if raw is not None and not raw.empty:
@@ -268,7 +223,7 @@ class SignalService:
                 except Exception:
                     pass
             regime_result = detect_regime(h1_map)
-            apply_regime_filter(regime_result, DB_CLIENTS)
+            apply_regime_filter(regime_result, settings.db_clients)
         except Exception as e:
             print(f"⚠️  Regime detection skipped: {e}")
 
@@ -313,7 +268,9 @@ class SignalService:
                 
                 # V31.0: Execution Gate — validate before any action
                 from core.execution_gate import ExecutionGate
-                from config.config import DB_SIGNALS, DB_CLIENTS
+                settings = config_manager.snapshot()
+                DB_SIGNALS = settings.db_signals
+                DB_CLIENTS = settings.db_clients
                 if "signal_uid" not in signal_data:
                     signal_data["signal_uid"] = ExecutionGate._signal_uid(signal_data)
                 if not self._reserve_signal_delivery(signal_data):
@@ -344,8 +301,7 @@ class SignalService:
                 self._mark_signal_delivered(signal_data)
 
                 # V31.0: Only execute trades that PASS the gate
-                from config.config import MT5_AUTO_TRADE
-                if MT5_AUTO_TRADE:
+                if config_manager.get("mt5_auto_trade", refresh=True):
                     try:
                         from core.trade_executor import get_executor
                         executor = get_executor()
@@ -386,8 +342,7 @@ class SignalService:
         import os
         from datetime import datetime
         
-        from config.config import DB_SIGNALS
-        db_path = DB_SIGNALS
+        db_path = config_manager.get("db_signals")
         
         # V18.1: Self-Healing Schema - Ensure all columns exist before insert
         conn = None
@@ -396,7 +351,7 @@ class SignalService:
             conn.execute("PRAGMA journal_mode=WAL")  # Enable WAL mode for concurrency
             cursor = conn.cursor()
             required_cols = [
-                ("trade_type", "TEXT DEFAULT 'SCALP'"),
+                ("trade_type", "TEXT DEFAULT 'CRT'"),
                 ("quality_score", "REAL DEFAULT 0.0"),
                 ("regime", "TEXT DEFAULT 'UNKNOWN'"),
                 ("expected_hold", "TEXT DEFAULT 'UNKNOWN'"),
@@ -528,7 +483,7 @@ class SignalService:
             test_mode: If True, run only one cycle then exit
         """
         print("="*60)
-        print("🚀 PURE QUANT SIGNAL SERVICE STARTED")
+        print("🚀 CRT + ADVANCED PATTERN SIGNAL SERVICE STARTED")
         print("="*60)
         print(f"📡 Interval: {SIGNAL_INTERVAL} seconds")
         print(f"🔄 Dedup window: {DEDUP_WINDOW_HOURS} hours")
