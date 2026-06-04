@@ -6,13 +6,34 @@ Watches open signals and updates their result (TP/SL) based on real-time price d
 import asyncio
 import sqlite3
 import yfinance as yf
+import pandas as pd
 from datetime import datetime
 import os
 import signal
 import sys
+import logging
+
+# Suppress noisy yfinance warnings
+logging.getLogger('yfinance').setLevel(logging.CRITICAL)
 
 DB_PATH = "database/signals.db"
 TRACKING_INTERVAL = 120  # Check every 2 minutes
+
+def _get_session():
+    """Get a robust session for yfinance, matching data/fetcher.py approach."""
+    try:
+        from curl_cffi import requests as curl_requests
+        return curl_requests.Session(impersonate="chrome")
+    except ImportError:
+        import requests
+        session = requests.Session()
+        session.headers.update({
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        })
+        return session
+
+# Reuse a single session across cycles
+_session = _get_session()
 
 def calculate_pips(symbol, entry, exit, direction):
     """V31.0: Precise institutional pip calculation."""
@@ -44,6 +65,28 @@ class SignalTracker:
         conn.execute("PRAGMA journal_mode=WAL")
         return conn
 
+    def _fetch_latest_price(self, symbol: str):
+        """Fetch latest price using yf.download() with session (avoids cookie bug)."""
+        try:
+            df = yf.download(
+                tickers=symbol,
+                period="1d",
+                interval="1m",
+                session=_session,
+                progress=False,
+                auto_adjust=True,
+                threads=False,
+            )
+            if df is None or df.empty:
+                return None
+            # Flatten MultiIndex columns if necessary
+            if isinstance(df.columns, pd.MultiIndex):
+                df.columns = df.columns.get_level_values(0)
+            return float(df['Close'].iloc[-1])
+        except Exception as e:
+            print(f"⚠️ Error fetching price for {symbol}: {e}")
+            return None
+
     async def track_once(self):
         """Perform one tracking cycle for all open signals."""
         conn = None
@@ -62,18 +105,12 @@ class SignalTracker:
             # Group by symbol to minimize API calls
             symbols = list(set([s['symbol'] for s in open_signals]))
             
-            # Fetch latest prices for all symbols in the list
-            # Note: yf.download is faster for batches but can be noisy
+            # Fetch latest prices using robust yf.download() approach
             prices = {}
             for symbol in symbols:
-                try:
-                    ticker = yf.Ticker(symbol)
-                    # Get 2 bars of 1m data to ensure we have the most recent closed/current price
-                    hist = ticker.history(period="1d", interval="1m")
-                    if not hist.empty:
-                        prices[symbol] = hist['Close'].iloc[-1]
-                except Exception as e:
-                    print(f"⚠️ Error fetching price for {symbol}: {e}")
+                price = self._fetch_latest_price(symbol)
+                if price is not None:
+                    prices[symbol] = price
 
             for sig in open_signals:
                 symbol = sig['symbol']
