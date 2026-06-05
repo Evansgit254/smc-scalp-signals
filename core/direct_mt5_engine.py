@@ -30,7 +30,7 @@ class DirectMT5Engine:
     def connect(self) -> bool:
         """Initializes connection to the local MT5 terminal."""
         if not MT5_AVAILABLE:
-            self.logger.error("MetaTrader5 package not installed. Run 'pip install MetaTrader5' on Windows.")
+            self.logger.debug("MetaTrader5 package not installed. Run 'pip install MetaTrader5' on Windows.")
             return False
 
         if not mt5.initialize(login=self.login, password=self.password, server=self.server):
