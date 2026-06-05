@@ -107,7 +107,8 @@ def detect_regime(data_source, period=50) -> dict:
     if df is None or len(df) < period:
         return {
             'regime': 'LOW_VOL_RANGE', 'adx': 20.0, 'vol_ratio': 1.0, 
-            'quality_threshold': QUALITY_MIXED
+            'quality_threshold': QUALITY_MIXED,
+            'detail': 'Insufficient data for regime calculation'
         }
 
     last = df.iloc[-1]
