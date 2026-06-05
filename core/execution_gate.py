@@ -274,11 +274,20 @@ class ExecutionGate:
                     return True
                 try:
                     reservation = conn.execute("""
-                        SELECT 1 FROM trade_reservations
+                        SELECT created_at FROM trade_reservations
                         WHERE symbol = ? AND status = 'ACTIVE'
                         LIMIT 1
                     """, (symbol,)).fetchone()
-                    return reservation is not None
+                    if reservation:
+                        # Institutional Rule: Reservations expire after 15 minutes
+                        try:
+                            created_at = datetime.fromisoformat(reservation[0])
+                            if (datetime.utcnow() - created_at).total_seconds() > 900:
+                                return False # Reservation expired
+                            return True
+                        except Exception:
+                            return True # Fallback to blocking if date parsing fails
+                    return False
                 except sqlite3.OperationalError:
                     return False
         except Exception:
