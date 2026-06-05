@@ -16,6 +16,9 @@ systemctl --user start smc-signal-service.service
 systemctl --user enable smc-interactive-bot.service
 systemctl --user start smc-interactive-bot.service
 
+systemctl --user enable smc-health-watchdog.service
+systemctl --user start smc-health-watchdog.service
+
 # Enable lingering so services run when evans logs out
 sudo loginctl enable-linger evans
 
